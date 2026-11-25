@@ -145,7 +145,11 @@ export function useDeleteEntry(
 		busy.current = true;
 		try {
 			const out = await previewDelete(api, { id, shared });
-			if (out.state.status !== "ready") {
+			// Under the dev flag an offline dry run still reaches the confirm, with no
+			// server diff, since the delete queues on the device. A refusal still stops.
+			const queuesOffline =
+				out.state.status === "offline" && !shared && deviceWrites(api) !== null;
+			if (out.state.status !== "ready" && !queuesOffline) {
 				toast.show({ message: t("failed") });
 				return;
 			}

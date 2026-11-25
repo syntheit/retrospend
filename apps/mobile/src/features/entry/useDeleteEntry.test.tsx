@@ -28,15 +28,15 @@ function writesBase(base: string | null): DeviceWrites {
 	};
 }
 
-/** `get` answers with the server's row, or fails like a phone with no network. */
+/** Offline: every call fails like a phone with no network, the dry run too. */
 function client(read: "online" | "offline") {
+	const down = async () => {
+		throw new Error("Network request failed");
+	};
 	return {
 		expenses: {
-			previewDelete: async () => diff,
-			get: async () => {
-				if (read === "offline") throw new Error("Network request failed");
-				return { updatedAt: SERVER };
-			},
+			previewDelete: read === "offline" ? down : async () => diff,
+			get: read === "offline" ? down : async () => ({ updatedAt: SERVER }),
 		},
 	} as unknown as RetrospendClient;
 }
@@ -82,6 +82,34 @@ describe("a queued delete under the device flag", () => {
 		});
 		expect(lastToast().message).toBe("Deleted Lunch");
 		expect(onDeleted).toHaveBeenCalled();
+	});
+
+	it("reaches the confirm in airplane mode and queues on the pulled version", async () => {
+		world.api = client("offline");
+		mockWrites.mockReturnValue(writesBase(PULLED));
+		await remove();
+		const [entry] = await world.local.outbox.all();
+		expect(entry).toMatchObject({ kind: "delete", baseVersion: PULLED });
+		expect(alert.mock.calls.at(-1)?.[0]).toBe("Delete expense?");
+		expect(alert.mock.calls.at(-1)?.[1]).toBeUndefined();
+	});
+
+	it("stops with the failure toast when the dry run is refused", async () => {
+		world.api = {
+			expenses: {
+				previewDelete: async () => {
+					throw Object.assign(new Error("no"), { status: 403 });
+				},
+			},
+		} as unknown as RetrospendClient;
+		mockWrites.mockReturnValue(writesBase(PULLED));
+		const hook = await renderHook(() => useDeleteEntry());
+		await act(async () => {
+			hook.result.current({ id: ID, shared: false, title: "Lunch" });
+		});
+		expect(alert).not.toHaveBeenCalled();
+		expect(lastToast().message).toBe("Couldn't delete this. Try again.");
+		expect(await world.local.outbox.all()).toEqual([]);
 	});
 
 	it("is refused, queuing nothing, when no version can be read", async () => {

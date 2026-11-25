@@ -16,6 +16,11 @@ import type { EntryCatalog } from "./types";
 import type { EntryForm } from "./useEntryForm";
 import { useEntrySave } from "./useEntrySave";
 
+const mockDeviceWrites = jest.fn();
+jest.mock("@/data/deviceWrites", () => ({
+	deviceWrites: () => mockDeviceWrites() ?? null,
+}));
+
 // Add and Save through the hook, with the real outbox, queue and sender over
 // a fake API: what is sent for yen and dinars, the toast each outcome ends
 // in, and Undo that works and Undo that does not.
@@ -134,6 +139,7 @@ const refused = (status: number) => Object.assign(new Error("no"), { status });
 function stubForm(editing = false) {
 	const form = {
 		editing,
+		expense: { editing: null },
 		setTried: jest.fn(),
 		setDrafts: jest.fn(),
 		fresh: jest.fn(() => "a fresh draft"),
@@ -169,6 +175,8 @@ async function setup(
 		});
 	return { ...hook, form, onDone, add };
 }
+
+beforeEach(() => mockDeviceWrites.mockReset());
 
 let changes: jest.Mock;
 let unsubscribe: () => void;
@@ -495,5 +503,52 @@ describe("Save an edit", () => {
 		await add();
 		expect(calls).toHaveLength(0);
 		expect(onDone).not.toHaveBeenCalled();
+	});
+
+	describe("under the device flag", () => {
+		const deviceWith = (base: string | null) => ({
+			book: async () => ({ bookedAt: 1, changes: [], changed: [], base }),
+			comparePreview: async () => undefined,
+			pullsBegun: () => 1,
+			refresh: async () => undefined,
+		});
+
+		it("says it could not read the expense when no version is known, and queues nothing", async () => {
+			mockDeviceWrites.mockReturnValue(deviceWith(null));
+			const { api, calls } = fakeApi();
+			const { add, onDone } = await setup(editOf("JPY", "1,500"), {
+				api,
+				editing: true,
+			});
+			await add();
+			expect(lastToast().message).toBe(
+				"Couldn't read this expense. Try again in a moment.",
+			);
+			expect(await world.local.outbox.all()).toEqual([]);
+			expect(calls).toHaveLength(0);
+			expect(onDone).not.toHaveBeenCalled();
+		});
+
+		it("says it is still sending only when a send of the row began", async () => {
+			mockDeviceWrites.mockReturnValue(deviceWith("v1"));
+			const { api } = fakeApi();
+			const { add } = await setup(editOf("JPY", "1,500"), {
+				api,
+				editing: true,
+			});
+			await world.local.outbox.enqueue({
+				clientId: "c1",
+				entity: "expenses",
+				kind: "create",
+				targetId: ID,
+				baseVersion: null,
+				payload: { id: ID },
+			});
+			await world.local.outbox.markSending("c1");
+			await add();
+			expect(lastToast().message).toBe(
+				"This expense is still sending. Try again in a moment.",
+			);
+		});
 	});
 });
