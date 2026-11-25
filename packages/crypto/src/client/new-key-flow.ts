@@ -72,7 +72,7 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 	 * answers. An answer that never came is thrown as it is (it can be asked
 	 * again); any other refusal, or an answer of another shape, is a mismatch.
 	 */
-	async function stored(held: Held, body: NewKeyCommitBody): Promise<boolean> {
+	async function stored(body: NewKeyCommitBody): Promise<boolean> {
 		let answer: unknown;
 		try {
 			answer = await ports.open({ authKey: body.currentAuthKey });
@@ -106,7 +106,7 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 			}
 			if (code !== "conflict") throw error;
 			// Not sent again: the server says whether it holds ours.
-			if (await stored(held, body)) return;
+			if (await stored(body)) return;
 			throw error;
 		}
 	}
@@ -140,7 +140,7 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 			try {
 				if (held.phase === "unknown") {
 					// The last send may have committed: look before sending anything.
-					if (await stored(held, body)) held.phase = "stored";
+					if (await stored(body)) held.phase = "stored";
 					else {
 						held.idempotencyKey = ports.newKey();
 						held.phase = "unsent";
@@ -151,8 +151,7 @@ export function createNewKeyCallbacks(ports: NewKeyFlowPorts): NewKeyCallbacks {
 					held.phase = "stored";
 				}
 				// Saved is only said for a key the server holds.
-				if (!(await stored(held, body)))
-					throw new KeyFlowError("readBackFailed");
+				if (!(await stored(body))) throw new KeyFlowError("readBackFailed");
 			} catch (error) {
 				throw asKeyFlowError(error);
 			}
