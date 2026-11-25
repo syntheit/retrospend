@@ -2,7 +2,6 @@
 
 import type { RecoveryCallbacks } from "@retrospend/crypto/client";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -22,8 +21,9 @@ type View = "choices" | "plain";
 
 /**
  * What the reset link leads to. The link is checked first (it spends no try):
- * an account without keys gets today's form; one with keys gets the choices,
- * and the recovery key opens the recovery sheet. A link that cannot be checked
+ * an account without keys, and a link the check does not know (an admin's
+ * link), get today's form; one with keys gets the choices, and the recovery
+ * key opens the recovery sheet. A link that cannot be checked
  * is never read as "no keys", so the plain form is not shown on a guess.
  */
 export function ResetFlow({ token }: { token: string }) {
@@ -65,19 +65,12 @@ export function ResetFlow({ token }: { token: string }) {
 				</Button>
 			</AuthPanel>
 		);
-	if (link.data === "invalid")
-		return (
-			<AuthPanel
-				description={p("recover.errors.linkExpired")}
-				title={t("invalidLink")}
-				tone="danger"
-			>
-				<Button asChild className="w-full" kind="secondary">
-					<Link href="/login">{t("returnToLogin")}</Link>
-				</Button>
-			</AuthPanel>
-		);
-	if (link.data.keys === "none") return <PlainResetForm token={token} />;
+	// A link the recovery check does not know is not a dead link: an admin's
+	// link opens a plain reset and never recovery, and the check answers 404 for
+	// it. The server judges the token at submit, as it did before recovery
+	// (unknown or expired: "Invalid or expired token"; a protected account: refused).
+	if (link.data === "invalid" || link.data.keys === "none")
+		return <PlainResetForm token={token} />;
 	if (view === "plain")
 		return <PlainResetForm onBack={() => setView("choices")} token={token} />;
 
@@ -91,8 +84,11 @@ export function ResetFlow({ token }: { token: string }) {
 			<RecoverSheet
 				begin={callbacks.begin}
 				finish={callbacks.finish}
-				onDone={() => {
-					toast.saved(t("passwordUpdatedSuccessfully"));
+				onDone={(result) => {
+					// A spent link after a lost answer is not proof of a new password:
+					// say to sign in with it, and the sign-in tells.
+					if (result === "set") toast.saved(t("passwordUpdatedSuccessfully"));
+					else toast.info(p("recover.signInNew"));
 					router.push("/login");
 				}}
 				onOpenChange={setOpen}

@@ -30,8 +30,10 @@ export type RecoveryLink = {
 };
 
 /**
- * Asks what the link leads to. `invalid` is the link being unknown, spent,
- * expired or made by an admin (one answer for all). Throws KeyFlowError
+ * Asks what the link leads to. `invalid` is the recovery check not knowing
+ * the link (unknown, spent, expired or made by an admin: one answer for all),
+ * which is not the same as the plain reset refusing it: the page shows the
+ * plain reset form for it and the server judges the token at submit. Throws KeyFlowError
  * (`unavailable`, `rateLimited`) when the question could not be answered, and
  * for an answer of another shape: the page then offers Retry, and never shows
  * the plain reset form on a guess.
