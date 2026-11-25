@@ -1,5 +1,4 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { dropCaptured } from "@/data/captureSent";
 import type { PendingWrite } from "./draft";
 import { SEND_TIMEOUT_MS, type UndoRef } from "./send";
 
@@ -24,8 +23,6 @@ export async function saveExpenseEdit(
 	write: PendingWrite,
 	idempotencyKey: string,
 ): Promise<EditOutcome> {
-	// The synced row stops being what the create booked, whether or not the answer arrives.
-	dropCaptured(api, String(write.body.id));
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	try {

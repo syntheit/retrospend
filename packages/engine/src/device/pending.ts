@@ -5,7 +5,7 @@ import {
 	type TextFreeExpenseRow,
 	withoutText,
 } from "../expenses";
-import type { Reader, Store, Writer } from "../port";
+import type { Store, Tx, Writer } from "../port";
 import { applyChanges } from "../undo";
 import { sameColumnValue } from "../write-parity";
 
@@ -60,6 +60,8 @@ export interface PendingEntry {
 
 /** What the phone gives the engine to read its pending writes and to settle the ones a pull retired. */
 export interface PendingSource {
+	/** Reads the phone's lists again; the engine awaits it before each pull begins. */
+	refresh?(): Promise<void>;
 	/** The outbox and the acked list in one order, oldest first. */
 	entries(): readonly PendingEntry[];
 	/** Takes `clientIds` out of the acked list: a pull compared them. */
@@ -170,7 +172,7 @@ export async function readOverlaid<R>(
 	store: Store,
 	entries: readonly PendingEntry[],
 	settledPull: number,
-	read: (view: Reader) => R | Promise<R>,
+	read: (view: Tx) => R | Promise<R>,
 ): Promise<R> {
 	let result: { value: R } | undefined;
 	try {

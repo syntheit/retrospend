@@ -1,5 +1,4 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { captureSent, dropCaptured } from "@/data/captureSent";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
 import type { Sender, SendResult } from "@/data/sync";
 
@@ -26,17 +25,21 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 }
 
 /**
- * The outbox as the composers' flush sees it: only their own entities. An
- * entry of another stream has no sender here and must not stop the queue.
+ * What this sender can send: a create of its own entities. An entry of
+ * another stream, or an update or delete (their sender is PR10, and only the
+ * dev flag queues them), has no sender here and must not stop the queue or
+ * go out as a create.
  */
+const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
+	isEntryEntity(e.entity) && e.kind === "create";
+
+/** The outbox as the composers' flush sees it: only what `sendable` names. */
 export function entryOutbox(outbox: Outbox): Outbox {
 	return {
 		...outbox,
-		pending: async () =>
-			(await outbox.pending()).filter((e) => isEntryEntity(e.entity)),
+		pending: async () => (await outbox.pending()).filter(sendable),
 		// The flush reads `all()`: `pending()` hides the parked entries its hold rule needs.
-		all: async () =>
-			(await outbox.all()).filter((e) => isEntryEntity(e.entity)),
+		all: async () => (await outbox.all()).filter(sendable),
 	};
 }
 
@@ -125,13 +128,15 @@ export function createEntrySender(
 	options: SenderOptions = {},
 ): Sender {
 	return async (entry) => {
-		if (!isEntryEntity(entry.entity)) {
-			return { status: "retry", reason: `no sender for ${entry.entity}` };
+		if (!sendable(entry)) {
+			return {
+				status: "retry",
+				reason: `no sender for ${entry.kind} of ${entry.entity}`,
+			};
 		}
 		if (options.signal?.aborted) {
 			return { status: "retry", reason: "aborted", kind: "network" };
 		}
-		const startedAt = Date.now();
 		const timeout = new AbortController();
 		const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 		const stop = () => timeout.abort();
@@ -142,9 +147,6 @@ export function createEntrySender(
 				signal: timeout.signal,
 			});
 			rememberUndo(entry.clientId, { entity: entry.entity, token });
-			// A retry may replay a first try the server already booked, earlier
-			// than startedAt: only a first try says when the server booked it.
-			if (entry.attempts === 0) captureSent(api, entry, startedAt);
 			return { status: "sent", ...(version ? { version } : {}) };
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
@@ -219,8 +221,6 @@ export async function undoWrite(
 	ref: UndoRef,
 	clientId: string,
 ): Promise<void> {
-	// An undone create has no row to compare, whether or not the answer arrives.
-	dropCaptured(api, clientId);
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	const options = {

@@ -549,6 +549,19 @@ describe("retiring and comparing on a pull", () => {
 		expect(engine.writeParity.counts).toEqual({ "skipped:rates_moved": 1 });
 	});
 
+	it("allows for clocks that differ: rates stamped within five minutes before the booking count as moved", async () => {
+		const stamp = Date.parse(rates.asOf);
+		const at = async (bookedAt: number) => {
+			const { engine } = await acked(edited(), edit, { bookedAt });
+			await engine.pull();
+			return engine.writeParity.counts;
+		};
+		expect(await at(stamp + 5 * 60_000 - 1)).toEqual({
+			"skipped:rates_moved": 1,
+		});
+		expect(await at(stamp + 5 * 60_000)).toEqual({ match: 1 });
+	});
+
 	it("skips an edit of a row that is gone", async () => {
 		const { engine, pending } = setup([
 			page([booked("e1")]),

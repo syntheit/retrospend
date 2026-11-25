@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { deviceWrites } from "@/data/deviceWrites";
 import { newClientId } from "@/data/ids";
 import { useToast } from "@/ui/Toast";
 import type { PendingWrite } from "./draft";
 import { saveExpenseEdit } from "./edit";
 import { announceEntryChange } from "./events";
 import {
+	queueExpenseChange,
 	type SaveOutcome,
 	saveEntry,
 	takeFromOutbox,
@@ -49,8 +51,58 @@ export function useEntrySave({
 		return editKey.current.key;
 	}
 
+	/**
+	 * Dev flag: the edit is booked on the device and queued, not sent. The
+	 * update sender is PR10, so for now it waits in the outbox and Undo takes
+	 * it back out.
+	 */
+	async function queueEdit(): Promise<boolean> {
+		const writes =
+			write?.entity === "expenses" && api ? deviceWrites(api) : null;
+		if (!write || !api || !local || !writes) return false;
+		setBusy(true);
+		const queued = await queueExpenseChange({
+			outbox: local.outbox,
+			writes,
+			change: { kind: "update", body: write.body },
+			opened: form.expense.editing?.updatedAt ?? null,
+		}).finally(() => setBusy(false));
+		if (queued.status !== "queued") {
+			toast.show({
+				message: t(
+					queued.status === "busy" ? "toast.stillSending" : "toast.notRead",
+				),
+			});
+			return true;
+		}
+		announceEntryChange();
+		toast.show({
+			message: t("toast.queued", { title: write.label }),
+			undo: {
+				label: t("undo"),
+				onUndo: async () => {
+					const result = await undoSaved({
+						outbox: local.outbox,
+						api,
+						clientId: queued.clientId,
+					});
+					announceEntryChange();
+					toast.show({
+						message:
+							result === "undone"
+								? t("toast.undone", { title: write.label })
+								: t("toast.undoFailed"),
+					});
+				},
+			},
+		});
+		onDone();
+		return true;
+	}
+
 	async function saveEdit() {
 		if (!write || !api || busy || blocked) return;
+		if (await queueEdit()) return;
 		setBusy(true);
 		const outcome = await saveExpenseEdit(
 			api,
@@ -117,7 +169,11 @@ export function useEntrySave({
 			// replace anything: say so and leave it to Activity.
 			if (
 				replaceId &&
-				(await takeFromOutbox(local.outbox, replaceId)) === null
+				(await takeFromOutbox(
+					local.outbox,
+					replaceId,
+					deviceWrites(api) !== null,
+				)) === null
 			) {
 				toast.show({ message: t("toast.editSynced") });
 				announceEntryChange();

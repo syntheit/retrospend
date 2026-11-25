@@ -1,4 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import type { WriteBody } from "@retrospend/engine/device";
+import { deviceWrites } from "@/data/deviceWrites";
 import type { PendingWrite } from "./draft";
 
 // "What this changes" (R30): the server's dry run of the same write that Save
@@ -97,6 +99,19 @@ export async function fetchPreview(
 	const options = { signal: timeout.signal };
 	try {
 		const diff = await dryRun(api, write, options);
+		// Dev flag: the device's own preview is held against this one. It shows
+		// nothing and never waits: the screen keeps the server's figures, and
+		// offline stays offline (no device preview stands in for the server's).
+		if (write.entity === "expenses")
+			void deviceWrites(api)
+				?.comparePreview(
+					{
+						kind: write.kind === "update" ? "update" : "create",
+						body: write.body as unknown as WriteBody,
+					},
+					diff,
+				)
+				.catch(() => undefined);
 		return { status: "ready", diff };
 	} catch (error) {
 		// A thrown error without a status never reached the server. A 401 is the
