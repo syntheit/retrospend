@@ -158,7 +158,7 @@ function argumentSpans(text: string, name: string): [number, number][] {
 }
 
 /** Network calls in `text` that are not inside a time-limited wrapper. */
-export function unboundedCalls(text: string): string[] {
+function unboundedCalls(text: string): string[] {
 	const wrapped = [
 		...argumentSpans(text, "callWithTimeout"),
 		...argumentSpans(text, "withTimeout"),
