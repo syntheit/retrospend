@@ -152,6 +152,9 @@
 			"budget_heldForOthers": "Reservado para otros",
 			"project_total": "Total del proyecto",
 			"envelope_left": "Sobre",
+			"recurring_cost_out_month": "Costo recurrente por mes",
+			"recurring_cost_in_month": "Ingreso recurrente por mes",
+			"budget_planCost": "Costo del plan",
 			"budget_leftInLimits": "Disponible en tus límites",
 			"budget_holds": "Lo que tiene el presupuesto"
 		},
@@ -168,6 +171,9 @@
 			"budget_heldForOthers": "lo reservado para otros",
 			"project_total": "el total del proyecto",
 			"envelope_left": "el sobre",
+			"recurring_cost_out_month": "costo recurrente por mes",
+			"recurring_cost_in_month": "ingreso recurrente por mes",
+			"budget_planCost": "el costo del plan",
 			"budget_leftInLimits": "lo disponible en tus límites",
 			"budget_holds": "lo que tiene el presupuesto"
 		}

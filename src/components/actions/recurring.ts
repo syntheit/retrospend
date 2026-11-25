@@ -9,5 +9,5 @@ export const RECURRING_ACTIONS: readonly ActionDef<RecurringTarget>[] = [
 	{ id: "pause", icon: Pause, group: 0, when: (r) => !r.paused },
 	{ id: "resume", icon: Play, group: 0, when: (r) => r.paused },
 	{ id: "skip", icon: SkipForward, group: 1, swipe: "trail" },
-	{ id: "delete", icon: Trash2, group: 1, danger: true },
+	{ id: "delete", icon: Trash2, group: 1, danger: true, safety: "handler" },
 ];

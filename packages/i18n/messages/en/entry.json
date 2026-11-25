@@ -152,6 +152,9 @@
 			"budget_heldForOthers": "Held for others",
 			"project_total": "Project total",
 			"envelope_left": "Envelope",
+			"recurring_cost_out_month": "Recurring cost a month",
+			"recurring_cost_in_month": "Recurring income a month",
+			"budget_planCost": "Plan cost",
 			"budget_leftInLimits": "Left in your limits",
 			"budget_holds": "What the budget holds"
 		},
@@ -168,6 +171,9 @@
 			"budget_heldForOthers": "held for others",
 			"project_total": "the project total",
 			"envelope_left": "the envelope",
+			"recurring_cost_out_month": "recurring cost a month",
+			"recurring_cost_in_month": "recurring income a month",
+			"budget_planCost": "plan cost",
 			"budget_leftInLimits": "left in your limits",
 			"budget_holds": "what the budget holds"
 		}

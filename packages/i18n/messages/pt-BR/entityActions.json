@@ -150,9 +150,7 @@
 			"label": "Pular desta vez"
 		},
 		"delete": {
-			"label": "Excluir",
-			"confirmTitle": "Excluir {name}?",
-			"confirmButton": "Excluir despesa recorrente"
+			"label": "Excluir"
 		}
 	},
 	"category": {

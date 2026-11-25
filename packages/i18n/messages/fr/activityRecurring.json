@@ -119,5 +119,19 @@
 		"next": "Prochaine échéance",
 		"nextValue": "{before} → {after}",
 		"unchanged": "Rien d'autre ne change : aucune dépense n'est enregistrée et le montant reste le même."
+	},
+	"deleteSheet": {
+		"title": "Supprimer {name} ?",
+		"submit": "Supprimer la dépense récurrente",
+		"submitIn": "Supprimer le revenu récurrent",
+		"future": "Prochaines échéances",
+		"futureValue": "Arrêtées, la prochaine était le {date}",
+		"autoPay": "Enregistrer automatiquement",
+		"autoPayValue": "Arrêté",
+		"targets": "Objectifs des enveloppes",
+		"targetsValue": "Retirés",
+		"logged": "Entrées déjà enregistrées",
+		"loggedValue": "Restent",
+		"previewFailed": "Impossible de vérifier ce qui change."
 	}
 }

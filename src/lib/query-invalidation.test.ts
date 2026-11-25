@@ -119,6 +119,10 @@ const REQUIRED_READERS: Record<string, string[]> = {
 		"sharedTransaction",
 	],
 
+	// A delete clears BILL envelope targets, which moves the plan; so does its undo.
+	"recurring.delete.save": ["recurring", "envelope"],
+	"recurring.restore.save": ["recurring", "envelope"],
+
 	// Insights reads the same spending, money in and categories.
 	"entry.expense.create.save": ["insights"],
 	"entry.shared.update.save": ["insights"],

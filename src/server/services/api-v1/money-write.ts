@@ -100,16 +100,17 @@ export function accountChangeDto(a: {
  * Runs an undo once per token. The token's signature claims a row in the
  * idempotency store (the same per-user, 24-hour table the write keys use), so
  * of two requests with one token exactly one runs. A failed undo frees the
- * token for a retry; a finished one keeps it spent.
+ * token for a retry; a finished one keeps it spent. The web's restore tokens
+ * (entry/restore-token.ts) are spent the same way, by their signature.
  */
-export async function spendUndo<T>(
-	caller: Caller,
-	token: string,
+export async function spendSignature<T>(
+	db: Caller["db"],
+	userId: string,
+	sig: string,
 	run: () => Promise<T>,
 ): Promise<T> {
-	const sig = token.split(".")[1] ?? "";
-	const claim = await startIdempotentRequest(caller.db, {
-		userId: caller.principal.userId,
+	const claim = await startIdempotentRequest(db, {
+		userId,
 		key: `undo:${sig}`,
 		requestHash: sig,
 	});
@@ -120,10 +121,23 @@ export async function spendUndo<T>(
 		});
 	try {
 		const result = await run();
-		await completeIdempotentRequest(caller.db, claim.id, 200, undefined);
+		await completeIdempotentRequest(db, claim.id, 200, undefined);
 		return result;
 	} catch (error) {
-		await releaseIdempotentRequest(caller.db, claim.id).catch(() => undefined);
+		await releaseIdempotentRequest(db, claim.id).catch(() => undefined);
 		throw error;
 	}
+}
+
+export function spendUndo<T>(
+	caller: Caller,
+	token: string,
+	run: () => Promise<T>,
+): Promise<T> {
+	return spendSignature(
+		caller.db,
+		caller.principal.userId,
+		token.split(".")[1] ?? "",
+		run,
+	);
 }

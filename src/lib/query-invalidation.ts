@@ -217,6 +217,9 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"sharedTransaction",
 	],
 	"recurring.unconfirm": ["expense", "insights", "sharedTransaction"],
+	// A BILL envelope followed the template: the plan cost and the budget move.
+	"recurring.delete.save": ["envelope"],
+	"recurring.restore.save": ["envelope"],
 
 	// ── Verification ────────────────────────────────────────────────────
 	// An answer moves what you owe, the budget's split lines and Needs you.
