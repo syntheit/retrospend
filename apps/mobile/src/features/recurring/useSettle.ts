@@ -26,10 +26,12 @@ export function useSettleDevice(item: RecurringItem): SettleDevice | null {
 }
 
 /**
- * Whether the last dry run failed because the server could not be reached.
- * Only then does Save wait on the phone and the sheet say so: any other
- * failure (a 5xx, a timeout while online) keeps the sheet's error line and
- * Save off, as with the flag off. `track` wraps the sheet's dry run.
+ * Whether the last dry run failed because the server could not be reached
+ * (no answer, including the preview's own timeout, as the composer reads it).
+ * Only then does Save wait on the phone and the sheet say so: a server answer
+ * that failed (a 5xx) keeps the sheet's error line and Save off, as with the
+ * flag off. The queued send is stamped and keyed, so a slow server only
+ * delays it. `track` wraps the sheet's dry run.
  */
 export function useOfflineDryRun() {
 	const [offline, setOffline] = useState(false);
