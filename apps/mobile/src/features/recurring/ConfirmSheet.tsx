@@ -12,7 +12,14 @@ import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { DateField } from "@/ui/DateField";
+import {
+	isSettled,
+	previewSettle,
+	type SettleAnswer,
+	settleOnDevice,
+} from "./deviceSettle";
 import type { RecurringItem } from "./source";
+import { useSettleDevice, useSettleToast } from "./useSettle";
 
 /** A calendar day ("2026-11-01") as "Nov 1". */
 export function useDayText() {
@@ -35,6 +42,11 @@ export function useDayText() {
  * separate change to the template, with its own Undo, in the item sheet. The
  * dry run lists what changes before Confirm is on, and the toast undoes it.
  * Medium for a fixed amount, large with the keypad.
+ *
+ * Under the dev flag an expense is booked on the device and queued instead:
+ * the server's dry run is still what the sheet shows (the device's is only
+ * held against it), the write waits in the outbox when offline, and the
+ * toast says so and undoes it. With the flag off none of that runs.
  */
 export function ConfirmSheet({
 	item,
@@ -53,6 +65,9 @@ export function ConfirmSheet({
 	onSkip: () => void;
 }) {
 	const t = useTranslations("mobile.recurring.confirm");
+	const tOffline = useTranslations("mobile.composer.changes");
+	const device = useSettleDevice(item);
+	const settled = useSettleToast();
 	const money = useMoneyText();
 	const day = useDayText();
 	const locale = useAmountLocale();
@@ -83,6 +98,7 @@ export function ConfirmSheet({
 		setPaidOn(item.next);
 	});
 	const booked = asks && minor !== null ? { minor, currency } : item.amount;
+	const toast = t("toast", { title: item.title, amount: money(booked) });
 
 	return (
 		<WriteSheet
@@ -91,22 +107,51 @@ export function ConfirmSheet({
 					lead={[
 						{ key: "next", label: t("nextDue"), value: day(item.nextAfter) },
 					]}
+					message={
+						device && status === "failed" ? tOffline("offline") : undefined
+					}
 					preview={preview}
 					status={status}
 				/>
 			)}
 			detent={asks ? "large" : "medium"}
+			done={
+				device
+					? (out) => {
+							if (isSettled(out))
+								settled(out, {
+									device,
+									title: item.title,
+									synced: toast,
+									onChanged: onDone,
+								});
+						}
+					: undefined
+			}
 			family="recurringConfirm"
 			input={input}
-			message={() => t("toast", { title: item.title, amount: money(booked) })}
+			message={() => toast}
 			onClose={onClose}
 			onDone={onDone}
-			preview={(api, body) => api.recurring.previewConfirm(body)}
+			preview={(api, body) =>
+				device
+					? previewSettle(device, "confirm", body)
+					: api.recurring.previewConfirm(body)
+			}
+			queuesOffline={device !== null}
 			submitLabel={t(item.direction === "in" ? "submitIn" : "submitOut")}
 			title={t("title", { title: item.title })}
 			visible={visible}
-			write={(api, body, key) =>
-				api.recurring.confirm(body, { context: { idempotencyKey: key } })
+			write={(api, body, key): Promise<SettleAnswer | object> =>
+				device
+					? settleOnDevice({
+							device,
+							kind: "confirm",
+							body,
+							clientId: key,
+							item,
+						})
+					: api.recurring.confirm(body, { context: { idempotencyKey: key } })
 			}
 		>
 			{({ committing }) => (

@@ -192,8 +192,29 @@ export async function saveEntry(input: {
 		...(booked ? { device: deviceOf(booked) } : {}),
 	});
 	await writes?.refresh().catch(() => undefined);
-	// The flush may be behind another one; Save does not wait on a slow
-	// network, the entry stays in the outbox and goes when its turn comes.
+	return flushThenOutcome({
+		outbox,
+		api,
+		transport,
+		clientId,
+		...(input.waitMs !== undefined ? { waitMs: input.waitMs } : {}),
+	});
+}
+
+/**
+ * Flushes the outbox once and says where entry `clientId` ended up. The flush
+ * may be behind another one; the caller does not wait on a slow network, the
+ * entry stays in the outbox and goes when its turn comes.
+ */
+export async function flushThenOutcome(input: {
+	outbox: Outbox;
+	api: RetrospendClient;
+	transport: Transport;
+	clientId: string;
+	/** Test seam: the wait for the send. */
+	waitMs?: number;
+}): Promise<SaveOutcome> {
+	const { outbox, api, transport, clientId } = input;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	await Promise.race([
 		flushEntries(outbox, api, transport).catch(() => undefined),

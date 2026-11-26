@@ -407,6 +407,10 @@ export interface RecurringPayload {
 	amount?: string;
 	/** Confirm only: the day it was really paid (yyyy-MM-dd). */
 	paidOn?: string;
+	/** The template's name, kept for the Sync issues row. Never sent. */
+	title?: string;
+	/** The template's currency, kept for the Sync issues row. Never sent. */
+	currency?: string;
 }
 
 /** The payload as a recurring write needs it, or null when it names no due date. */
