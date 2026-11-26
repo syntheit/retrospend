@@ -2964,7 +2964,8 @@
 			"toast": "{title} eliminado",
 			"error": "No se pudo eliminar. Intenta de nuevo.",
 			"logged": "Movimientos ya registrados",
-			"loggedStays": "Se conservan"
+			"loggedStays": "Se conservan",
+			"syncFirst": "Sincroniza primero: algunos cambios aún no se sincronizaron."
 		},
 		"pick": "Elige un gasto recurrente"
 	},

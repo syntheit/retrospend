@@ -68,3 +68,4 @@ export type {
 } from "./ports";
 export type { ServerPreview } from "./preview-compare";
 export { type Rebase, type TemplateSeen, templateSeenOf } from "./rebase";
+export type { TemplateCreateBody, TemplateUpdateBody } from "./template-book";

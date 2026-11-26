@@ -33,17 +33,17 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 
 /**
  * The one table of what this sender can send: a create of its own entities, an
- * update or delete of an expense, and a confirm or skip of a recurring
- * template (only the dev flag queues those). A kind not listed for its entity
- * has no sender here (a template create or edit waits for its own PR) and must
- * not stop the queue.
+ * update or delete of an expense, and a create, edit, confirm or skip of a
+ * recurring template (only the dev flag queues those). A kind not listed for
+ * its entity has no sender here (a template delete stays online) and must not
+ * stop the queue.
  */
 const SENDABLE: Record<EntryEntity, readonly OutboxKind[]> = {
 	expenses: ["create", "update", "delete"],
 	"shared-expenses": ["create"],
 	income: ["create"],
 	transfers: ["create"],
-	recurring: ["confirm", "skip"],
+	recurring: ["create", "update", "confirm", "skip"],
 };
 
 const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
@@ -278,7 +278,10 @@ export function createEntrySender(
 		if (entry.kind !== "create" && typeof entry.baseVersion !== "string") {
 			return { status: "conflict", reason: PARKED_NO_STAMP };
 		}
-		if (entry.entity === "recurring" && !recurringPayloadOf(entry))
+		if (
+			(entry.kind === "confirm" || entry.kind === "skip") &&
+			!recurringPayloadOf(entry)
+		)
 			return { status: "conflict", reason: PARKED_NO_DUE };
 		const timeout = new AbortController();
 		const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
@@ -308,8 +311,14 @@ export function createEntrySender(
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
 			// No answer, so no version: an entry chained after it parks as
-			// chain_lost, and Try again re-bases it over the pulled row.
-			if (entry.kind === "create" && idTaken(error)) return { status: "sent" };
+			// chain_lost, and Try again re-bases it over the pulled row. A template
+			// create reads the row back first (`createTemplate`) and never gets here.
+			if (
+				entry.kind === "create" &&
+				entry.entity !== "recurring" &&
+				idTaken(error)
+			)
+				return { status: "sent" };
 			const result = classify(error, entry.serverErrors, entry);
 			if (
 				entry.kind !== "create" &&
@@ -338,20 +347,47 @@ export interface CallOptions {
 }
 
 /**
- * The undo token, and for an expense the `updatedAt` the server booked it at
- * (null for a delete: the row is gone).
+ * The undo token, and for an expense or a template the `updatedAt` the server
+ * booked it at (null for a delete: the row is gone). A template create or
+ * edit has no server token: `NO_TOKEN`, and its undo is written by the phone.
  */
 export interface Created {
 	undo: string;
 	version?: string | null;
 }
 
-/** An update or delete of an expense, checked against the version the entry was based on. */
+export const NO_TOKEN = "";
+
+/** An edit of a template (PATCH), checked against the template version the entry was based on. */
+async function editTemplate(
+	api: RetrospendClient,
+	entry: OutboxEntry,
+	options: CallOptions,
+): Promise<Created> {
+	// `title` is kept for the Sync issues row and never sent.
+	const { title: _title, ...patch } = entry.payload as Omit<
+		Body<typeof api.recurring.update>,
+		"id" | "expectedUpdatedAt"
+	> & { title?: string };
+	const written = await api.recurring.update(
+		{
+			...patch,
+			id: entry.targetId,
+			expectedUpdatedAt: entry.baseVersion as string,
+		},
+		options,
+	);
+	return { undo: NO_TOKEN, version: written.updatedAt };
+}
+
+/** An update or delete of an expense, or an edit of a template, checked against the version the entry was based on. */
 async function change(
 	api: RetrospendClient,
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
+	if (entry.entity === "recurring" && entry.kind === "update")
+		return editTemplate(api, entry, options);
 	if (entry.entity !== "expenses")
 		throw new Error(`no ${entry.kind} of ${entry.entity}`);
 	const expectedUpdatedAt = entry.baseVersion as string;
@@ -503,7 +539,42 @@ async function create(
 				).undo,
 			};
 		case "recurring":
-			throw new Error("no create of recurring");
+			return createTemplate(api, entry, options);
+	}
+}
+
+/**
+ * A new template under the entry's client id, so the server's row and the
+ * phone's are one. A taken id is read back: the key replays a create that
+ * landed only for a day, so after that (or after the server lost the answer)
+ * the id is held by our own row and the create counts as sent. The read
+ * names the template as it is now, not as the create made it, so no version
+ * is returned: an entry chained after it parks as chain_lost (shown, never
+ * stamped with a later version that would overwrite another device's change).
+ * Another answer to the read (a 404: the id is held by nothing the person can
+ * read) leaves the taken id as it was, and the entry parks.
+ */
+async function createTemplate(
+	api: RetrospendClient,
+	entry: OutboxEntry,
+	options: CallOptions,
+): Promise<Created> {
+	const body = {
+		...(entry.payload as Omit<Body<typeof api.recurring.create>, "id">),
+		id: entry.clientId,
+	};
+	try {
+		const made = await api.recurring.create(body, options);
+		return { undo: NO_TOKEN, version: made.updatedAt };
+	} catch (error) {
+		if (!idTaken(error)) throw error;
+		await api.recurring
+			.get({ id: entry.clientId }, { signal: options.signal })
+			.catch((read: unknown) => {
+				if ((read as { status?: number } | null)?.status === 404) throw error;
+				throw read;
+			});
+		return { undo: NO_TOKEN };
 	}
 }
 
@@ -550,6 +621,10 @@ async function undoWithKey(
 			if (ref.kind === "confirm") await api.recurring.undo(input, options);
 			else if (ref.kind === "skip")
 				await api.recurring.undoSkip(input, options);
+			// A new template is undone by deleting it (nothing was booked from it yet).
+			else if (ref.kind === "create" && ref.target)
+				await api.recurring.delete({ id: ref.target }, options);
+			// An edit has no server undo: the phone writes the old values back.
 			else throw new Error("An undo of a recurring write needs its kind");
 		} else await api.income.undo(input, options);
 	} finally {

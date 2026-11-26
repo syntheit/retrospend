@@ -2964,7 +2964,8 @@
 			"toast": "{title} gelöscht",
 			"error": "Löschen hat nicht geklappt. Versuche es nochmal.",
 			"logged": "Bereits erfasste Einträge",
-			"loggedStays": "Bleiben"
+			"loggedStays": "Bleiben",
+			"syncFirst": "Zuerst synchronisieren: Einige Änderungen sind noch nicht synchronisiert."
 		},
 		"pick": "Wähle eine wiederkehrende Ausgabe"
 	},

@@ -19,7 +19,7 @@ export function settleOpOf(
 	kind: SettleKind,
 	input: SettleInput,
 	expenseId: string,
-): WriteOp {
+): Extract<WriteOp, { kind: "confirm" | "skip" }> {
 	const base = { templateId: input.id, dueAt: input.dueAt };
 	return kind === "skip"
 		? { kind, body: base }

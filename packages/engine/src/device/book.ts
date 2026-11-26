@@ -27,6 +27,11 @@ import { type TemplateRow, templateWithoutText } from "../templates";
 import type { UndoToken } from "../undo";
 import type { ExpenseChange, PendingChange } from "./pending";
 import { recurringPlanOf } from "./recurring-book";
+import {
+	type TemplateCreateBody,
+	type TemplateUpdateBody,
+	templatePlanOf,
+} from "./template-book";
 
 // What the phone saves, as the device books it: the same engine mutations a
 // preview runs, over the pending writes, in a transaction that is thrown away
@@ -76,9 +81,22 @@ export type WriteOp =
 	| { kind: "create" | "update"; body: WriteBody }
 	| { kind: "delete"; id: string }
 	| { kind: "confirm"; body: ConfirmBody }
-	| { kind: "skip"; body: SettleBody };
+	| { kind: "skip"; body: SettleBody }
+	| { kind: "templateCreate"; body: TemplateCreateBody }
+	| { kind: "templateUpdate"; body: TemplateUpdateBody };
 
-/** The row id the write is about: the expense, or the template of a confirm or skip. */
+/** The writes whose row is a recurring template. */
+type TemplateOp = Extract<
+	WriteOp,
+	{ kind: "confirm" | "skip" | "templateCreate" | "templateUpdate" }
+>;
+const isTemplateOp = (op: WriteOp): op is TemplateOp =>
+	op.kind === "confirm" ||
+	op.kind === "skip" ||
+	op.kind === "templateCreate" ||
+	op.kind === "templateUpdate";
+
+/** The row id the write is about: the expense, or the template of a confirm, skip, create or edit. */
 export const targetOf = (op: WriteOp): string =>
 	op.kind === "delete"
 		? op.id
@@ -121,12 +139,14 @@ export function planOf(
 ): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
 	if (op.kind === "confirm" || op.kind === "skip")
 		return recurringPlanOf(op, now);
+	if (op.kind === "templateCreate" || op.kind === "templateUpdate")
+		return templatePlanOf(op);
 	const planned = expensePlanOf(op, r, cursors);
 	return { ...planned, touches: EXPENSE_FIGURES };
 }
 
 function expensePlanOf(
-	op: Exclude<WriteOp, { kind: "confirm" | "skip" }>,
+	op: Exclude<WriteOp, TemplateOp>,
 	r: Reader,
 	cursors: WriteCursors,
 ): { id: string; write: WriteFn<ExpenseRow> } {
@@ -250,11 +270,10 @@ export async function bookIn(
 	bookedAt: number,
 ): Promise<BookedWrite> {
 	const { id, write } = planOf(op, tx, cursors, new Date(bookedAt));
-	const settling = op.kind === "confirm" || op.kind === "skip";
 	const row =
-		op.kind === "create"
+		op.kind === "create" || op.kind === "templateCreate"
 			? undefined
-			: settling
+			: isTemplateOp(op)
 				? tx.get("recurringTemplates", targetOf(op))
 				: tx.get("expenses", targetOf(op));
 	const zone = tx.get("settings", SETTINGS_ID)?.timeZone ?? "";

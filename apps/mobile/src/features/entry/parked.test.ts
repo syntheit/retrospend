@@ -199,3 +199,59 @@ describe("a parked recurring confirm or skip", () => {
 			expect(rebases(parkedFrom(recurring("confirm", reason)))).toBe(false);
 	});
 });
+
+describe("a parked recurring template create or edit", () => {
+	const template = (
+		kind: "create" | "update",
+		reason: string,
+		payload: unknown,
+	): OutboxEntry => ({
+		...entry(payload, reason),
+		entity: "recurring",
+		kind,
+		targetId: "t1",
+		baseVersion: kind === "create" ? null : "2026-11-18T10:00:00.000Z",
+	});
+	const made = { name: "Gym", amount: "30", currency: "USD" };
+
+	it("a create is named by its name and amount, and an edit by the name kept for this row", () => {
+		expect(parkedFrom(template("create", "bad_request", made))).toMatchObject({
+			title: "Gym",
+			amount: { minor: 3000, currency: "USD" },
+			kind: "create",
+		});
+		expect(
+			parkedFrom(template("update", "recurring_changed", { title: "Netflix" })),
+		).toMatchObject({ title: "Netflix", amount: null, kind: "update" });
+	});
+
+	it("a create that met a taken id is Discard only, any other create can be sent again", () => {
+		expect(parkedFrom(template("create", "id_taken", made)).retryable).toBe(
+			false,
+		);
+		expect(
+			parkedFrom(template("create", "internal_error", made)).retryable,
+		).toBe(true);
+	});
+
+	it("an edit of a template that moved, is gone, lost its chain or has no stamp is Discard only", () => {
+		for (const reason of [
+			"recurring_changed",
+			"not_found",
+			"chain_lost",
+			"no_stamp",
+		]) {
+			expect(
+				parkedFrom(template("update", reason, { title: "N" })).retryable,
+			).toBe(false);
+		}
+	});
+
+	it("an edit refused for another reason is sent again as it is", () => {
+		for (const reason of ["bad_request", "internal_error"]) {
+			const parked = parkedFrom(template("update", reason, { title: "N" }));
+			expect(parked.retryable).toBe(true);
+			expect(rebases(parked)).toBe(false);
+		}
+	});
+});

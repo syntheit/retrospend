@@ -11,14 +11,17 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { useDayText } from "./ConfirmSheet";
+import { createTemplateOnDevice, undoTemplateCreate } from "./deviceTemplate";
 import { createFromExpense, nextMonthly, templateBody } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
+import { useTemplateDevice, useTemplateToast } from "./useSettle";
 
 /**
  * Makes an expense repeat every month. It says what it will do and what it
  * will not (the template is new, auto-pay is off, no entry and no total
  * changes) before the button, and the toast that follows undoes it by
- * deleting the template (R30, R15).
+ * deleting the template (R30, R15). Under the dev flag the device books the
+ * template and queues it under a client id, so it also works offline.
  */
 export function MakeRecurringSheet({
 	item,
@@ -35,6 +38,8 @@ export function MakeRecurringSheet({
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const announce = useRecurringToast();
+	const device = useTemplateDevice();
+	const announceTemplate = useTemplateToast();
 	const money = useMoneyText();
 	const day = useDayText();
 	const { space } = useTheme();
@@ -52,6 +57,23 @@ export function MakeRecurringSheet({
 		setFailed(false);
 		try {
 			const key = idFor("create");
+			if (device) {
+				const answer = await createTemplateOnDevice({
+					device,
+					id: key,
+					body: templateBody(item),
+				});
+				// A parked create keeps its key: it is the write Couldn't sync holds.
+				if (answer.settled !== "parked") spendKey(key);
+				announceTemplate(answer, {
+					title: item.title,
+					synced: t("toast", { title: item.title }),
+					undo: () => undoTemplateCreate(device, key),
+					onChanged: onDone,
+				});
+				onClose();
+				return;
+			}
 			const made = await createFromExpense(api, item, key);
 			spendKey(key);
 			announce({

@@ -45,15 +45,12 @@ const PREVIEW_EXPENSE_ID = "preview";
  * held against it (nothing is shown from it and it never waits). Offline this
  * throws, and the sheet lets Save queue without a dry run.
  */
-export async function previewSettle(
+export function previewSettle(
 	device: SettleDevice,
 	kind: SettleKind,
 	input: SettleInput,
 ) {
-	const timeout = new AbortController();
-	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
-	const options = { signal: timeout.signal };
-	try {
+	return withTimeout(async (options) => {
 		const { recurring } = device.api;
 		const diff =
 			kind === "skip"
@@ -63,6 +60,17 @@ export async function previewSettle(
 			.comparePreview(settleOpOf(kind, input, PREVIEW_EXPENSE_ID), diff)
 			.catch(() => undefined);
 		return diff;
+	});
+}
+
+/** A dry run that gives up when no answer comes, so an offline sheet does not wait on it. */
+export async function withTimeout<T>(
+	run: (options: { signal: AbortSignal }) => Promise<T>,
+): Promise<T> {
+	const timeout = new AbortController();
+	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
+	try {
+		return await run({ signal: timeout.signal });
 	} finally {
 		clearTimeout(timer);
 	}

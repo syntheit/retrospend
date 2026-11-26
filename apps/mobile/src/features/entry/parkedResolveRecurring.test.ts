@@ -277,3 +277,45 @@ describe("a person's entry answered changed", () => {
 		expect(mockSince).not.toHaveBeenCalled();
 	});
 });
+
+describe("a parked template edit", () => {
+	async function parkedEdit(reason: string) {
+		const outbox: Outbox = createOutbox(createMemoryStore(), "scope");
+		await outbox.enqueue({
+			clientId: "u1",
+			entity: "recurring",
+			kind: "update",
+			targetId: "t1",
+			baseVersion: STAMP,
+			payload: { paused: true, title: "Netflix" },
+		});
+		await outbox.markConflict("u1", reason);
+		const [entry] = await outbox.all();
+		return { outbox, entry: entry as NonNullable<typeof entry> };
+	}
+
+	it("reads the pulled template without a period: gone shows Deleted, present shows Changed, both Discard only", async () => {
+		const { outbox, entry } = await parkedEdit(PARKED_NOT_FOUND);
+		mockSince.mockResolvedValue(GONE);
+		expect(await resolveParked(outbox, api, entry)).toMatchObject({
+			title: "Netflix",
+			gone: true,
+			retryable: false,
+		});
+		mockSince.mockResolvedValue(seen());
+		expect(await resolveParked(outbox, api, entry)).toMatchObject({
+			gone: false,
+			retryable: false,
+		});
+		expect(await outbox.all()).toHaveLength(1);
+	});
+
+	it("stays as it was before any pull since the answer", async () => {
+		const { outbox, entry } = await parkedEdit(RECURRING_CHANGED);
+		mockSince.mockResolvedValue(null);
+		expect(await resolveParked(outbox, api, entry)).toMatchObject({
+			gone: false,
+			retryable: false,
+		});
+	});
+});

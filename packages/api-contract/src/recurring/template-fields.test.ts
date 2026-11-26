@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createRecurringSchema, updateRecurringSchema } from "./index";
 import {
+	amountModeOfWire,
+	directionOfWire,
+	isActiveOfWire,
 	templateAmount,
 	templateCreateFieldsSchema,
 	templateCurrency,
@@ -62,5 +65,19 @@ describe("the template field rules have one owner", () => {
 			templateEditFieldsSchema.safeParse({ websiteUrl: null }).success,
 		).toBe(true);
 		expect(templateEditFieldsSchema.safeParse({}).success).toBe(true);
+	});
+});
+
+describe("the wire's direction, amount mode and pause have one reading", () => {
+	it("maps each word to the stored row's and leaves a missing field missing", () => {
+		expect(directionOfWire("out")).toBe("OUT");
+		expect(directionOfWire("in")).toBe("IN");
+		expect(directionOfWire(undefined)).toBeUndefined();
+		expect(amountModeOfWire("fixed")).toBe("FIXED");
+		expect(amountModeOfWire("ask")).toBe("ASK");
+		expect(amountModeOfWire(undefined)).toBeUndefined();
+		expect(isActiveOfWire(true)).toBe(false);
+		expect(isActiveOfWire(false)).toBe(true);
+		expect(isActiveOfWire(undefined)).toBeUndefined();
 	});
 });

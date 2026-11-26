@@ -6,6 +6,11 @@ import type {
 	skipRecurringSchema,
 	updateRecurringSchema,
 } from "@retrospend/api-contract";
+import {
+	amountModeOfWire,
+	directionOfWire,
+	isActiveOfWire,
+} from "@retrospend/api-contract/template-fields";
 import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
@@ -131,12 +136,8 @@ function createInput(
 		template: {
 			...input,
 			// A field left out stays undefined: the domain's newTemplateRow owns the defaults.
-			direction:
-				input.direction &&
-				(input.direction === "in" ? ("IN" as const) : ("OUT" as const)),
-			amountMode:
-				input.amountMode &&
-				(input.amountMode === "ask" ? ("ASK" as const) : ("FIXED" as const)),
+			direction: directionOfWire(input.direction),
+			amountMode: amountModeOfWire(input.amountMode),
 		},
 	};
 }
@@ -169,12 +170,8 @@ export async function changeRecurring(
 	await updateTemplate(caller.db, caller.principal.userId, id, {
 		...rest,
 		expectedUpdatedAt: stampOf(expectedUpdatedAt),
-		amountMode: amountMode
-			? amountMode === "ask"
-				? "ASK"
-				: "FIXED"
-			: undefined,
-		isActive: paused === undefined ? undefined : !paused,
+		amountMode: amountModeOfWire(amountMode),
+		isActive: isActiveOfWire(paused),
 	});
 	return readRecurring(caller, id);
 }

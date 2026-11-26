@@ -80,11 +80,17 @@ async function resolveTemplate(
 	entry: OutboxEntry,
 ): Promise<ParkedEntry | null> {
 	const payload = recurringPayloadOf(entry);
-	const seen = payload
+	// An edit names no period: only whether the template is still there is read.
+	const due = payload
+		? new Date(payload.dueAt)
+		: entry.kind === "update"
+			? new Date(0)
+			: null;
+	const seen = due
 		? await writes.templateSince(
 				entry.targetId,
 				notFoundPull(entry.clientId),
-				new Date(payload.dueAt),
+				due,
 				entry.clientId,
 			)
 		: null;
