@@ -122,7 +122,7 @@ describe("templateSeenOf", () => {
 			for (const e of rows.expenses ?? []) tx.put("expenses", e as ExpenseRow);
 		});
 		return readOverlaid(store, [], 0, (view) =>
-			templateSeenOf(view, "t1", DEC_1),
+			templateSeenOf(view, "t1", DEC_1, "e1"),
 		);
 	};
 
@@ -139,7 +139,7 @@ describe("templateSeenOf", () => {
 		});
 	});
 
-	it("a next due date past the period is passed, and the expense dated that instant is posted", async () => {
+	it("a next due date past the period is passed, and the expense the write named is posted", async () => {
 		const posted = { id: "e1", date: DEC_1, recurringTemplateId: "t1" };
 		expect(
 			await seen({
@@ -149,19 +149,30 @@ describe("templateSeenOf", () => {
 		).toEqual({ found: true, paused: false, passed: true, posted: true });
 	});
 
-	it("an expense of another template, or of another day, is not the period's post", async () => {
-		const other = { id: "e2", date: DEC_1, recurringTemplateId: "t2" };
-		const paidEarly = {
-			id: "e3",
+	it("a paid-on confirm booked on another day is posted by its id, not by the due date", async () => {
+		const paidOn = {
+			id: "e1",
 			date: new Date("2026-11-29T03:00:00Z"),
 			recurringTemplateId: "t1",
 		};
 		expect(
 			await seen({
 				template: template({ nextDueDate: JAN_1 }),
-				expenses: [other, paidEarly],
+				expenses: [paidOn],
 			}),
-		).toMatchObject({ posted: false });
+		).toMatchObject({ posted: true });
+	});
+
+	it("another expense of the template dated the period, or the named id under another template, is not the write's post", async () => {
+		const sameDay = { id: "e9", date: DEC_1, recurringTemplateId: "t1" };
+		const otherTemplate = { id: "e1", date: DEC_1, recurringTemplateId: "t2" };
+		const rows = { template: template({ nextDueDate: JAN_1 }) };
+		expect(await seen({ ...rows, expenses: [sameDay] })).toMatchObject({
+			posted: false,
+		});
+		expect(await seen({ ...rows, expenses: [otherTemplate] })).toMatchObject({
+			posted: false,
+		});
 	});
 
 	it("a paused template is paused", async () => {
@@ -178,7 +189,11 @@ describe("templateSince", () => {
 		const due = new Date("2026-12-01T03:00:00Z");
 		await engine.pull();
 		// The answer came while pull 1 was the latest begun: it resolves nothing.
-		expect(await engine.templateSince("t1", engine.pullsBegun, due)).toBeNull();
-		expect(await engine.templateSince("t1", 0, due)).toEqual({ found: false });
+		expect(
+			await engine.templateSince("t1", engine.pullsBegun, due, "e1"),
+		).toBeNull();
+		expect(await engine.templateSince("t1", 0, due, "e1")).toEqual({
+			found: false,
+		});
 	});
 });

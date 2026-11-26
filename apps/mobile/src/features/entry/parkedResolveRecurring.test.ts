@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { TemplateSeen } from "@retrospend/engine/device";
+import { type TemplateSeen, templateSeenOf } from "@retrospend/engine/device";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { confirm } from "@/data/outboxFixtures";
 import { createMemoryStore } from "@/data/store";
@@ -86,7 +86,7 @@ describe("a parked 404 of a recurring write", () => {
 		expect(
 			await resolveParked(outbox, api, parkedEntry as never),
 		).toMatchObject({ clientId: "c1", gone: false, retryable: true });
-		expect(mockSince).toHaveBeenCalledWith("t1", 7, new Date(DUE));
+		expect(mockSince).toHaveBeenCalledWith("t1", 7, new Date(DUE), "c1");
 		// Pull 8 began after the answer and finished without the template.
 		finished = 8;
 		expect(
@@ -188,6 +188,59 @@ describe("a person's entry answered already posted", () => {
 
 	it("waits for a pull: with none finished it stays, and sending it again is not offered", async () => {
 		mockSince.mockResolvedValue(null);
+		const { outbox, entry } = await parked(RECURRING_ALREADY_POSTED);
+		expect(await resolveParked(outbox, api, entry)).toMatchObject({
+			retryable: false,
+		});
+		expect(await outbox.all()).toHaveLength(1);
+	});
+});
+
+describe("a person's paid-on confirm answered already posted", () => {
+	// Dec 1 period paid on Nov 29: the expense is dated the paid-on day, so only
+	// its id (the entry's client id) proves this write is the one that landed.
+	const pulled = (expenses: Record<string, unknown>) => {
+		const template = {
+			id: "t1",
+			isActive: true,
+			nextDueDate: new Date("2027-01-01T03:00:00.000Z"),
+		};
+		mockSince.mockImplementation(
+			async (id: string, _pull: number, dueAt: Date, expenseId: string) =>
+				templateSeenOf(
+					{
+						get: (_table: string, key: string) =>
+							_table === "recurringTemplates" ? template : expenses[key],
+						list: () => [],
+					} as never,
+					id,
+					dueAt,
+					expenseId,
+				),
+		);
+	};
+
+	it("its own booked expense, dated the paid-on day, retires it without a word", async () => {
+		pulled({
+			c1: {
+				id: "c1",
+				date: new Date("2026-11-29T03:00:00.000Z"),
+				recurringTemplateId: "t1",
+			},
+		});
+		const { outbox, entry } = await parked(RECURRING_ALREADY_POSTED);
+		expect(await resolveParked(outbox, api, entry)).toBeNull();
+		expect(await outbox.all()).toEqual([]);
+	});
+
+	it("another expense of the template for the period is not its own: Changed, Discard only", async () => {
+		pulled({
+			other: {
+				id: "other",
+				date: new Date(DUE),
+				recurringTemplateId: "t1",
+			},
+		});
 		const { outbox, entry } = await parked(RECURRING_ALREADY_POSTED);
 		expect(await resolveParked(outbox, api, entry)).toMatchObject({
 			retryable: false,

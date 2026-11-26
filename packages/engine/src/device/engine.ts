@@ -152,6 +152,7 @@ export interface DeviceEngine extends DeviceReads {
 		id: string,
 		pull: number,
 		dueAt: Date,
+		expenseId: string,
 	): Promise<TemplateSeen | null>;
 	/**
 	 * Holds the device's preview of `op` against the server's dry run of it
@@ -781,9 +782,10 @@ export function createDeviceEngine(
 		id: string,
 		pull: number,
 		dueAt: Date,
+		expenseId: string,
 	): Promise<TemplateSeen | null> {
 		if (settledPull <= pull) return null;
-		return readStored((view) => templateSeenOf(view, id, dueAt));
+		return readStored((view) => templateSeenOf(view, id, dueAt, expenseId));
 	}
 
 	async function comparePreview(

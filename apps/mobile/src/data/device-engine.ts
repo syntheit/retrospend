@@ -83,6 +83,7 @@ export interface DeviceWrites {
 		id: string,
 		pull: number,
 		dueAt: Date,
+		expenseId: string,
 	): Promise<TemplateSeen | null>;
 	/** Reads the outbox lists again, after a change the engine should see. */
 	refresh(): Promise<void>;
@@ -137,7 +138,8 @@ export function writesFor(api: RetrospendClient): DeviceWrites | null {
 		pullsBegun: () => engine.pullsBegun,
 		storedRebase: (id) => engine.storedRebase(id),
 		absentSince: (id, pull) => engine.absentSince(id, pull),
-		templateSince: (id, pull, dueAt) => engine.templateSince(id, pull, dueAt),
+		templateSince: (id, pull, dueAt, expenseId) =>
+			engine.templateSince(id, pull, dueAt, expenseId),
 		refresh: () => pending?.refresh() ?? Promise.resolve(),
 	};
 }

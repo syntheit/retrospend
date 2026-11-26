@@ -61,4 +61,4 @@ export type {
 	StorageHooks,
 } from "./ports";
 export type { ServerPreview } from "./preview-compare";
-export type { Rebase, TemplateSeen } from "./rebase";
+export { type Rebase, type TemplateSeen, templateSeenOf } from "./rebase";

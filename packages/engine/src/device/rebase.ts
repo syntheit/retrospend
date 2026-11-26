@@ -24,7 +24,9 @@ const text = (v: { toString(): string } | null | undefined) =>
  * A recurring template as a pull left it, read for a parked write of it: not
  * there, or there with whether it is paused, whether its next due date is past
  * the period the write named (`dueAt`: that period was posted, skipped or
- * moved), and whether an expense of the template is dated exactly `dueAt`.
+ * moved), and whether the expense the write named (`expenseId`, the confirm's
+ * client id) is in the store as an expense of the template. The id is the
+ * exact proof: a confirm paid on another day books on that day, not on `dueAt`.
  */
 export type TemplateSeen =
 	| { found: false }
@@ -34,6 +36,7 @@ export function templateSeenOf(
 	r: Reader,
 	id: string,
 	dueAt: Date,
+	expenseId: string,
 ): TemplateSeen {
 	const row = r.get("recurringTemplates", id);
 	if (!row) return { found: false };
@@ -42,9 +45,7 @@ export function templateSeenOf(
 		found: true,
 		paused: !row.isActive,
 		passed: row.nextDueDate.getTime() > due,
-		posted: r
-			.list("expenses")
-			.some((e) => e.recurringTemplateId === id && e.date.getTime() === due),
+		posted: r.get("expenses", expenseId)?.recurringTemplateId === id,
 	};
 }
 

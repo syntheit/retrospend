@@ -62,8 +62,8 @@ const discardOnly = (entry: OutboxEntry, gone = false): ParkedEntry => ({
  * - Its next due date is past the entry's `dueAt`, or it is paused: the
  *   period was posted, skipped or moved. A poster entry leaves (the next run
  *   plans from what is there). A person's confirm that was answered "already
- *   posted" leaves only if the pull shows an expense of the template dated
- *   `dueAt`; any other person's entry shows "Changed on another device", with
+ *   posted" leaves only if the pull shows the expense it named (its client
+ *   id, whatever day a paid-on confirm booked it on); any other person's entry shows "Changed on another device", with
  *   Discard only. Nothing a person typed disappears without a word.
  * - Template still due and active: it stays parked, "Couldn't sync" (it came
  *   back, for example by Undo) or "Changed on another device", with Try again.
@@ -80,6 +80,7 @@ async function resolveTemplate(
 				entry.targetId,
 				notFoundPull(entry.clientId),
 				new Date(payload.dueAt),
+				entry.clientId,
 			)
 		: null;
 	// Sending it again can only be answered "already posted" again.
