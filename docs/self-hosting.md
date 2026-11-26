@@ -47,7 +47,7 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
 | `DEFAULT_TIME_ZONE` | No | `America/Argentina/Buenos_Aires` | IANA zone for people with no saved zone |
 | `ENABLE_LEGAL_PAGES` | No | `true` | Show `/privacy` and `/terms` |
-| `RECURRING_AUTO_POST` | No | `true` in the image | Post due recurring expenses set to pay automatically, every 15 minutes. Set `false` to stop it. Phones with the device engine flag read this setting from server info and post nothing while it is off |
+| `RECURRING_AUTO_POST` | No | `true` in the image | Post due recurring expenses set to pay automatically, every 15 minutes. Set `false` to stop it. Phones with the device engine flag read this setting from server info and post nothing while it is off. Recurring income posts the same way, as the row only |
 | `SYNC_TOMBSTONE_DAYS` | No | `90` | Days a deletion stays in the sync log for devices that were offline. A device away longer pulls its data again from the start |
 | `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
 | `SMTP_HOST` | No | | SMTP server hostname |
