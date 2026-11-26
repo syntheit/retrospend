@@ -497,6 +497,7 @@ describe("/api/v1 on Postgres", () => {
 			expect((await info.json()).features).toEqual({
 				advancedProtection: false,
 				autoPost: autoPostEnabled(),
+				autoConfirm: true,
 			});
 		});
 	});
