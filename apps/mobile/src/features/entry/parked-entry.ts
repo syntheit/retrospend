@@ -3,6 +3,7 @@ import type { OutboxEntry, OutboxKind } from "@/data/outbox";
 import { PARKED_CHAIN_LOST } from "@/data/outbox-chain";
 import {
 	KEY_REUSED,
+	PARKED_ID_TAKEN,
 	PARKED_NO_STAMP,
 	PARKED_NOT_FOUND,
 	PARKED_STAMP,
@@ -70,7 +71,8 @@ export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 		typeof body.amount === "string" && currency
 			? safeMinor(body.amount, currency)
 			: (bookedAmount(entry) ?? bookedConfirmAmount(entry));
-	const title = body.title ?? body.description;
+	// A template create names itself `name`; an edit of one keeps `title` for this row.
+	const title = body.title ?? body.name ?? body.description;
 	return {
 		clientId: entry.clientId,
 		title: typeof title === "string" ? title : "",
@@ -78,11 +80,25 @@ export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 		reason: entry.lastError ?? "refused",
 		kind: entry.kind,
 		gone,
-		retryable:
-			entry.kind === "create"
-				? entry.lastError !== KEY_REUSED
-				: entry.kind !== "update" || entry.device !== undefined,
+		retryable: retryableOf(entry),
 	};
+}
+
+/**
+ * Whether sending the same entry again can come out differently. A template
+ * create that met a taken id and an edit of a template that moved, was
+ * deleted or has no stamp can only be refused again: Discard only (an edit
+ * is saved over the new version by hand for now).
+ */
+function retryableOf(entry: OutboxEntry): boolean {
+	const reason = entry.lastError ?? "";
+	if (entry.entity === "recurring" && entry.kind === "create")
+		return reason !== KEY_REUSED && reason !== PARKED_ID_TAKEN;
+	if (entry.entity === "recurring" && entry.kind === "update")
+		return !REBASED_TEMPLATE.includes(reason);
+	return entry.kind === "create"
+		? reason !== KEY_REUSED
+		: entry.kind !== "update" || entry.device !== undefined;
 }
 
 /** Why a write to an existing row was parked, that saving it again as it is cannot change. */
