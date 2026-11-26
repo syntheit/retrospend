@@ -59,6 +59,8 @@ jest.mock("@/data/deviceWrites", () => ({ deviceWrites: () => mockWrites() }));
 function writesOf(h: Harness): DeviceWrites {
 	return {
 		book: async (op) => {
+			// These tests book expenses only: a recurring op is not theirs.
+			if (op.kind === "confirm" || op.kind === "skip") return null;
 			const row = h.rowOf(
 				op.kind === "create"
 					? ""

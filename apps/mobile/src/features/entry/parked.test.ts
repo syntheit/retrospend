@@ -120,3 +120,82 @@ describe("rebases", () => {
 		expect(rebases(parked("update", "not_found"))).toBe(false);
 	});
 });
+
+describe("a parked recurring confirm or skip", () => {
+	const recurring = (
+		kind: "confirm" | "skip",
+		reason: string,
+		payload: unknown = { dueAt: "2026-12-01T03:00:00.000Z", title: "Netflix" },
+		device?: OutboxEntry["device"],
+	): OutboxEntry => ({
+		...entry(payload, reason),
+		entity: "recurring",
+		kind,
+		targetId: "t1",
+		baseVersion: "2026-11-18T10:00:00.000Z",
+		...(device ? { device } : {}),
+	});
+
+	it("is named by the template's name and the amount typed with it", () => {
+		expect(
+			parkedFrom(
+				recurring("confirm", "recurring_changed", {
+					dueAt: "2026-12-01T03:00:00.000Z",
+					title: "Netflix",
+					currency: "USD",
+					amount: "18.50",
+				}),
+			),
+		).toMatchObject({
+			title: "Netflix",
+			amount: { minor: 1850, currency: "USD" },
+			kind: "confirm",
+			retryable: true,
+		});
+	});
+
+	it("shows a fixed amount from the expense the device booked, and none for a skip", () => {
+		const device = {
+			bookedAt: 1,
+			changed: [],
+			changes: [
+				{
+					table: "expenses",
+					id: "c1",
+					before: null,
+					after: { amount: "15.99", currency: "USD" } as never,
+				},
+			],
+		} as OutboxEntry["device"];
+		expect(
+			parkedFrom(recurring("confirm", "not_found", undefined, device)).amount,
+		).toEqual({ minor: 1599, currency: "USD" });
+		expect(
+			parkedFrom(recurring("skip", "not_found", undefined, device)).amount,
+		).toBeNull();
+		expect(parkedFrom(recurring("confirm", "not_found")).amount).toBeNull();
+	});
+
+	it("Try again re-bases over the pulled template when it was changed, not found, lost its chain or key", () => {
+		for (const reason of [
+			"recurring_changed",
+			"not_found",
+			"chain_lost",
+			"no_stamp",
+			"idempotency_key_reused",
+		]) {
+			expect(rebases(parkedFrom(recurring("confirm", reason)))).toBe(true);
+			expect(rebases(parkedFrom(recurring("skip", reason)))).toBe(true);
+		}
+	});
+
+	it("resends as it is for an id held by another row, a refusal or a server error, and never re-bases an already posted period", () => {
+		for (const reason of [
+			"id_taken",
+			"recurring_already_posted",
+			"bad_request",
+			"internal_error",
+		])
+			expect(rebases(parkedFrom(recurring("confirm", reason)))).toBe(false);
+	});
+});

@@ -1,16 +1,17 @@
 import type { FiguresDiff } from "@retrospend/domain/figures/diff";
 import { MissingRateError } from "@retrospend/domain/money";
-import { NotFoundError } from "../errors";
 import type { WriteFn } from "../local-db";
-import { InvalidInputError, type Store } from "../port";
-import {
-	createDevicePreviewRunner,
-	deviceMutation,
-	EXPENSE_FIGURES,
-} from "../preview";
+import type { Store } from "../port";
+import { createDevicePreviewRunner, deviceMutation } from "../preview";
 import { deviceFigures } from "../registry";
 import type { WriteVerdict } from "../write-parity";
-import { planOf, targetOf, type WriteCursors, type WriteOp } from "./book";
+import {
+	isDeviceRefusal,
+	planOf,
+	targetOf,
+	type WriteCursors,
+	type WriteOp,
+} from "./book";
 import { countsInOverlay, type PendingEntry } from "./pending";
 
 // The device preview of a save, held against the server's dry run of it. The
@@ -91,7 +92,11 @@ export interface PreviewCompareDeps {
 export async function previewVerdict(
 	deps: PreviewCompareDeps,
 	ids: readonly string[],
-	plan: () => { id: string; write: WriteFn<unknown> },
+	plan: () => {
+		id: string;
+		touches: readonly string[];
+		write: WriteFn<unknown>;
+	},
 	server: ServerPreview,
 ): Promise<WriteVerdict> {
 	const id = ids[0] ?? "";
@@ -104,7 +109,7 @@ export async function previewVerdict(
 	)
 		return { id, outcome: "skipped", code: "pending_ahead" };
 	try {
-		const { id: mutationId, write } = plan();
+		const { id: mutationId, touches, write } = plan();
 		const runner = createDevicePreviewRunner({
 			store: deps.store,
 			figures: deviceFigures({ clock: deps.now }),
@@ -113,7 +118,7 @@ export async function previewVerdict(
 		const diff = await runner.preview(
 			deviceMutation<void, unknown>({
 				id: mutationId,
-				touches: EXPENSE_FIGURES,
+				touches,
 				write: () => write,
 			}),
 			undefined,
@@ -125,8 +130,7 @@ export async function previewVerdict(
 	} catch (error) {
 		if (error instanceof MissingRateError)
 			return { id, outcome: "rate_missing" };
-		if (error instanceof InvalidInputError || error instanceof NotFoundError)
-			return { id, outcome: "refused" };
+		if (isDeviceRefusal(error)) return { id, outcome: "refused" };
 		throw error;
 	}
 }
@@ -140,6 +144,6 @@ export const comparePreview = (
 	previewVerdict(
 		deps,
 		[targetOf(op)],
-		() => planOf(op, deps.store.snapshot(), deps.cursors),
+		() => planOf(op, deps.store.snapshot(), deps.cursors, deps.now()),
 		server,
 	);

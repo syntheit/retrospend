@@ -5,11 +5,13 @@ import type { Outbox, OutboxEntry } from "@/data/outbox";
 import { originOf } from "@/data/outbox-chain";
 import { type ParkedEntry, parkedFrom } from "./parked-entry";
 import { exclusive } from "./queue";
+import { typedAmountFits } from "./rebase";
 import {
 	forgetNotFound,
 	MAYBE_GONE,
 	notFoundPull,
 	RECURRING_ALREADY_POSTED,
+	RECURRING_CHANGED,
 	recurringPayloadOf,
 } from "./send";
 
@@ -65,6 +67,9 @@ const discardOnly = (entry: OutboxEntry, gone = false): ParkedEntry => ({
  *   posted" leaves only if the pull shows the expense it named (its client
  *   id, whatever day a paid-on confirm booked it on); any other person's entry shows "Changed on another device", with
  *   Discard only. Nothing a person typed disappears without a word.
+ * - Template still due and active, but a typed amount no longer fits it (the
+ *   currency changed, or it stopped asking): "Changed on another device", with
+ *   Discard only.
  * - Template still due and active: it stays parked, "Couldn't sync" (it came
  *   back, for example by Undo) or "Changed on another device", with Try again.
  *   An "already posted" answer with no such period is the exception above.
@@ -106,5 +111,9 @@ async function resolveTemplate(
 	if (!seen.found) return discardOnly(entry, true);
 	if (settledPeriod || entry.lastError === RECURRING_ALREADY_POSTED)
 		return discardOnly(entry);
+	// The amount was typed for a template that has since changed currency or
+	// stopped asking: saving it again could book another amount.
+	if (payload && !typedAmountFits(payload, seen))
+		return { ...discardOnly(entry), reason: RECURRING_CHANGED };
 	return parkedFrom(entry);
 }

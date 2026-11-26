@@ -136,6 +136,9 @@ describe("templateSeenOf", () => {
 			paused: false,
 			passed: false,
 			posted: false,
+			version: "v1",
+			currency: "USD",
+			amountMode: "FIXED",
 		});
 	});
 
@@ -146,7 +149,15 @@ describe("templateSeenOf", () => {
 				template: template({ nextDueDate: JAN_1 }),
 				expenses: [posted],
 			}),
-		).toEqual({ found: true, paused: false, passed: true, posted: true });
+		).toEqual({
+			found: true,
+			paused: false,
+			passed: true,
+			posted: true,
+			version: "v1",
+			currency: "USD",
+			amountMode: "FIXED",
+		});
 	});
 
 	it("a paid-on confirm booked on another day is posted by its id, not by the due date", async () => {
@@ -173,6 +184,14 @@ describe("templateSeenOf", () => {
 		expect(await seen({ ...rows, expenses: [otherTemplate] })).toMatchObject({
 			posted: false,
 		});
+	});
+
+	it("reports the currency and amount mode the template has now", async () => {
+		expect(
+			await seen({
+				template: template({ currency: "ARS", amountMode: "ASK" }),
+			}),
+		).toMatchObject({ currency: "ARS", amountMode: "ASK" });
 	});
 
 	it("a paused template is paused", async () => {

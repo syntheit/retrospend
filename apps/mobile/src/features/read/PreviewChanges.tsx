@@ -16,10 +16,13 @@ export function PreviewChanges({
 	preview,
 	status,
 	lead = [],
+	message,
 }: {
 	preview: FigureDiff | null;
 	status: PreviewStatus;
 	lead?: ChangeRow[];
+	/** Shown instead of the lines (offline: the write waits on the phone). */
+	message?: string;
 }) {
 	const tp = useTranslations("mobile.budget.preview");
 	const money = useMoneyText();
@@ -40,7 +43,8 @@ export function PreviewChanges({
 	return (
 		<ChangeList
 			changes={changes}
-			status={status}
+			message={message}
+			status={message ? "idle" : status}
 			stays={(lines?.stays ?? []).map((id) => label(id).inline)}
 			unavailable={(lines?.unavailable ?? []).map((id) => label(id).inline)}
 		/>

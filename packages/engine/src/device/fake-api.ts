@@ -1,4 +1,7 @@
-import type { SyncExpenseDto } from "@retrospend/api-contract/sync";
+import type {
+	SyncExpenseDto,
+	SyncRecurringTemplateDto,
+} from "@retrospend/api-contract/sync";
 import type { DeviceApi, FigureBasis } from "./ports";
 
 // A server double for the device engine's tests (not a test itself): the sync
@@ -77,6 +80,30 @@ export const expense = (
 	importFingerprint: null,
 });
 
+/** Typed as the contract's item, like `expense`. */
+export const template = (
+	id: string,
+	over: Partial<SyncRecurringTemplateDto> = {},
+): SyncRecurringTemplateDto => ({
+	id,
+	name: "Rent",
+	amount: "20",
+	currency: "USD",
+	categoryId: null,
+	direction: "OUT",
+	amountMode: "FIXED",
+	frequency: "MONTHLY",
+	nextDueDate: "2026-12-01T03:00:00.000Z",
+	anchorDay: 1,
+	websiteUrl: null,
+	paymentSource: null,
+	autoPay: true,
+	isActive: true,
+	createdAt: "2026-11-01T00:00:00.000Z",
+	updatedAt: "2026-11-18T10:00:00.000Z",
+	...over,
+});
+
 export interface Page {
 	items: unknown[];
 	tombstones: { id: string }[];
@@ -97,6 +124,8 @@ export interface DeviceApiOptions {
 	categories?: Page[];
 	/** The transfers route's answer in each pull, as `expenses`. */
 	transfers?: Page[];
+	/** The recurring templates route's answer in each pull, as `expenses`. */
+	templates?: Page[];
 	/** The settings the server holds (default: SETTINGS). */
 	settings?: typeof SETTINGS;
 	/** The daily rate table the server holds (default: empty). */
@@ -155,7 +184,9 @@ export function fakeDeviceApi(options: DeviceApiOptions = {}) {
 					? options.categories
 					: name === "transfers"
 						? options.transfers
-						: undefined;
+						: name === "recurringTemplates"
+							? options.templates
+							: undefined;
 		return queued
 			? (queued[Math.min(pulls, queued.length) - 1] ?? empty(name))
 			: empty(name);

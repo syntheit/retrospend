@@ -53,6 +53,12 @@ export interface WriteSpec<I, P extends FigureDiff, W extends WriteAnswer> {
 	 */
 	done?: (out: W) => void;
 	family?: UndoFamily;
+	/**
+	 * The write waits on the phone when the server cannot be reached (the dev
+	 * device writes): Save does not need a dry run that never came. A refusal
+	 * (a 4xx) still stops it.
+	 */
+	queuesOffline?: boolean;
 	onClose: () => void;
 	onDone: () => void;
 	/** False while the sheet is closed: nothing is asked of the server. */
@@ -74,6 +80,7 @@ export function useWriteForm<I, P extends FigureDiff, W extends WriteAnswer>({
 	message,
 	done,
 	family = "budget",
+	queuesOffline = false,
 	onClose,
 	onDone,
 	active = true,
@@ -109,8 +116,10 @@ export function useWriteForm<I, P extends FigureDiff, W extends WriteAnswer>({
 	}
 
 	const ready =
-		flow.status === "ready" &&
-		(canSave === undefined || (flow.preview !== null && canSave(flow.preview)));
+		(flow.status === "ready" &&
+			(canSave === undefined ||
+				(flow.preview !== null && canSave(flow.preview)))) ||
+		(queuesOffline && flow.status === "failed");
 	return { flow, ready, submit };
 }
 
