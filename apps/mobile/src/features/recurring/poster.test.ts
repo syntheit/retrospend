@@ -328,10 +328,8 @@ describe("what stops the poster", () => {
 			"expenses",
 			"recurringTemplates",
 		]);
-		expect(
-			(changes[0]?.after as { direction: string; homeAmount: unknown })
-				.direction,
-		).toBe("IN");
+		const row = changes[0]?.after as { direction: string } | undefined;
+		expect(row?.direction).toBe("IN");
 	});
 
 	it("a person's income confirm, without auto, is never booked by the device", async () => {

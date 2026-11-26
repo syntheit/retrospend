@@ -143,7 +143,9 @@ describe("DeviceEngine.book of a recurring confirm or skip", () => {
 			"expenses",
 			"recurringTemplates",
 		]);
-		expect((booked?.changes[0] as ExpenseChange).after).toMatchObject({
+		expect(
+			(booked?.changes[0] as ExpenseChange | undefined)?.after,
+		).toMatchObject({
 			direction: "IN",
 			inType: "INCOME",
 			homeAmount: "30900.00",
