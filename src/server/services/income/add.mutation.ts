@@ -59,6 +59,13 @@ export const INCOME_FIGURES = [
 	"netWorthChange.revaluation",
 ];
 
+/** What an income write moves: the account figures, and the row's budget effect (Not planned yet, left to spend). */
+export const INCOME_ROW_FIGURES = [
+	...INCOME_FIGURES,
+	FIGURE_NOT_PLANNED_YET,
+	FIGURE_LEFT_TO_SPEND,
+];
+
 export interface AddIncomeInput {
 	/** Set only by the undo of a delete, to bring the same row back. */
 	readonly id?: string;
@@ -424,7 +431,7 @@ export async function addIncomeIn(
 
 export const addIncome: MoneyMutation<AddIncomeInput, IncomeValue> = {
 	id: "income.add",
-	touches: [...INCOME_FIGURES, FIGURE_NOT_PLANNED_YET, FIGURE_LEFT_TO_SPEND],
+	touches: INCOME_ROW_FIGURES,
 	scope: (input) => (input.into ? { accountId: input.into } : {}),
 	run: async (tx, input, actor) => {
 		const value = await addIncomeIn(tx, actor.userId, input);

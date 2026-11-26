@@ -27,6 +27,7 @@ import {
 } from "~/server/services/recurring.service";
 import {
 	confirmRecurringExpense,
+	confirmRecurringIncomeRow,
 	unconfirmRecurringExpense,
 } from "~/server/services/recurring-confirm.mutation";
 import { createRecurring } from "~/server/services/recurring-create.mutation";
@@ -303,6 +304,10 @@ function expenseInput(caller: LedgerCaller, input: ConfirmInput) {
 const isIncomeConfirm = (direction: string, input: ConfirmInput) =>
 	direction === "IN" && input.auto !== true;
 
+/** The confirm that books a template's row, declaring the figures that row moves. */
+const confirmMutationFor = (direction: string) =>
+	direction === "IN" ? confirmRecurringIncomeRow : confirmRecurringExpense;
+
 export async function confirmRecurring(
 	caller: LedgerCaller,
 	input: ConfirmInput,
@@ -337,7 +342,7 @@ export async function confirmRecurring(
 	}
 	const v = await applyWrite(
 		caller,
-		confirmRecurringExpense,
+		confirmMutationFor(direction),
 		expenseInput(caller, input),
 	);
 	return {
@@ -378,7 +383,7 @@ export async function previewConfirmRecurring(
 		? previewWrite(caller, confirmRecurringIncome, incomeInput(caller, input))
 		: previewWrite(
 				caller,
-				confirmRecurringExpense,
+				confirmMutationFor(direction),
 				expenseInput(caller, input),
 			);
 }

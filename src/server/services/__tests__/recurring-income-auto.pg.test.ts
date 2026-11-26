@@ -15,10 +15,14 @@ import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { expectBody } from "~/server/api/v1/core/__tests__/harness";
+import { forUser } from "~/server/services/preview";
 import { fixtureDb } from "~/test/pg-harness";
+import { setupEnvelopeBook } from "../envelope/setup.mutation";
+import { setupInput } from "../envelope/__tests__/pg-fixture";
 import { sweepRecurringAutoPost } from "../recurring-auto-post";
 import {
 	arsUser,
+	BA,
 	booked,
 	iso,
 	STAMPED,
@@ -197,6 +201,59 @@ describe("income confirmed with auto books what the sweep books", () => {
 		});
 	});
 
+	// An income row with no leg still raises Not planned yet: the preview must
+	// say so. Budget in ARS from Dec 1 with ARS 1,000.00 to start, clock Dec 2
+	// 12:00Z, the template due Dec 2 00:00Z (Dec 1 21:00 in Buenos Aires, the
+	// budget's own month). Before: Not planned yet = the starting 1,000.00
+	// (100,000 minor), nothing assigned. The row books USD 1,000 x 1,545 =
+	// ARS 1,545,000.00 (154,500,000 minor), so it reads 1,546,000.00
+	// (154,600,000). Left to spend is Σ Left of Spending (0) + min(0, ToAssign):
+	// unchanged. No account changes.
+	it("the preview names the budget figures the row moves, from the declared figures", async () => {
+		const clock = new Date("2026-12-02T12:00:00.000Z");
+		const me = await arsUser();
+		const rent = await fixtureDb.category.create({
+			data: { name: "Rent", color: "blue", userId: me },
+		});
+		const dining = await fixtureDb.category.create({
+			data: { name: "Dining", color: "blue", userId: me },
+		});
+		at(clock);
+		await forUser(me).apply(setupEnvelopeBook, {
+			...setupInput({ rent: rent.id, dining: dining.id }),
+			currency: "ARS",
+			timeZone: BA,
+		});
+		const id = await income(me, {
+			nextDueDate: new Date("2026-12-02T00:00:00.000Z"),
+		});
+		const res = await (await v1For(me))(
+			"POST",
+			`/recurring/${id}/confirm/preview`,
+			{
+				dueAt: "2026-12-02T00:00:00.000Z",
+				expenseId: randomUUID(),
+				expectedUpdatedAt: STAMP,
+				auto: true,
+			},
+		);
+		vi.useRealTimers();
+		const body = await res.json();
+		expect(res.status, JSON.stringify(body)).toBe(200);
+		expect(body.changes).toEqual([
+			expect.objectContaining({
+				id: "budget.notPlannedYet",
+				before: { minor: 100_000, currency: "ARS" },
+				after: { minor: 154_600_000, currency: "ARS" },
+				delta: { minor: 154_500_000, currency: "ARS" },
+			}),
+		]);
+		expect(body.unavailable).toEqual([]);
+		const unchanged = (body.unchanged as { id: string }[]).map((f) => f.id);
+		expect(unchanged).toContain("budget.leftToSpend");
+		expect((await templateState(id)).expenses).toBe(0);
+	});
+
 	it("a stale stamp is 409 recurring_changed on the confirm and its preview, and nothing is booked", async () => {
 		const me = await arsUser();
 		const id = await income(me);
@@ -280,6 +337,42 @@ describe("income confirmed with auto books what the sweep books", () => {
 			anchorDay: null,
 			expenses: 0,
 		});
+	});
+
+	it("undoing an older auto confirm after a second one is refused, and the newest can be undone", async () => {
+		const me = await arsUser();
+		const id = await income(me);
+		const v1 = await v1For(me);
+		const first = await (async () => {
+			at(NOW);
+			return expectBody<Answer>(
+				await v1("POST", `/recurring/${id}/confirm`, {
+					dueAt: DUE_IN,
+					expectedUpdatedAt: STAMP,
+					auto: true,
+				}),
+				contract.recurring.confirm,
+			);
+		})();
+		at(new Date("2027-01-01T12:00:00.000Z"));
+		const second = await expectBody<Answer>(
+			await v1("POST", `/recurring/${id}/confirm`, {
+				dueAt: NEXT_IN,
+				expectedUpdatedAt: first.confirmed.templateUpdatedAt,
+				auto: true,
+			}),
+			contract.recurring.confirm,
+		);
+		const late = await v1("POST", "/recurring/undo", { token: first.undo });
+		expect(late.status).toBe(400);
+		expect(await late.json()).toMatchObject({
+			detail: "This undo is not valid anymore",
+		});
+		expect(await booked(me)).toHaveLength(2);
+		const newest = await v1("POST", "/recurring/undo", { token: second.undo });
+		expect(newest.status, await newest.clone().text()).toBe(200);
+		expect(await booked(me)).toHaveLength(1);
+		expect((await templateState(id)).nextDueDate).toBe(NEXT_IN);
 	});
 
 	it("without auto a person's income confirm keeps its own mutation: no client id, no stamp", async () => {
