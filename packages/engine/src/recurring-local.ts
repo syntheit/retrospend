@@ -109,7 +109,7 @@ function postTemplateOf(row: TemplateRow): PostTemplate {
 }
 
 /** The stored template; one that is absent is the core's own "not found". */
-function loadTemplate(r: Repos, id: string): TemplateRow {
+export function loadTemplate(r: Repos, id: string): TemplateRow {
 	const row = r.recurringTemplates.get(id);
 	if (!row) throw new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
 	if (row.direction === "IN") throw new InvalidInputError(INCOME_NOT_ON_DEVICE);
