@@ -48,7 +48,7 @@ import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
 import { NotFoundError } from "./errors";
 import { InvalidInputError, type TableRows } from "./port";
-import type { Repos } from "./repos";
+import type { ReadRepos, Repos } from "./repos";
 
 export const EXPENSE_CREATE = "expense.create";
 
@@ -86,7 +86,9 @@ function finderOf(rates: readonly TableRows["rates"][]): RateFinder {
 }
 
 /** The home currency, the preferred rate type and the rate table of the store, as a write books with them. */
-export function rateBookOf(r: Repos): BookContext {
+export function rateBookOf(
+	r: Pick<ReadRepos, "settings" | "rates">,
+): BookContext {
 	const settings = r.settings.require();
 	return {
 		homeCurrency: settings.homeCurrency,

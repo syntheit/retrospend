@@ -31,6 +31,12 @@ import {
 } from "./expense-write-local";
 import { recordWrite, type WriteFn } from "./local-db";
 import type { Reader, Store, Tx } from "./port";
+import {
+	confirmRecurring,
+	RECURRING_CONFIRM,
+	RECURRING_SKIP,
+	skipRecurring,
+} from "./recurring-local";
 import { GLANCE_SPENT } from "./registry";
 import { applyUndo, type UndoToken } from "./undo";
 
@@ -101,6 +107,20 @@ export const EXPENSE_DELETE_MUTATION = deviceMutation({
 	id: EXPENSE_DELETE,
 	touches: EXPENSE_FIGURES,
 	write: deleteExpense,
+});
+
+/** recurring.confirm on the device: one due period posted, an expense like any other (the server's FIGURES, recurring-confirm.mutation.ts). */
+export const RECURRING_CONFIRM_MUTATION = deviceMutation({
+	id: RECURRING_CONFIRM,
+	touches: EXPENSE_FIGURES,
+	write: confirmRecurring,
+});
+
+/** recurring.skip on the device: the server's skip touches no figure (recurring-skip.mutation.ts). */
+export const RECURRING_SKIP_MUTATION = deviceMutation({
+	id: RECURRING_SKIP,
+	touches: [],
+	write: skipRecurring,
 });
 
 /**

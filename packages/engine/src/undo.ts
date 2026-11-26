@@ -31,6 +31,7 @@ import { type MovementRow, mirrorId, movementRepo } from "./movements";
 import {
 	InvalidInputError,
 	SETTINGS_ID,
+	type TableName,
 	type TableRows,
 	type Writer,
 } from "./port";
@@ -184,10 +185,14 @@ function restoredRow(w: Writer, c: RowChange): AnyRow | null {
 }
 
 export interface ApplyOptions {
-	/** Whether a stored row is the one a change expects; by value when absent. */
+	/**
+	 * Whether a stored row is the one a change expects; by value when absent.
+	 * `table` names the row's table, for a check that reads one table's columns.
+	 */
 	readonly matches?: (
 		current: AnyRow | null,
 		expected: AnyRow | null,
+		table: TableName,
 	) => boolean;
 	/** The row to write for `c` where it is not just its own side (a restored row, text laid over a stored one). */
 	readonly rowFor?: (c: RowChange, current: AnyRow | null) => AnyRow | null;
@@ -209,9 +214,9 @@ export function applyChanges(
 	from: "before" | "after",
 	options: ApplyOptions = {},
 ): RowChange[] {
-	const matches = options.matches ?? sameValue;
+	const matches = options.matches ?? ((a, b) => sameValue(a, b));
 	const current = (c: RowChange): AnyRow | null => w.get(c.table, c.id) ?? null;
-	const moved = changes.filter((c) => !matches(current(c), c[from]));
+	const moved = changes.filter((c) => !matches(current(c), c[from], c.table));
 	if (moved.length > 0) throw stale("These rows", moved);
 	options.refuse?.();
 	// What is written, so a redo expects exactly it.

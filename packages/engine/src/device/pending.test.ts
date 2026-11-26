@@ -199,7 +199,7 @@ describe("the overlay read", () => {
 		expect(await spentOf(engine)).toBe(15_450_000);
 	});
 
-	it("leaves out an entry that also changed a template, whole", async () => {
+	it("leaves out an entry whose template row is not the one the store holds, whole", async () => {
 		const { engine, pending } = setup([page([booked("e1")])]);
 		await engine.pull();
 		const e1 = await pulledRow(engine);
