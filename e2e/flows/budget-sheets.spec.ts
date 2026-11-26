@@ -1103,17 +1103,22 @@ test.describe("Set up your budget", () => {
 		// This is the last test on the admin account, which no other flow reads.
 		// Click before anything else: the Undo toast closes after 6 s, and on a
 		// slow runner waiting for the sheet first can outlast it.
+		const undone = toast(page, "Undone").waitFor({
+			state: "visible",
+			timeout: 20_000,
+		});
+		undone.catch(() => undefined);
 		await untilSaved(page, "envelope.undoSetup", () =>
 			toast(page, "Your budget is ready")
 				.getByRole("button", { name: "Undo" })
 				.click(),
 		);
 		// "Undone" shows once the undo's streamed result is in and the page has
-		// refreshed (up to 2 s, use-write.ts REFRESH_WAIT_MS); the undo of a
-		// whole setup is a heavy write, so on a loaded runner that can pass
-		// untilSaved's 5 s stream cap. It closes after sonner's 4 s, so it is
-		// checked before the sheet.
-		await expect(toast(page, "Undone")).toBeVisible({ timeout: 20_000 });
+		// refreshed (use-write.ts REFRESH_WAIT_MS), then closes after sonner's
+		// 4 s. untilSaved can wait 5 s for a stream end Chromium never reports,
+		// so the toast may be gone before it returns: it is watched from before
+		// the click, then the sheet is checked.
+		await undone;
 		await expect(sheet).toBeHidden();
 		await expect(
 			page
