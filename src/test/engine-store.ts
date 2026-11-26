@@ -331,6 +331,9 @@ export async function engineStoreOf(
 				isActive: t.isActive,
 				autoPay: t.autoPay,
 				amountMode: t.amountMode,
+				websiteUrl: t.websiteUrl,
+				paymentSource: t.paymentSource,
+				version: t.updatedAt.toISOString(),
 				// Joined here from the top-level category read: a nested select would
 				// hand back a sealed name unopened in the sealed suite.
 				category: categoryRefOf(t.categoryId),

@@ -103,11 +103,20 @@ export interface CategoryRow extends WithId {
 
 /**
  * What a template row keeps beyond the fields the view reads: the id of its
- * category, so the sync layer can fill `category` when the category arrives
- * after the template. Rows of figures-only fixtures have none.
+ * category (so the sync layer can fill `category` when the category arrives
+ * after the template), its two text columns the view never shows, and its
+ * version. Rows of figures-only fixtures have no text or category id.
  */
 export interface TemplateDetail {
 	readonly categoryId?: string | null;
+	readonly websiteUrl?: string | null;
+	readonly paymentSource?: string | null;
+	/**
+	 * The server's version of the template, the stamp a write sends: opaque
+	 * text (the pulled `updatedAt` on the plain path). Null on a template the
+	 * device made itself, until the server's answer names one. Never read as a time.
+	 */
+	readonly version: string | null;
 }
 
 /**

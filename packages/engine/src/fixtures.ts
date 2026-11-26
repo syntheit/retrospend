@@ -101,6 +101,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		autoPay: false,
 		amountMode: "FIXED",
 		category: null,
+		version: null,
 	}),
 	categories: (id) => ({
 		id,
