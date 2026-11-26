@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import {
 	CATCH_UP_CAP,
 	type ConfirmInput,
+	lostAdvance,
 	planConfirm,
 	planSkip,
 	runCatchUp,
@@ -708,5 +709,36 @@ describe("runCatchUp", () => {
 			expect(again.results).toHaveLength(3);
 			expect(store.template.nextDueDate).toEqual(DUE);
 		});
+	});
+});
+
+describe("lostAdvance", () => {
+	const due = ba("2026-12-01");
+	const row = (nextDueDate: Date, stamp: string) => ({ nextDueDate, stamp });
+	const kind = (r: RecurringRefusal) => r.kind;
+
+	it("a template that is gone is not found", () => {
+		expect(kind(lostAdvance("confirm", null, due, "s1"))).toBe("not_found");
+	});
+
+	it("a moved due date is already posted, even when the stamp moved too", () => {
+		expect(
+			kind(lostAdvance("skip", row(ba("2027-01-01"), "s2"), due, "s1")),
+		).toBe("already_posted");
+	});
+
+	it("the same due date with a moved stamp is changed", () => {
+		expect(kind(lostAdvance("confirm", row(due, "s2"), due, "s1"))).toBe(
+			"changed",
+		);
+	});
+
+	it("with no stamp, or the stamp it has, a lost race is already posted", () => {
+		expect(kind(lostAdvance("confirm", row(due, "s1"), due, undefined))).toBe(
+			"already_posted",
+		);
+		expect(kind(lostAdvance("skip", row(due, "s1"), due, "s1"))).toBe(
+			"already_posted",
+		);
 	});
 });

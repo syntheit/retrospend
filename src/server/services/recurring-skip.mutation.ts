@@ -7,14 +7,12 @@
  */
 
 import { nextDueAfter } from "@retrospend/domain/recurring";
-import {
-	assertAdvanced,
-	planSkip,
-} from "@retrospend/domain/recurring-post/plan";
+import { planSkip } from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { postTemplateOf } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
+import { advanceTemplate } from "./recurring-advance";
 
 export interface SkipRecurringInput {
 	readonly templateId: string;
@@ -54,15 +52,13 @@ export const skipRecurring: MoneyMutation<
 			dueAt: input.dueDate,
 			expectedStamp: input.expectedUpdatedAt?.toISOString(),
 		});
-		const advanced = await tx.recurringTemplate.updateMany({
-			where: {
-				id: plan.templateId,
-				userId: actor.userId,
-				nextDueDate: plan.dueAt,
-			},
-			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
-		});
-		assertAdvanced(advanced.count, "skip");
+		await advanceTemplate(
+			tx,
+			actor.userId,
+			plan,
+			input.expectedUpdatedAt,
+			"skip",
+		);
 		const stamp = await tx.recurringTemplate.findFirstOrThrow({
 			where: { id: plan.templateId, userId: actor.userId },
 			select: { updatedAt: true },

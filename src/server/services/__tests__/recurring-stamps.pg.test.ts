@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { expectBody } from "~/server/api/v1/core/__tests__/harness";
-import { fixtureDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	arsUser,
 	booked,
@@ -548,5 +548,132 @@ describe("tRPC template ids", () => {
 			nextDueDate: NEXT,
 			expenses: 0,
 		});
+	});
+});
+
+/**
+ * An edit that commits after the plan read the template and before the write
+ * lands: a second connection updates the template's amount (USD 20 to 25) and
+ * holds its transaction open, the request plans over the committed row (the
+ * old stamp still matches) and then waits on that row lock; the edit commits.
+ * Without the stamp in the write's compare the confirm would book USD 20 from
+ * the old template, since the due date is unchanged.
+ */
+describe("an edit that commits between the plan's read and the write", () => {
+	async function waitForLockWait() {
+		for (let i = 0; i < 100; i++) {
+			const [row] = await adminDb.$queryRaw<{ waiting: number }[]>`
+				SELECT count(*)::int AS waiting FROM pg_stat_activity
+				WHERE wait_event_type = 'Lock' AND datname = current_database()`;
+			if (row && row.waiting > 0) return;
+			await new Promise((r) => setTimeout(r, 50));
+		}
+		throw new Error("the request never waited on the template row");
+	}
+
+	/** Runs `request` while another transaction holds an uncommitted edit of the template, then commits it. */
+	async function racing(id: string, request: () => Promise<unknown>) {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let locked!: () => void;
+		const ready = new Promise<void>((resolve) => {
+			locked = resolve;
+		});
+		const edit = adminDb.$transaction(async (tx) => {
+			await tx.recurringTemplate.update({
+				where: { id },
+				data: { amount: "25" },
+			});
+			locked();
+			await gate;
+		});
+		await ready;
+		const outcome = request().then(
+			(value) => ({ value }),
+			(error: unknown) => ({ error }),
+		);
+		try {
+			await waitForLockWait();
+		} finally {
+			release();
+			await edit;
+		}
+		return outcome;
+	}
+
+	const untouched = async (me: string, id: string) => {
+		expect(await booked(me)).toEqual([]);
+		expect(await templateState(id)).toMatchObject({
+			nextDueDate: DUE,
+			expenses: 0,
+		});
+		const row = await fixtureDb.recurringTemplate.findUniqueOrThrow({
+			where: { id },
+		});
+		expect(row.amount.toString()).toBe("25");
+	};
+
+	it("confirm: v1 answers 409 recurring_changed and books nothing", async () => {
+		const me = await arsUser();
+		const id = await manual(me);
+		const v1 = await v1For(me);
+		at(NOW);
+		const out = await racing(id, () =>
+			v1("POST", `/recurring/${id}/confirm`, {
+				dueAt: DUE,
+				expectedUpdatedAt: STAMP,
+			}),
+		);
+		await expectRefusal((out as { value: Response }).value, [
+			409,
+			"recurring_changed",
+		]);
+		await untouched(me, id);
+	});
+
+	it("confirm: tRPC is CONFLICT and books nothing", async () => {
+		const me = await arsUser();
+		const id = await manual(me);
+		const trpc = await trpcFor(me);
+		at(NOW);
+		const out = await racing(id, () => confirmViaTrpc(trpc, id, STAMP));
+		expect((out as { error: unknown }).error).toMatchObject({
+			code: "CONFLICT",
+			message: CHANGED,
+		});
+		await untouched(me, id);
+	});
+
+	it("skip: v1 answers 409 recurring_changed and the template stays", async () => {
+		const me = await arsUser();
+		const id = await manual(me);
+		const v1 = await v1For(me);
+		at(NOW);
+		const out = await racing(id, () =>
+			v1("POST", `/recurring/${id}/skip`, {
+				dueAt: DUE,
+				expectedUpdatedAt: STAMP,
+			}),
+		);
+		await expectRefusal((out as { value: Response }).value, [
+			409,
+			"recurring_changed",
+		]);
+		await untouched(me, id);
+	});
+
+	it("skip: tRPC is CONFLICT and the template stays", async () => {
+		const me = await arsUser();
+		const id = await manual(me);
+		const trpc = await trpcFor(me);
+		at(NOW);
+		const out = await racing(id, () => skipViaTrpc(trpc, id, STAMP));
+		expect((out as { error: unknown }).error).toMatchObject({
+			code: "CONFLICT",
+			message: CHANGED,
+		});
+		await untouched(me, id);
 	});
 });

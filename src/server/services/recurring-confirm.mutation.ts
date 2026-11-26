@@ -6,10 +6,7 @@
  * puts the template back on its due date.
  */
 import { nextRecurringDate } from "@retrospend/domain/recurring";
-import {
-	assertAdvanced,
-	planConfirm,
-} from "@retrospend/domain/recurring-post/plan";
+import { planConfirm } from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { postTemplateOf, recurringTitle } from "./money-in.service";
@@ -19,6 +16,7 @@ import {
 	bookContextOf,
 	loadRateContext,
 } from "./rate-types";
+import { advanceTemplate } from "./recurring-advance";
 
 export interface ConfirmRecurringExpenseInput {
 	readonly templateId: string;
@@ -101,15 +99,13 @@ export const confirmRecurringExpense: MoneyMutation<
 		const title = recurringTitle(template?.name ?? "");
 		// The advance only succeeds while nextDueDate is still the one read,
 		// so two confirms racing each other create a single expense.
-		const advanced = await tx.recurringTemplate.updateMany({
-			where: {
-				id: plan.templateId,
-				userId: actor.userId,
-				nextDueDate: plan.dueAt,
-			},
-			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
-		});
-		assertAdvanced(advanced.count, "confirm");
+		await advanceTemplate(
+			tx,
+			actor.userId,
+			plan,
+			input.expectedUpdatedAt,
+			"confirm",
+		);
 		const row = await tx.expense.create({
 			data: { ...plan.entry, title, id: input.expenseId },
 			select: { id: true },

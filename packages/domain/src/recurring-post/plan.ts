@@ -180,17 +180,38 @@ export function planSkip(
 	};
 }
 
+const settledMessage = (call: "confirm" | "skip") =>
+	call === "confirm" ? PAYMENT_ALREADY_CONFIRMED : ITEM_ALREADY_SETTLED;
+
 /**
  * The write's compare-and-set found no row still on the due date it read:
  * another client confirmed or skipped the period between the read and the
  * write. Zero rows is the refusal, for either call.
  */
 export function assertAdvanced(rows: number, call: "confirm" | "skip"): void {
-	if (rows === 0)
-		throw refuse(
-			"already_posted",
-			call === "confirm" ? PAYMENT_ALREADY_CONFIRMED : ITEM_ALREADY_SETTLED,
-		);
+	if (rows === 0) throw refuse("already_posted", settledMessage(call));
+}
+
+/**
+ * What a write that named a template stamp answers when its compare-and-set
+ * (due date and stamp) matched no row, given the row read again afterwards
+ * (null: it is gone). The same order as the plans: gone, then a moved due
+ * date (already posted), then a moved stamp (changed). The one owner, so an
+ * edit that commits between a plan's read and its write is `changed`, never a
+ * booking from the old template.
+ */
+export function lostAdvance(
+	call: "confirm" | "skip",
+	now: { readonly nextDueDate: Date; readonly stamp: string } | null,
+	dueAt: Date,
+	expectedStamp: string | null | undefined,
+): RecurringRefusal {
+	if (!now) return refuse("not_found", RECURRING_NOT_FOUND);
+	if (now.nextDueDate.getTime() !== dueAt.getTime())
+		return refuse("already_posted", settledMessage(call));
+	if (expectedStamp && expectedStamp !== now.stamp)
+		return refuse("changed", RECURRING_CHANGED);
+	return refuse("already_posted", settledMessage(call));
 }
 
 /** Periods one template posts in one run; a template years behind continues next run. */
