@@ -13,7 +13,10 @@ import {
 	openAccount,
 	seedArsRates,
 } from "~/server/services/accounts/test-fixtures";
+import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
+import { forUser } from "~/server/services/preview";
 import {
+	adminDb,
 	asKey,
 	asMobile,
 	call,
@@ -294,5 +297,106 @@ describe("/api/v1/transfers", () => {
 			403,
 			"missing_scope",
 		);
+	});
+});
+
+/**
+ * A crossing transfer with an envelope, deleted over v1: the undo token
+ * brings its budget side back into the same envelope. ARS home, Blue 1 USD
+ * = ARS 1,468 (fixtures): ARS 440,400 buys USD 300 out of Dining.
+ */
+describe("/api/v1/transfers undo of a delete keeps the envelope", () => {
+	it("records the budget side into the envelope it was in", async () => {
+		await seedArsRates();
+		const userId = (await arsUser()).user.id;
+		const as = await asMobile(userId);
+		const wallet = await openAccount(
+			userId,
+			"Wallet",
+			"CASH",
+			"ARS",
+			1_000_000,
+		);
+		const usdCash = await openAccount(userId, "USD cash", "CASH", "USD", 0, {
+			exchangeRateType: "blue",
+		});
+		await forUser(userId).apply(setupEnvelopeBook, {
+			style: "FLEX",
+			startingMoneyMinor: 100_000_000,
+			groups: [{ key: "spending", name: "Spending", role: "SPENDING" }],
+			envelopes: [
+				{
+					key: "dining",
+					name: "Dining",
+					groupKey: "spending",
+					kind: "MONTHLY",
+					isDefault: false,
+					categoryIds: [],
+				},
+				{
+					key: "spending",
+					name: "Everyday",
+					groupKey: "spending",
+					kind: "MONTHLY",
+					isDefault: true,
+					categoryIds: [],
+				},
+			],
+			timeZone: "UTC",
+		});
+		// Names are sealed under encryption: read the book's envelopes, then pick by name.
+		const envelopes = await adminDb.envelope.findMany({
+			where: { book: { createdById: userId } },
+			select: { id: true, name: true },
+		});
+		const dining = envelopes.find((e) => e.name === "Dining")?.id;
+		if (!dining) throw new Error("the setup made no Dining envelope");
+
+		const moved = await expectBody<Write>(
+			await call("/transfers", {
+				method: "POST",
+				headers: as,
+				idempotent: true,
+				body: {
+					fromAccountId: wallet,
+					toAccountId: usdCash,
+					fromAmount: "440400",
+					toAmount: "300",
+					envelopeId: dining,
+				},
+			}),
+			c.create,
+			201,
+		);
+		const id = moved.transfer.id;
+		const side = () =>
+			adminDb.wealthTransfer.findFirst({ where: { transferId: id } });
+		expect(await side()).toMatchObject({
+			direction: "TO_WEALTH",
+			envelopeId: dining,
+		});
+
+		const deleted = await expectBody<{ id: string; undo: string }>(
+			await call(`/transfers/${id}`, {
+				method: "DELETE",
+				headers: as,
+				idempotent: true,
+			}),
+			c.delete,
+		);
+		expect(await side()).toBeNull();
+		await expectBody(
+			await call("/transfers/undo", {
+				method: "POST",
+				headers: as,
+				idempotent: true,
+				body: { token: deleted.undo },
+			}),
+			c.undo,
+		);
+		expect(await side()).toMatchObject({
+			direction: "TO_WEALTH",
+			envelopeId: dining,
+		});
 	});
 });
