@@ -24,7 +24,7 @@ export const createRecurringInput = z.object({
 	nextDueDate: z.date(),
 	websiteUrl: userText("recurring.websiteUrl", 512).pipe(z.url()).optional(),
 	paymentSource: userText("recurring.paymentSource", 191).optional(),
-	autoPay: z.boolean().default(true),
+	autoPay: z.boolean().optional(),
 });
 
 export const updateRecurringInput = z.object({
