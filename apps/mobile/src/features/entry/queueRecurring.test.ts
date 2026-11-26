@@ -16,7 +16,8 @@ import { forgetSent, recentlySent } from "./sentRetain";
 // not-yet entry blocks nothing, and Undo takes a confirm or a skip back
 // through its own route.
 
-jest.mock("@/data/deviceWrites", () => ({ deviceWrites: () => null }));
+const mockWrites = jest.fn();
+jest.mock("@/data/deviceWrites", () => ({ deviceWrites: () => mockWrites() }));
 
 const STAMP = "2026-11-18T10:00:00.000Z";
 const NEXT = "2026-12-01T03:05:00.000Z";
@@ -47,6 +48,7 @@ const setup = () => {
 };
 
 beforeEach(() => {
+	mockWrites.mockReset().mockReturnValue(null);
 	forgetUndoTokens();
 	forgetSent();
 	for (const id of ["c1", "c2", "s1"]) forgetNotFound(id);
@@ -96,6 +98,48 @@ describe("a flush of recurring entries", () => {
 			"undone",
 		);
 		expect(await outbox.all()).toEqual([]);
+	});
+});
+
+describe("Undo that takes an entry out of the outbox tells the engine", () => {
+	// The engine's overlay reads the lists as of the last refresh: it must read
+	// them again after the entry left, or the undone confirm keeps counting.
+	const engineWatching = (
+		outbox: Awaited<ReturnType<typeof setup>>["outbox"],
+	) => {
+		const waiting: number[] = [];
+		mockWrites.mockReturnValue({
+			refresh: jest.fn(async () => {
+				waiting.push((await outbox.all()).length);
+			}),
+		});
+		return waiting;
+	};
+
+	it("a resend answered not-yet", async () => {
+		const { api, transport, outbox, recurring } = setup();
+		await outbox.enqueue(confirm("c1", "t1", STAMP));
+		await outbox.markSending("c1");
+		await outbox.markFailed("c1", "offline");
+		const waiting = engineWatching(outbox);
+		recurring.confirm.mockRejectedValueOnce(problem(409, RECURRING_NOT_DUE));
+		expect(await undoSaved({ outbox, api, clientId: "c1", transport })).toBe(
+			"undone",
+		);
+		expect(waiting).toEqual([0]);
+	});
+
+	it("a resend the server refused outright", async () => {
+		const { api, transport, outbox, recurring } = setup();
+		await outbox.enqueue(confirm("c1", "t1", STAMP));
+		await outbox.markSending("c1");
+		await outbox.markFailed("c1", "offline");
+		const waiting = engineWatching(outbox);
+		recurring.confirm.mockRejectedValueOnce(problem(404, "not_found"));
+		expect(await undoSaved({ outbox, api, clientId: "c1", transport })).toBe(
+			"undone",
+		);
+		expect(waiting).toEqual([0]);
 	});
 });
 

@@ -300,6 +300,7 @@ export function undoSaved(input: {
 			// Not yet, so this send did not land: nothing to undo.
 			if (sent.status === "later") {
 				await outbox.discard(clientId);
+				await writes?.refresh().catch(() => undefined);
 				return "undone";
 			}
 			// The server has the period already (a poster's plan met a template
@@ -312,6 +313,7 @@ export function undoSaved(input: {
 				// Refused outright: the server never held it, nothing to undo.
 				if (notStored(sent)) {
 					await outbox.discard(clientId);
+					await writes?.refresh().catch(() => undefined);
 					return "undone";
 				}
 				// Any other answer (a replay it can not give back, a key held by
