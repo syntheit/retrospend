@@ -135,20 +135,6 @@ describe("planPosterRun", () => {
 		});
 	});
 
-	it("a recurring income template plans nothing: the device posts expense templates only", async () => {
-		const store = baseStore({
-			template: {
-				direction: "IN",
-				anchorDay: null,
-				nextDueDate: ba("2026-12-01"),
-			},
-		});
-		expect(await planPosterRun(input(store))).toEqual({
-			entries: [],
-			stopped: "income",
-		});
-	});
-
 	it("auto-post off: the poster plans nothing", async () => {
 		const store = baseStore();
 		let read = false;
@@ -318,6 +304,178 @@ describe("planPosterRun", () => {
 				plan,
 			};
 			expect(missing.origin).toBe("poster");
+		});
+	});
+});
+
+// An income template is a monthly USD 1,000 due 2026-12-01T00:00Z (a UTC
+// midnight). It plans through the same planConfirm the server's sweep runs, so
+// the entry is the sweep's row: money in, no leg. Rates: blue 1,545 from Nov 30
+// (1,500 on Nov 1), so 1,000 x 1,545 = 1,545,000.00 (official, 1,050 from Dec
+// 1, would give 1,050,000.00) and 1,000 x 1,500 = 1,500,000.00.
+describe("planPosterRun over an income template", () => {
+	const DUE = at("2026-12-01T00:00:00.000Z");
+	const NEXT = at("2027-01-01T00:00:00.000Z");
+	const income = { direction: "IN", amount: "1000", nextDueDate: DUE } as const;
+	const incomeStore = (over: Parameters<typeof baseStore>[0] = {}) =>
+		baseStore({ ...over, template: { ...income, ...over.template } });
+
+	it("plans one money-in entry at the due instant's blue rate, stepping in UTC", async () => {
+		const store = incomeStore();
+		const run = await planPosterRun(input(store, { now: DUE }));
+		expect(run.stopped).toBe("caught_up");
+		expect(run.entries).toHaveLength(1);
+		expect(run.entries[0]).toMatchObject({
+			origin: "poster",
+			dueAt: DUE,
+			expectedStamp: { version: store.template.stamp },
+			plan: {
+				nextDueDate: NEXT,
+				entry: {
+					direction: "IN",
+					inType: "INCOME",
+					status: "FINALIZED",
+					pricingSource: "RECURRING",
+					amount: "1000",
+					date: DUE,
+					rateType: "blue",
+					homeRate: "1545",
+					homeAmount: "1545000.00",
+					excludeFromAnalytics: false,
+				},
+			},
+		});
+	});
+
+	it("plans what the sweep's confirm books, field for field", async () => {
+		const run = await planPosterRun(input(incomeStore(), { now: DUE }));
+		const server = await incomeStore().confirm(DUE, { dueAt: DUE, auto: true });
+		expect(run.entries[0]?.plan).toEqual(server);
+	});
+
+	it("catches up at each due date's own rate, chained by stamp: 1,500,000.00 then 1,545,000.00", async () => {
+		const store = incomeStore({
+			template: { nextDueDate: at("2026-11-01T00:00:00.000Z") },
+			rates: [
+				rate("2026-11-01", "ARS", "blue", 1500),
+				rate("2026-11-30", "ARS", "blue", 1545),
+			],
+		});
+		const run = await planPosterRun(input(store, { now: NOW }));
+		expect(run.stopped).toBe("caught_up");
+		expect(run.entries.map((e) => e.plan.entry.homeAmount)).toEqual([
+			"1500000.00",
+			"1545000.00",
+		]);
+		expect(run.entries.map((e) => e.expectedStamp)).toEqual([
+			{ version: store.template.stamp },
+			{ after: 0 },
+		]);
+		expect(run.entries.at(-1)?.plan.nextDueDate).toEqual(NEXT);
+	});
+
+	describe("due instants in the saved zone", () => {
+		const HONOLULU = "Pacific/Honolulu";
+
+		it("Honolulu: nothing at 2026-11-30T23:59:59Z, one entry at 2026-12-01T00:00Z", async () => {
+			const store = incomeStore({ zone: HONOLULU });
+			expect(
+				await planPosterRun(
+					input(store, { now: at("2026-11-30T23:59:59.000Z") }),
+				),
+			).toEqual({ entries: [], stopped: "caught_up" });
+			const run = await planPosterRun(input(store, { now: DUE }));
+			expect(run.entries.map((e) => e.dueAt)).toEqual([DUE]);
+		});
+
+		it("Tokyo: nothing at 2026-11-30T15:00Z although Dec 1 has begun there, one entry at the UTC instant", async () => {
+			const store = incomeStore({ zone: TOKYO });
+			const early = at("2026-11-30T15:00:00.000Z");
+			expect(await planPosterRun(input(store, { now: early }))).toEqual({
+				entries: [],
+				stopped: "caught_up",
+			});
+			// A person's confirm there is due (the start of the next day is Dec 1
+			// 15:00Z, after the due instant); the poster waits for the instant.
+			const confirm = await planConfirm(
+				store.template,
+				{ userId: ME, now: early, zone: TOKYO, stepZone: TOKYO },
+				store.book,
+			);
+			expect(confirm.dueAt).toEqual(DUE);
+			const run = await planPosterRun(input(store, { now: DUE }));
+			expect(run.entries).toHaveLength(1);
+		});
+
+		it("a skip reads the UTC day: due at 2026-11-30T15:00Z in Tokyo, not at 2026-12-01T00:00Z in Honolulu", () => {
+			expect(
+				incomeStore({ zone: TOKYO }).skip(at("2026-11-30T15:00:00.000Z"), {
+					zone: TOKYO,
+					stepZone: TOKYO,
+				}).dueAt,
+			).toEqual(DUE);
+			expect(() =>
+				incomeStore({ zone: HONOLULU }).skip(DUE, {
+					zone: HONOLULU,
+					stepZone: HONOLULU,
+				}),
+			).toThrow(expect.objectContaining({ kind: "not_due" }));
+		});
+	});
+
+	describe("the guards an expense template has", () => {
+		it.each([
+			["a paused template", { isActive: false }],
+			["autoPay off", { autoPay: false }],
+			["ASK with autoPay on", { amountMode: "ASK" }],
+		] as const)("%s plans nothing", async (_name, template) => {
+			const store = incomeStore({ template });
+			expect(await planPosterRun(input(store, { now: DUE }))).toEqual({
+				entries: [],
+				stopped: "refused",
+				refusal: "not_found",
+			});
+		});
+
+		it("protection on plans nothing, and so does a read that fails", async () => {
+			const store = incomeStore();
+			expect(
+				await planPosterRun(
+					input(store, { now: DUE, isProtected: async () => true }),
+				),
+			).toEqual({ entries: [], stopped: "protected" });
+			expect(
+				await planPosterRun(
+					input(store, {
+						now: DUE,
+						isProtected: async () => {
+							throw new Error("offline");
+						},
+					}),
+				),
+			).toEqual({ entries: [], stopped: "protection_unreadable" });
+		});
+
+		it("a template with no version to name plans nothing, so no entry is stampless", async () => {
+			const store = incomeStore();
+			expect(
+				await planPosterRun(
+					input(store, {
+						now: DUE,
+						template: { ...store.template, stamp: null },
+					}),
+				),
+			).toEqual({ entries: [], stopped: "no_stamp" });
+		});
+
+		it("a missing rate refuses the period and plans nothing, never at 1", async () => {
+			const store = incomeStore({ rates: [] });
+			const run = await planPosterRun(input(store, { now: DUE }));
+			expect(run).toEqual({
+				entries: [],
+				stopped: "refused",
+				refusal: "missing_rate",
+			});
 		});
 	});
 });

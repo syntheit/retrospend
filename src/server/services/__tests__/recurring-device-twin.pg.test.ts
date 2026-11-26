@@ -63,6 +63,7 @@ import {
 	sweepOnly,
 	TOKYO,
 	templateState,
+	trpcFor,
 	usdTemplate,
 	v1For,
 	v1TemplateBody,
@@ -720,6 +721,302 @@ describe("the poster's run", () => {
 			expect(homes).toHaveLength(40);
 			expect(homes.slice(0, 31).reduce((a, b) => a + b, 0)).toBe(957900);
 			expect(homes.slice(31).reduce((a, b) => a + b, 0)).toBe(278100);
+		});
+	});
+
+	describe("income templates, row only as the sweep and the web's confirm post them", () => {
+		const DUE_IN = new Date("2026-12-01T00:00:00.000Z");
+		const NEXT_IN = "2027-01-01T00:00:00.000Z";
+		const HONOLULU = "Pacific/Honolulu";
+		const asDate = (instant: string) => new Date(instant);
+		// Blue 1,500 on Nov 1 and 1,545 from Nov 30, official 1,050 from Dec 1: a
+		// USD 1,000 income due Dec 1 00:00Z books 1,000 x 1,545 = ARS 1,545,000.00
+		// (official: 1,050,000.00) and one due Nov 1 books 1,500,000.00.
+		beforeAll(() =>
+			settledRates([
+				["2026-11-01", "ARS", "blue", "1500"],
+				["2026-11-30", "ARS", "blue", "1545"],
+				["2026-12-01", "ARS", "official", "1050"],
+			]),
+		);
+
+		const incomeTemplate = (
+			userId: string,
+			data: Parameters<typeof usdTemplate>[1] = {},
+		) =>
+			usdTemplate(userId, {
+				name: "Salary",
+				direction: "IN",
+				amount: "1000",
+				nextDueDate: DUE_IN,
+				...data,
+			});
+		const cash = (userId: string) =>
+			fixtureDb.assetAccount.create({
+				data: {
+					userId,
+					name: "Cash",
+					type: "CASH",
+					currency: "USD",
+					balance: "100",
+				},
+			});
+		/** No leg was written and the account holds what it did: a row only. */
+		async function expectRowOnly(userId: string, accountId: string) {
+			expect(await fixtureDb.accountLeg.count({ where: { userId } })).toBe(0);
+			expect(
+				(
+					await fixtureDb.assetAccount.findUniqueOrThrow({
+						where: { id: accountId },
+					})
+				).balance.toFixed(),
+			).toBe("100");
+		}
+		const incomeRow = {
+			title: "Salary",
+			direction: "IN",
+			inType: "INCOME",
+			status: "FINALIZED",
+			pricingSource: "RECURRING",
+			excludeFromAnalytics: false,
+			amount: "1000",
+			currency: "USD",
+			rateType: "blue",
+			homeRate: "1545",
+			home: "1545000",
+		};
+
+		it("the device's confirm and the web's: the same row field by field, no leg, the template one UTC month on", async () => {
+			const me = await arsUser();
+			const account = await cash(me);
+			const id = await incomeTemplate(me);
+			const clientId = randomUUID();
+			// Dec 1 00:00Z is Nov 30 21:00 in Buenos Aires: due by the start of the next day.
+			const { changes } = await onDevice(
+				me,
+				DUE_IN,
+				RECURRING_CONFIRM,
+				confirmRecurring({
+					templateId: id,
+					now: DUE_IN,
+					clientId,
+					dueAt: DUE_IN,
+				}),
+			);
+			at(DUE_IN);
+			await (await trpcFor(me)).recurring.confirmAndCreate({
+				id,
+				dueDate: DUE_IN,
+			});
+			vi.useRealTimers();
+			expect(await booked(me)).toMatchObject([
+				{ ...incomeRow, date: iso(DUE_IN), recurringTemplateId: id },
+			]);
+			expect((await templateState(id)).nextDueDate).toBe(NEXT_IN);
+			await expectRowOnly(me, account.id);
+			const stored = await fixtureDb.expense.findFirstOrThrow({
+				where: { userId: me },
+			});
+			expect(stored.keepInWealth).toBe(false);
+			const [server] = (await pulled(me, DUE_IN)).list("expenses");
+			const device = changes.find((c) => c.table === "expenses")?.after;
+			if (!device || !server) throw new Error("no row");
+			expect(differingWriteFields(device as never, server)).toEqual([]);
+			const template = changes.find((c) => c.table === "recurringTemplates");
+			if (!template?.after) throw new Error("no template change");
+			expect(iso((template.after as { nextDueDate: Date }).nextDueDate)).toBe(
+				NEXT_IN,
+			);
+		});
+
+		it("the sweep books the two periods the device planned, field by field: ARS 1,500,000.00 then 1,545,000.00", async () => {
+			const me = await arsUser();
+			const account = await cash(me);
+			const id = await incomeTemplate(me, {
+				nextDueDate: asDate("2026-11-01T00:00:00.000Z"),
+			});
+			const now = asDate("2026-12-01T12:00:00.000Z");
+			const { entries, stopped } = await posterOnDevice(me, id, now);
+			expect(stopped).toBe("caught_up");
+			expect(entries).toHaveLength(2);
+			at(now);
+			await sweepRecurringAutoPost(now, sweepOnly(me));
+			vi.useRealTimers();
+			expect(
+				(await booked(me)).map((r) => [r.direction, r.inType, r.home]),
+			).toEqual([
+				["IN", "INCOME", "1500000"],
+				["IN", "INCOME", "1545000"],
+			]);
+			const server = [...(await pulled(me, now)).list("expenses")].sort(
+				(a, b) => a.date.getTime() - b.date.getTime(),
+			);
+			entries.forEach((e, i) => {
+				const device = e.changes.find((c) => c.table === "expenses")?.after;
+				if (!device || !server[i]) throw new Error("no row");
+				expect(
+					differingWriteFields(device as never, server[i]),
+					`period ${i + 1}`,
+				).toEqual([]);
+			});
+			expect((await templateState(id)).nextDueDate).toBe(NEXT_IN);
+			await expectRowOnly(me, account.id);
+		});
+
+		// Each case is a zone and an instant. A confirm is due from the start of
+		// the zone's day that holds the due instant, a skip from the zone's UTC
+		// day, and the poster and the sweep wait for the instant itself.
+		const RULES: [string, string, boolean, boolean, number][] = [
+			// zone, now, confirm due, skip due, entries the poster and the sweep book
+			[BA, "2026-11-30T23:59:59Z", true, false, 0],
+			[BA, "2026-12-01T00:00:00Z", true, false, 1],
+			[HONOLULU, "2026-11-30T23:59:59Z", true, false, 0],
+			[HONOLULU, "2026-12-01T00:00:00Z", true, false, 1],
+			[HONOLULU, "2026-12-01T10:00:00Z", true, true, 1],
+			[TOKYO, "2026-11-30T14:59:59Z", false, false, 0],
+			[TOKYO, "2026-11-30T15:00:00Z", true, true, 0],
+			[TOKYO, "2026-12-01T00:00:00Z", true, true, 1],
+		];
+		for (const [zone, instant, confirmDue, skipDue, posts] of RULES)
+			it(`${zone} at ${instant}: confirm ${confirmDue ? "due" : "not due"}, skip ${skipDue ? "due" : "not due"}, ${posts} posted, the same on the device and the server`, async () => {
+				const now = asDate(instant);
+				const fresh = async () => {
+					const me = await arsUser(zone);
+					return { me, id: await incomeTemplate(me) };
+				};
+				const settled = (run: () => Promise<unknown>) =>
+					run().then(
+						() => true,
+						() => false,
+					);
+				const device = await fresh();
+				expect(
+					await settled(() =>
+						onDevice(
+							device.me,
+							now,
+							RECURRING_CONFIRM,
+							confirmRecurring({
+								templateId: device.id,
+								now,
+								clientId: randomUUID(),
+							}),
+						),
+					),
+					"device confirm",
+				).toBe(confirmDue);
+				const web = await fresh();
+				at(now);
+				const webConfirmed = await settled(async () =>
+					(await trpcFor(web.me)).recurring.confirmAndCreate({ id: web.id }),
+				);
+				vi.useRealTimers();
+				expect(webConfirmed, "web confirm").toBe(confirmDue);
+				const skipOnDevice = await fresh();
+				expect(
+					await settled(() =>
+						onDevice(
+							skipOnDevice.me,
+							now,
+							RECURRING_SKIP,
+							skipRecurring({ templateId: skipOnDevice.id, now }),
+						),
+					),
+					"device skip",
+				).toBe(skipDue);
+				const skipOnServer = await fresh();
+				at(now);
+				const skipped = await (await v1For(skipOnServer.me))(
+					"POST",
+					`/recurring/${skipOnServer.id}/skip`,
+					{ dueAt: iso(DUE_IN) },
+				);
+				vi.useRealTimers();
+				expect(skipped.status === 200, "server skip").toBe(skipDue);
+				const sweeping = await fresh();
+				const planned = await posterOnDevice(sweeping.me, sweeping.id, now);
+				at(now);
+				await sweepRecurringAutoPost(now, sweepOnly(sweeping.me));
+				vi.useRealTimers();
+				expect(planned.entries, "poster").toHaveLength(posts);
+				expect(await booked(sweeping.me), "sweep").toHaveLength(posts);
+			});
+
+		it("a missing rate refuses on both and never books at 1", async () => {
+			// The rate table holds ARS only: a JPY home has no USD to JPY row.
+			const { user } = await createTestUser();
+			await adminDb.user.update({
+				where: { id: user.id },
+				data: { homeCurrency: "JPY", timeZone: "UTC", defaultRateTypes: {} },
+			});
+			const id = await incomeTemplate(user.id);
+			const store = await pulled(user.id, DUE_IN);
+			const db = new LocalDb(store);
+			await expect(
+				db.write(
+					RECURRING_CONFIRM,
+					confirmRecurring({ templateId: id, now: DUE_IN, clientId: "x" }),
+				),
+			).rejects.toMatchObject({ currencies: ["JPY"] });
+			const run = await planPosterOver(db.reads(), {
+				templateId: id,
+				now: DUE_IN,
+				autoPost: true,
+				isProtected: async () => false,
+			});
+			expect(run).toMatchObject({
+				entries: [],
+				stopped: "refused",
+				refusal: "missing_rate",
+			});
+			at(DUE_IN);
+			await expect(
+				(await trpcFor(user.id)).recurring.confirmAndCreate({ id }),
+			).rejects.toThrow();
+			const counts = await sweepRecurringAutoPost(DUE_IN, sweepOnly(user.id));
+			vi.useRealTimers();
+			expect(counts).toMatchObject({ posted: 0, missingRate: 1 });
+			expect(await booked(user.id)).toEqual([]);
+			expect((await templateState(id)).nextDueDate).toBe(iso(DUE_IN));
+		});
+
+		it("protection on stops both: the device plans nothing and the sweep books nothing", async () => {
+			const me = await arsUser();
+			const id = await incomeTemplate(me);
+			const store = await pulled(me, DUE_IN);
+			const run = await planPosterOver(new LocalDb(store).reads(), {
+				templateId: id,
+				now: DUE_IN,
+				autoPost: true,
+				isProtected: async () => true,
+			});
+			expect(run).toEqual({ entries: [], stopped: "protected" });
+			await adminDb.user.update({
+				where: { id: me },
+				data: { protectionState: "ON" },
+			});
+			at(DUE_IN);
+			await sweepRecurringAutoPost(DUE_IN, sweepOnly(me));
+			vi.useRealTimers();
+			expect(await booked(me)).toEqual([]);
+			expect((await templateState(id)).nextDueDate).toBe(iso(DUE_IN));
+		});
+
+		// Why the phone's poster leaves an income template out until PR B: v1's
+		// confirm for income takes neither a client id nor a stamp, which every
+		// poster entry carries.
+		it("v1's confirm of an income template refuses the client id and the stamp a poster entry carries", async () => {
+			const me = await arsUser();
+			const id = await incomeTemplate(me);
+			at(DUE_IN);
+			const res = await (await v1For(me))("POST", `/recurring/${id}/confirm`, {
+				dueAt: iso(DUE_IN),
+				expenseId: randomUUID(),
+				expectedUpdatedAt: iso(STAMPED),
+			});
+			vi.useRealTimers();
+			expect(res.status).toBe(400);
+			expect(await booked(me)).toEqual([]);
 		});
 	});
 });

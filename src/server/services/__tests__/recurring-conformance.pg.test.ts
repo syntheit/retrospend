@@ -198,6 +198,7 @@ function serverAdapter(): RecurringAdapter {
 					amountMode: t.amountMode ?? "FIXED",
 					autoPay: t.autoPay ?? true,
 					isActive: t.isActive ?? true,
+					direction: t.direction ?? "OUT",
 					updatedAt: STAMPED,
 				},
 			});

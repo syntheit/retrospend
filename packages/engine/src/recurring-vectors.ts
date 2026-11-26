@@ -14,7 +14,11 @@
  * - An expense is due while its due instant is before the start of the next
  *   day in the zone the check reads (the request's zone, the saved zone for
  *   the poster). Auto posting adds the instant gate: due on or before now.
- * - Due dates step in the saved zone, whatever zone the phone is in.
+ * - Due dates step in the saved zone, whatever zone the phone is in. An income
+ *   due day is a UTC midnight and steps in UTC; its confirm reads the same
+ *   start-of-next-day rule as an expense's, its skip reads the UTC day against
+ *   today in the zone (recurring-post/due.ts), and it books a row with no
+ *   account leg.
  * - homeAmount is amount x homeRate rounded half to even at the home
  *   currency's decimals (ARS 2, JPY 0).
  *
@@ -43,6 +47,8 @@ export interface RecurringSeed {
 		amountMode?: "FIXED" | "ASK";
 		autoPay?: boolean;
 		isActive?: boolean;
+		/** Money in; absent is an expense. An income due day is a UTC midnight. */
+		direction?: "IN";
 	};
 }
 
@@ -54,6 +60,8 @@ export interface ExpectedPost {
 	homeRate: string;
 	homeAmount: string;
 	rateType: string;
+	/** Money in books a row of direction IN and inType INCOME; absent is an expense. */
+	direction?: "IN";
 }
 
 export type RecurringStep = {
@@ -599,4 +607,216 @@ export const recurringVectors: RecurringVector[] = [
 		{ paidOn: "2026-10-31" },
 		"date_before_previous_due",
 	),
+];
+
+// Income. Monthly USD 1,000 on the 1st, due 2026-12-01T00:00Z (a UTC midnight,
+// Nov 30 21:00 in Buenos Aires, Nov 30 14:00 in Honolulu, Dec 1 09:00 in
+// Tokyo), steps in UTC. The row is dated that instant and books blue 1545, the
+// newest blue row on or before it: 1,000 x 1545 = 1,545,000.00 (official 1050
+// would give 1,050,000.00). Money in: direction IN, inType INCOME.
+const INCOME_DUE = "2026-12-01T00:00:00.000Z";
+const INCOME_NEXT = "2027-01-01T00:00:00.000Z";
+const incomeTemplate = {
+	direction: "IN",
+	amount: "1000",
+	nextDueDate: D(INCOME_DUE),
+} as const;
+const incomeSeed = (
+	extra: Partial<RecurringSeed> = {},
+	rates: RateSeed[] = baseRates,
+): RecurringSeed => withTemplate(incomeTemplate, rates, extra);
+const INCOME_POST: ExpectedPost = {
+	date: INCOME_DUE,
+	amount: "1000",
+	amountInUSD: "1000",
+	homeRate: "1545",
+	homeAmount: "1545000.00",
+	rateType: "blue",
+	direction: "IN",
+};
+
+export const incomeVectors: RecurringVector[] = [
+	// Buenos Aires at 00:00Z is Nov 30 21:00: the start of the next day there is
+	// Dec 1 03:00Z, after the due instant, so the confirm is due (a UTC-day
+	// reading, Dec 1 against Nov 30, would refuse it). The row is the sweep's:
+	// money in, ARS 1,545,000.00.
+	base({
+		name: "income: a confirm books money in at blue and steps to Jan 1 UTC",
+		seed: incomeSeed(),
+		steps: [
+			{
+				call: "confirm",
+				now: D(INCOME_DUE),
+				expect: { posted: [INCOME_POST], nextDueDate: INCOME_NEXT },
+			},
+		],
+	}),
+	// Paid on Nov 29: an income day is that UTC midnight (an expense's would be
+	// 03:00Z), and the day's blue is 1540: 1,000 x 1540 = 1,540,000.00.
+	base({
+		name: "income: paid on an earlier day is dated that UTC midnight at that day's rate",
+		seed: incomeSeed(),
+		steps: [
+			{
+				call: "confirm",
+				now: D(INCOME_DUE),
+				paidOn: "2026-11-29",
+				expect: {
+					posted: [
+						{
+							...INCOME_POST,
+							date: "2026-11-29T00:00:00.000Z",
+							homeRate: "1540",
+							homeAmount: "1540000.00",
+						},
+					],
+					nextDueDate: INCOME_NEXT,
+				},
+			},
+		],
+	}),
+	// Honolulu (UTC-10): 23:59:59Z on Nov 30 is before the due instant, so the
+	// poster waits (the instant gate). At 00:00Z it posts: Nov 30 14:00 there, the
+	// next day starts Dec 1 10:00Z, after the due instant.
+	base({
+		name: "income, saved zone Honolulu: the poster waits for the UTC instant and posts at it",
+		seed: incomeSeed({ timeZone: "Pacific/Honolulu" }),
+		steps: [
+			idle("2026-11-30T23:59:59Z", INCOME_DUE),
+			{
+				call: "poster",
+				now: D(INCOME_DUE),
+				expect: {
+					posted: [INCOME_POST],
+					nextDueDate: INCOME_NEXT,
+					stopped: "caught_up",
+				},
+			},
+		],
+	}),
+	// A skip reads the UTC day against today in the zone. At 00:00Z it is still
+	// Nov 30 in Honolulu: not due. At 10:00Z it is Dec 1 00:00 there: due. Books
+	// nothing.
+	base({
+		name: "income, saved zone Honolulu: a skip waits for the UTC day in the zone",
+		seed: incomeSeed({ timeZone: "Pacific/Honolulu" }),
+		steps: [
+			{
+				call: "skip",
+				now: D(INCOME_DUE),
+				expect: { refused: "not_due" },
+			},
+			{
+				call: "skip",
+				now: D("2026-12-01T10:00:00Z"),
+				expect: { posted: [], nextDueDate: INCOME_NEXT },
+			},
+		],
+	}),
+	// Tokyo (UTC+9): 2026-11-30T15:00Z is Dec 1 00:00 there. The poster waits for
+	// the due instant (Dec 1 00:00Z), a confirm is due (the start of the next
+	// day there is Dec 1 15:00Z, after the due instant) and so is a skip (the UTC
+	// day Dec 1 is today); 14:59:59Z is Nov 30 23:59:59 there, where the skip
+	// is not due yet.
+	base({
+		name: "income, saved zone Tokyo: the poster waits, a confirm is due from the local day",
+		seed: incomeSeed({ timeZone: TOKYO }),
+		steps: [
+			idle("2026-11-30T15:00:00Z", INCOME_DUE),
+			{
+				call: "confirm",
+				now: D("2026-11-30T15:00:00Z"),
+				expect: { posted: [INCOME_POST], nextDueDate: INCOME_NEXT },
+			},
+		],
+	}),
+	base({
+		name: "income, saved zone Tokyo: a skip is due from the local day, not the evening before",
+		seed: incomeSeed({ timeZone: TOKYO }),
+		steps: [
+			{
+				call: "skip",
+				now: D("2026-11-30T14:59:59Z"),
+				expect: { refused: "not_due" },
+			},
+			{
+				call: "skip",
+				now: D("2026-11-30T15:00:00Z"),
+				expect: { posted: [], nextDueDate: INCOME_NEXT },
+			},
+		],
+	}),
+	// Due Nov 1 and Dec 1 (00:00Z each), blue 1500 from Nov 1 and 1545 from
+	// Nov 30. One run books each at its own due date: 1,000 x 1500 =
+	// 1,500,000.00 and 1,000 x 1545 = 1,545,000.00, 3,045,000.00 together
+	// (today's rate for both would give 3,090,000.00). Next: Jan 1.
+	base({
+		name: "income: the poster books each due date at its own rate",
+		seed: withTemplate(
+			{ ...incomeTemplate, nextDueDate: D("2026-11-01T00:00:00Z") },
+			[
+				rate("ARS", "blue", "1500", "2026-11-01T00:00:00Z"),
+				rate("ARS", "blue", "1545", "2026-11-30T00:00:00Z"),
+			],
+		),
+		steps: [
+			{
+				call: "poster",
+				now: D("2026-12-01T12:00:00Z"),
+				expect: {
+					posted: [
+						{
+							...INCOME_POST,
+							date: "2026-11-01T00:00:00.000Z",
+							homeRate: "1500",
+							homeAmount: "1500000.00",
+						},
+						INCOME_POST,
+					],
+					nextDueDate: INCOME_NEXT,
+					stopped: "caught_up",
+				},
+			},
+		],
+	}),
+	// The same four exits as an expense: a template that no longer pays itself
+	// is not found for the poster.
+	base({
+		name: "income: the poster posts nothing for a template that does not pay itself",
+		seed: withTemplate({ ...incomeTemplate, autoPay: false }),
+		steps: [
+			{
+				call: "poster",
+				now: D(INCOME_DUE),
+				expect: {
+					posted: [],
+					nextDueDate: INCOME_DUE,
+					stopped: "refused",
+					refusal: "not_found",
+				},
+			},
+		],
+	}),
+	// No ARS rate at all: the confirm is refused and the poster plans nothing.
+	base({
+		name: "income, missing rate: a confirm is refused and the poster plans nothing",
+		seed: incomeSeed({}, []),
+		steps: [
+			{
+				call: "confirm",
+				now: D(INCOME_DUE),
+				expect: { missingRate: ["ARS"] },
+			},
+			{
+				call: "poster",
+				now: D(INCOME_DUE),
+				expect: {
+					posted: [],
+					nextDueDate: INCOME_DUE,
+					stopped: "refused",
+					refusal: "missing_rate",
+				},
+			},
+		],
+	}),
 ];

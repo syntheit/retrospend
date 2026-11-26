@@ -10,7 +10,7 @@ import { RecurringRefusal } from "@retrospend/domain/recurring-post/refusals";
 import { describe, expect, it } from "vitest";
 import { ConflictError } from "./errors";
 import { dump } from "./local-fixtures";
-import { InvalidInputError, type Store } from "./port";
+import type { Store } from "./port";
 import {
 	createDevicePreviewRunner,
 	RECURRING_CONFIRM_MUTATION,
@@ -18,7 +18,6 @@ import {
 } from "./preview";
 import {
 	confirmRecurring,
-	INCOME_NOT_ON_DEVICE,
 	planPosterOver,
 	RECURRING_CONFIRM,
 	RECURRING_SKIP,
@@ -149,8 +148,8 @@ describe("the posted row and the template", () => {
 		);
 	});
 
-	it("refuses an absent template, and income, which waits for M4", async () => {
-		const { store, db } = await open(base.seed);
+	it("refuses an absent template", async () => {
+		const { db } = await open(base.seed);
 		await expect(
 			db.write(
 				RECURRING_SKIP,
@@ -159,31 +158,6 @@ describe("the posted row and the template", () => {
 		).rejects.toSatisfy(
 			(e) => e instanceof RecurringRefusal && e.kind === "not_found",
 		);
-		await store.transaction((tx) =>
-			tx.put("recurringTemplates", { ...template(store), direction: "IN" }),
-		);
-		const before = dump(store);
-		for (const run of [
-			() =>
-				db.write(
-					RECURRING_CONFIRM,
-					confirmRecurring({ templateId: "t1", now: DEC_1, clientId: "e1" }),
-				),
-			() =>
-				db.write(
-					RECURRING_SKIP,
-					skipRecurring({ templateId: "t1", now: DEC_1 }),
-				),
-		]) {
-			const error = await run().catch((e) => e);
-			expect(error).toBeInstanceOf(InvalidInputError);
-			expect((error as Error).message).toBe(INCOME_NOT_ON_DEVICE);
-		}
-		expect(dump(store)).toEqual(before);
-		// The poster plans no income either.
-		const plan = await runPoster(db, { now: DEC_1 });
-		expect(plan).toMatchObject({ posted: [], stopped: "income" });
-		expect(dump(store)).toEqual(before);
 	});
 });
 

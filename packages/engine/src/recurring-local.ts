@@ -15,8 +15,9 @@
  *   needs the kind (already posted retires, not due waits, changed parks).
  *   The core's compare-and-set on the due date has nothing to guard here, as
  *   a store transaction is one writer.
- * - Recurring income is not on the device until M4: it is refused, never
- *   posted. The poster plans none either.
+ * - An income template confirms and skips through the same plans as an expense
+ *   one (row only, no account leg, as the server's sweep and the web book it).
+ *   Creating or editing one is still online (template-local.ts).
  * - A run of due periods is never one write. The poster plans the periods
  *   (`planPosterOver`) and each one is its own `confirmRecurring`, so each
  *   has its own id, due date, stamp, ack and undo, as the server's confirms do.
@@ -45,15 +46,12 @@ import {
 import { rateBookOf, refusing } from "./expense-create";
 import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
-import { InvalidInputError } from "./port";
 import { categoryKindOf } from "./reference";
 import type { ReadRepos, Repos } from "./repos";
 import type { TemplateRow } from "./templates";
 
 export const RECURRING_CONFIRM = "recurring.confirm";
 export const RECURRING_SKIP = "recurring.skip";
-
-export const INCOME_NOT_ON_DEVICE = "Recurring income is confirmed online";
 
 /** One person owns every row on a device, so the core's own-row check is always met. */
 const DEVICE_USER = "device";
@@ -112,7 +110,6 @@ function postTemplateOf(row: TemplateRow): PostTemplate {
 export function loadTemplate(r: Repos, id: string): TemplateRow {
 	const row = r.recurringTemplates.get(id);
 	if (!row) throw new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
-	if (row.direction === "IN") throw new InvalidInputError(INCOME_NOT_ON_DEVICE);
 	return row;
 }
 

@@ -46,10 +46,17 @@ import { refusing } from "./expense-create";
 import type { WriteFn } from "./local-db";
 import { InvalidInputError } from "./port";
 import { deviceMutation } from "./preview";
-import { INCOME_NOT_ON_DEVICE, loadTemplate } from "./recurring-local";
+import { loadTemplate } from "./recurring-local";
 import { DEVICE_FIGURE_IDS } from "./registry";
 import type { Repos } from "./repos";
 import type { TemplateRow } from "./templates";
+
+/**
+ * What the device refuses of an income template: creating or editing one
+ * (M4, tranche 2) and a person's confirm or skip of it (the poster is the one
+ * confirm the device books for income).
+ */
+export const INCOME_NOT_ON_DEVICE = "Recurring income is handled online";
 
 export const TEMPLATE_CREATE = "recurring.create";
 export const TEMPLATE_UPDATE = "recurring.update";
@@ -151,6 +158,8 @@ export function updateTemplate(
 	return (r) =>
 		refusing(() => {
 			const row = loadTemplate(r, input.id);
+			if (row.direction === "IN")
+				throw new InvalidInputError(INCOME_NOT_ON_DEVICE);
 			if (input.expectedVersion && input.expectedVersion !== row.version)
 				throw new RecurringRefusal("changed", RECURRING_CHANGED);
 			checkFields(templateEditFieldsSchema, input);

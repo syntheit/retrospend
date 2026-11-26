@@ -28,6 +28,7 @@ import { expectEqual } from "./conformance";
 import type { BookedExpense } from "./expense-create-conformance";
 import {
 	type ExpectedPost,
+	incomeVectors,
 	type RecurringSeed,
 	type RecurringStep,
 	type RecurringVector,
@@ -123,8 +124,20 @@ export function expectPost(row: PostedRow, want: ExpectedPost) {
 				`${column}: expected ${want[column]}, got ${row[column]}`,
 			);
 	expectEqual(
-		[row.status, row.direction, row.excludeFromAnalytics, row.pricingSource],
-		["FINALIZED", "OUT", false, "RECURRING"],
+		[
+			row.status,
+			row.direction,
+			row.inType,
+			row.excludeFromAnalytics,
+			row.pricingSource,
+		],
+		[
+			"FINALIZED",
+			want.direction ?? "OUT",
+			want.direction === "IN" ? "INCOME" : null,
+			false,
+			"RECURRING",
+		],
 		"the posted row's standard fields",
 	);
 }
@@ -370,7 +383,7 @@ export const templateVectors: TemplateVector[] = [
 ];
 
 export const recurringCases: RecurringCase[] = [
-	...recurringVectors.map((v) => ({
+	...[...recurringVectors, ...incomeVectors].map((v) => ({
 		name: v.name,
 		run: (make: Parameters<RecurringCase["run"]>[0]) => runVector(make, v),
 	})),
