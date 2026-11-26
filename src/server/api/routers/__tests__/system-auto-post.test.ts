@@ -99,7 +99,6 @@ describe("system.getFeatureFlags autoPost", () => {
 		);
 		expect(flags.autoPost).toBe(expected);
 		expect(flags.autoPost).toBe(autoPostEnabled());
-		expect(flags.autoConfirm).toBe(true);
 		mockEnv.RECURRING_AUTO_POST = "true";
 	});
 });

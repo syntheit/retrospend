@@ -5,10 +5,7 @@ import {
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import {
-	AUTO_CONFIRM,
-	autoPostEnabled,
-} from "~/server/services/recurring-auto-post";
+import { autoPostEnabled } from "~/server/services/recurring-auto-post";
 import { readAutoPostStatus } from "~/server/services/recurring-auto-post-status";
 import { getAppSettings } from "~/server/services/settings";
 
@@ -25,7 +22,6 @@ export const systemRouter = createTRPCRouter({
 			feedbackEnabled: settings.enableFeedback,
 			advancedProtection: env.ADVANCED_PROTECTION_ENABLED,
 			autoPost: autoPostEnabled(),
-			autoConfirm: AUTO_CONFIRM,
 		};
 	}),
 

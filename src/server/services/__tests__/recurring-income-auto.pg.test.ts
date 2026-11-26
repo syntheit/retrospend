@@ -14,7 +14,10 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { expectBody } from "~/server/api/v1/core/__tests__/harness";
+import {
+	expectBody,
+	expectProblem,
+} from "~/server/api/v1/core/__tests__/harness";
 import { forUser } from "~/server/services/preview";
 import { fixtureDb } from "~/test/pg-harness";
 import { setupEnvelopeBook } from "../envelope/setup.mutation";
@@ -343,18 +346,17 @@ describe("income confirmed with auto books what the sweep books", () => {
 		const me = await arsUser();
 		const id = await income(me);
 		const v1 = await v1For(me);
-		const first = await (async () => {
-			at(NOW);
-			return expectBody<Answer>(
-				await v1("POST", `/recurring/${id}/confirm`, {
-					dueAt: DUE_IN,
-					expectedUpdatedAt: STAMP,
-					auto: true,
-				}),
-				contract.recurring.confirm,
-			);
-		})();
+		// Both periods are overdue, so the poster catches up within seconds and
+		// both undo tokens are fresh: only the ordering rule can refuse the older.
 		at(new Date("2027-01-01T12:00:00.000Z"));
+		const first = await expectBody<Answer>(
+			await v1("POST", `/recurring/${id}/confirm`, {
+				dueAt: DUE_IN,
+				expectedUpdatedAt: STAMP,
+				auto: true,
+			}),
+			contract.recurring.confirm,
+		);
 		const second = await expectBody<Answer>(
 			await v1("POST", `/recurring/${id}/confirm`, {
 				dueAt: NEXT_IN,
@@ -363,11 +365,11 @@ describe("income confirmed with auto books what the sweep books", () => {
 			}),
 			contract.recurring.confirm,
 		);
-		const late = await v1("POST", "/recurring/undo", { token: first.undo });
-		expect(late.status).toBe(400);
-		expect(await late.json()).toMatchObject({
-			detail: "This undo is not valid anymore",
-		});
+		await expectProblem(
+			await v1("POST", "/recurring/undo", { token: first.undo }),
+			409,
+			"conflict",
+		);
 		expect(await booked(me)).toHaveLength(2);
 		const newest = await v1("POST", "/recurring/undo", { token: second.undo });
 		expect(newest.status, await newest.clone().text()).toBe(200);
