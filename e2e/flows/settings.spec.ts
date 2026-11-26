@@ -15,6 +15,14 @@ test.use({ storageState: personaStorageState(SOFIA.username) });
 async function openSettings(page: Page) {
 	await gotoReady(page, "/settings");
 	await expect(page.locator(V2)).toBeVisible();
+	// Each section loads its own data, and the cheap ones land first. A section
+	// above the row a test is about to use that is still a skeleton grows when
+	// its data lands and pushes that row (and an open menu, which is fixed to
+	// it) below the fold, where the browser can no longer scroll to it. The
+	// skeletons are aria-busy, so wait for none.
+	await expect(page.locator(`${V2} [aria-busy="true"]`)).toHaveCount(0, {
+		timeout: 30_000,
+	});
 }
 
 test.describe("Settings v2", () => {
