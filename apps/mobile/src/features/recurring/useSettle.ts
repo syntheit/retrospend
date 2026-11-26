@@ -1,9 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
 import { transportFor } from "@/data/transport";
 import { announceEntryChange } from "@/features/entry/events";
+import { isOfflineError } from "@/features/entry/preview";
 import { undoSaved } from "@/features/entry/queue";
 import { useToast } from "@/ui/Toast";
 import type { SettleAnswer, SettleDevice } from "./deviceSettle";
@@ -22,6 +23,31 @@ export function useSettleDevice(item: RecurringItem): SettleDevice | null {
 	if (!api || !local || item.direction !== "out") return null;
 	const writes = deviceWrites(api);
 	return writes ? { api, outbox: local.outbox, writes } : null;
+}
+
+/**
+ * Whether the last dry run failed because the server could not be reached.
+ * Only then does Save wait on the phone and the sheet say so: any other
+ * failure (a 5xx, a timeout while online) keeps the sheet's error line and
+ * Save off, as with the flag off. `track` wraps the sheet's dry run.
+ */
+export function useOfflineDryRun() {
+	const [offline, setOffline] = useState(false);
+	const track = useCallback(
+		<T>(run: Promise<T>): Promise<T> =>
+			run.then(
+				(value) => {
+					setOffline(false);
+					return value;
+				},
+				(error: unknown) => {
+					setOffline(isOfflineError(error));
+					throw error;
+				},
+			),
+		[],
+	);
+	return { offline, track };
 }
 
 /**

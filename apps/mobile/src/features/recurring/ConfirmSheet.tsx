@@ -19,7 +19,7 @@ import {
 	settleOnDevice,
 } from "./deviceSettle";
 import type { RecurringItem } from "./source";
-import { useSettleDevice, useSettleToast } from "./useSettle";
+import { useOfflineDryRun, useSettleDevice, useSettleToast } from "./useSettle";
 
 /** A calendar day ("2026-11-01") as "Nov 1". */
 export function useDayText() {
@@ -68,6 +68,7 @@ export function ConfirmSheet({
 	const tOffline = useTranslations("mobile.composer.changes");
 	const device = useSettleDevice(item);
 	const settled = useSettleToast();
+	const { offline, track } = useOfflineDryRun();
 	const money = useMoneyText();
 	const day = useDayText();
 	const locale = useAmountLocale();
@@ -108,7 +109,9 @@ export function ConfirmSheet({
 						{ key: "next", label: t("nextDue"), value: day(item.nextAfter) },
 					]}
 					message={
-						device && status === "failed" ? tOffline("offline") : undefined
+						device && offline && status === "failed"
+							? tOffline("offline")
+							: undefined
 					}
 					preview={preview}
 					status={status}
@@ -135,10 +138,10 @@ export function ConfirmSheet({
 			onDone={onDone}
 			preview={(api, body) =>
 				device
-					? previewSettle(device, "confirm", body)
+					? track(previewSettle(device, "confirm", body))
 					: api.recurring.previewConfirm(body)
 			}
-			queuesOffline={device !== null}
+			queuesOffline={device !== null && offline}
 			submitLabel={t(item.direction === "in" ? "submitIn" : "submitOut")}
 			title={t("title", { title: item.title })}
 			visible={visible}

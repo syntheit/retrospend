@@ -346,6 +346,18 @@ describe("Confirm under the dev flag", () => {
 		act(() => tree.unmount());
 	});
 
+	it("a server error while online keeps Save off and the error line, with no offline note", async () => {
+		const { recurring } = setup();
+		recurring.previewConfirm.mockRejectedValue(
+			Object.assign(new Error("boom"), { status: 503, code: "unavailable" }),
+		);
+		const { tree } = await openConfirm();
+		expect(disabled(tree, "Log expense")).toBe(true);
+		expect(textOf(tree)).not.toContain("You're offline");
+		expect(textOf(tree)).toContain("Couldn't check this. Try again.");
+		act(() => tree.unmount());
+	});
+
 	it("keeps Save off when the server refuses the dry run", async () => {
 		const { recurring } = setup();
 		recurring.previewConfirm.mockRejectedValue(
@@ -435,6 +447,17 @@ describe("Skip under the dev flag", () => {
 			token: "tok-s",
 		});
 		expect(calls.some((c) => c.route === "undo")).toBe(false);
+		act(() => tree.unmount());
+	});
+
+	it("a server error while online keeps Skip off, with no offline note", async () => {
+		const { recurring } = setup();
+		recurring.previewSkip.mockRejectedValue(
+			Object.assign(new Error("boom"), { status: 503, code: "unavailable" }),
+		);
+		const { tree } = await openSkip();
+		expect(disabled(tree, "Skip")).toBe(true);
+		expect(textOf(tree)).not.toContain("You're offline");
 		act(() => tree.unmount());
 	});
 

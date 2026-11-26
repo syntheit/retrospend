@@ -10,7 +10,7 @@ import {
 	settleOnDevice,
 } from "./deviceSettle";
 import type { RecurringItem } from "./source";
-import { useSettleDevice, useSettleToast } from "./useSettle";
+import { useOfflineDryRun, useSettleDevice, useSettleToast } from "./useSettle";
 
 /**
  * Skip one due recurring item: nothing is logged and the template moves to
@@ -35,6 +35,7 @@ export function SkipSheet({
 	const tOffline = useTranslations("mobile.composer.changes");
 	const device = useSettleDevice(item);
 	const settled = useSettleToast();
+	const { offline, track } = useOfflineDryRun();
 	const day = useDayText();
 	const toast = t("toast", { title: item.title, date: day(item.nextAfter) });
 	return (
@@ -45,7 +46,9 @@ export function SkipSheet({
 						{ key: "next", label: tc("nextDue"), value: day(item.nextAfter) },
 					]}
 					message={
-						device && status === "failed" ? tOffline("offline") : undefined
+						device && offline && status === "failed"
+							? tOffline("offline")
+							: undefined
 					}
 					preview={preview}
 					status={status}
@@ -72,10 +75,10 @@ export function SkipSheet({
 			onDone={onDone}
 			preview={(api, body) =>
 				device
-					? previewSettle(device, "skip", body)
+					? track(previewSettle(device, "skip", body))
 					: api.recurring.previewSkip(body)
 			}
-			queuesOffline={device !== null}
+			queuesOffline={device !== null && offline}
 			submitLabel={t("submit")}
 			title={t("title", { title: item.title })}
 			visible={visible}

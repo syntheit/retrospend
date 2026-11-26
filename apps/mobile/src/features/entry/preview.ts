@@ -90,6 +90,16 @@ function refusal(
 	return code === "bad_request" && custom ? "split" : "other";
 }
 
+/**
+ * A thrown error that never reached the server (no status), or a 401, which is
+ * the session ending: the write waits on the phone for a connection or the
+ * next sign in. The one owner of what "offline" means for a dry run.
+ */
+export function isOfflineError(error: unknown): boolean {
+	const { status } = (error ?? {}) as { status?: number };
+	return status === undefined || status === 401;
+}
+
 export async function fetchPreview(
 	api: RetrospendClient,
 	write: PendingWrite,
@@ -116,11 +126,8 @@ export async function fetchPreview(
 	} catch (error) {
 		// A thrown error without a status never reached the server. A 401 is the
 		// session ending; the write waits on the phone for the next sign in.
-		const { status, code } = (error ?? {}) as {
-			status?: number;
-			code?: string;
-		};
-		if (status === undefined || status === 401) return { status: "offline" };
+		const { code } = (error ?? {}) as { code?: string };
+		if (isOfflineError(error)) return { status: "offline" };
 		return {
 			status: "refused",
 			reason: refusal(write, code),
