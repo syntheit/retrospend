@@ -177,14 +177,16 @@ describe("a confirm on the device", () => {
 		expect(JSON.stringify(entries[0]?.device)).not.toContain("Netflix");
 	});
 
-	it("a retry of the same body finds it queued and writes no second entry", async () => {
-		const { device, recurring, outbox } = setup();
+	it("a retry of the same body finds it queued: no second entry, and it is not its own earlier write that is busy", async () => {
+		const { device, recurring, outbox, writes } = setup();
 		recurring.confirm.mockRejectedValue(network());
 		const again = () =>
 			settleOnDevice({ device, kind: "confirm", body, clientId: CID, item });
-		await again();
-		await again();
+		expect(await again()).toEqual({ settled: "queued", clientId: CID });
+		// The first send began and got no answer: attempts is 1 now.
+		expect(await again()).toEqual({ settled: "queued", clientId: CID });
 		expect(await outbox.all()).toHaveLength(1);
+		expect(writes.book).toHaveBeenCalledTimes(1);
 	});
 
 	it("is parked, not lost, when the server refuses it", async () => {
