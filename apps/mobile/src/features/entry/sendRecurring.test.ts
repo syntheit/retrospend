@@ -104,6 +104,25 @@ describe("sending a recurring confirm", () => {
 		);
 	});
 
+	it("a poster entry's confirm is an auto post: the server books it as its sweep does, a person's is not", async () => {
+		const { api, recurring } = recurringApi();
+		await createEntrySender(apiTransport(api))(entry({ origin: "poster" }));
+		expect(recurring.confirm).toHaveBeenCalledWith(
+			{
+				id: TEMPLATE,
+				expenseId: KEY,
+				dueAt: DUE,
+				expectedUpdatedAt: STAMP,
+				auto: true,
+			},
+			expect.anything(),
+		);
+		recurring.confirm.mockClear();
+		await createEntrySender(apiTransport(api))(entry());
+		const [plain] = recurring.confirm.mock.calls[0] as unknown as [object];
+		expect(plain).not.toHaveProperty("auto");
+	});
+
 	it("names the booked expense's own version when the answer carries one; an older server's answer gives none", async () => {
 		const { api, recurring } = recurringApi();
 		recurring.confirm.mockResolvedValueOnce({

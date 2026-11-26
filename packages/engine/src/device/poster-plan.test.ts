@@ -24,8 +24,9 @@ const rates = {
 		},
 	],
 };
-const plan = (autoPost: boolean, skip: string[] = []) => ({
+const plan = (autoPost: boolean, skip: string[] = [], income = true) => ({
 	autoPost,
+	income,
 	isProtected: async () => false,
 	skip: new Set(skip),
 });
@@ -65,9 +66,9 @@ describe("DeviceEngine.planPoster", () => {
 		expect(plans?.map((p) => p.templateId)).toEqual(["t2"]);
 	});
 
-	// The domain plans an income template (poster.test.ts); the phone's poster
-	// does not send one until v1's income confirm takes a client id and a stamp.
-	it("leaves out an income template, which the phone cannot send yet", async () => {
+	// The domain plans an income template as the server's sweep posts it
+	// (poster.test.ts), and the phone sends it with `auto`.
+	it("plans an income template as it plans an expense one", async () => {
 		const { api } = fakeDeviceApi({
 			rates,
 			expenses: [page([])],
@@ -77,6 +78,20 @@ describe("DeviceEngine.planPoster", () => {
 		const e = createDeviceEngine(api, "u1", () => NOW, { warn: vi.fn() });
 		await e.pull();
 		const plans = await e.planPoster(plan(true));
+		expect(plans?.map((p) => p.templateId)).toEqual(["t1", "t3"]);
+		expect(plans?.[1]?.run.entries).toHaveLength(1);
+	});
+
+	it("leaves an income template out when the server does not take auto, and plans the expense one as ever", async () => {
+		const { api } = fakeDeviceApi({
+			rates,
+			expenses: [page([])],
+			transfers: [page([])],
+			templates: [page([template("t1"), template("t3", { direction: "IN" })])],
+		});
+		const e = createDeviceEngine(api, "u1", () => NOW, { warn: vi.fn() });
+		await e.pull();
+		const plans = await e.planPoster(plan(true, [], false));
 		expect(plans?.map((p) => p.templateId)).toEqual(["t1"]);
 	});
 

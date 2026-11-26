@@ -27,7 +27,8 @@ const text = (v: { toString(): string } | null | undefined) =>
  * moved), and whether the expense the write named (`expenseId`, the confirm's
  * client id) is in the store as an expense of the template. The id is the
  * exact proof: a confirm paid on another day books on that day, not on `dueAt`.
- * `version` is the template's `updatedAt` as pulled, the stamp Try again checks
+ * `autoPay` is its auto-pay setting (with `amountMode`, whether an auto post
+ * is still allowed). `version` is the template's `updatedAt` as pulled, the stamp Try again checks
  * the re-based write against (null for a template the device made itself).
  */
 export type TemplateSeen =
@@ -40,6 +41,7 @@ export type TemplateSeen =
 			version: string | null;
 			currency: string;
 			amountMode: "FIXED" | "ASK";
+			autoPay: boolean;
 	  };
 
 export function templateSeenOf(
@@ -59,6 +61,7 @@ export function templateSeenOf(
 		version: row.version,
 		currency: row.currency,
 		amountMode: row.amountMode === "ASK" ? "ASK" : "FIXED",
+		autoPay: row.autoPay,
 	};
 }
 

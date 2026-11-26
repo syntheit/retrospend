@@ -27,6 +27,7 @@ import {
 } from "~/server/services/recurring.service";
 import {
 	confirmRecurringExpense,
+	confirmRecurringIncomeRow,
 	unconfirmRecurringExpense,
 } from "~/server/services/recurring-confirm.mutation";
 import { createRecurring } from "~/server/services/recurring-create.mutation";
@@ -237,7 +238,7 @@ export function previewUndoRemoveRecurring(
 
 type ConfirmInput = z.infer<typeof confirmRecurringSchema>;
 
-/** Recurring income has its own confirm: it takes no client id and no template stamp. */
+/** A person's recurring income confirm takes no client id and no template stamp (income with `auto` is the sweep's booking instead). */
 const EXPENSE_ONLY = ["expenseId", "expectedUpdatedAt"] as const;
 
 const INCOME_ONLY = [
@@ -291,8 +292,21 @@ function expenseInput(caller: LedgerCaller, input: ConfirmInput) {
 		timeZone: caller.timeZone,
 		expenseId: input.expenseId,
 		expectedUpdatedAt: stampOf(input.expectedUpdatedAt),
+		auto: input.auto,
 	};
 }
+
+/**
+ * Income goes to its own mutation unless the confirm is an auto post (the
+ * phone's poster): that books what the sweep books, through the one
+ * confirmRecurringExpense. The choice is `auto`, never an expense id or a stamp.
+ */
+const isIncomeConfirm = (direction: string, input: ConfirmInput) =>
+	direction === "IN" && input.auto !== true;
+
+/** The confirm that books a template's row, declaring the figures that row moves. */
+const confirmMutationFor = (direction: string) =>
+	direction === "IN" ? confirmRecurringIncomeRow : confirmRecurringExpense;
 
 export async function confirmRecurring(
 	caller: LedgerCaller,
@@ -300,7 +314,7 @@ export async function confirmRecurring(
 ) {
 	const { db, principal } = caller;
 	const direction = await templateDirection(db, principal.userId, input.id);
-	if (direction === "IN") {
+	if (isIncomeConfirm(direction, input)) {
 		const v = await applyWrite(
 			caller,
 			confirmRecurringIncome,
@@ -328,14 +342,14 @@ export async function confirmRecurring(
 	}
 	const v = await applyWrite(
 		caller,
-		confirmRecurringExpense,
+		confirmMutationFor(direction),
 		expenseInput(caller, input),
 	);
 	return {
 		confirmed: {
 			expenseId: v.expenseId,
 			templateId: v.templateId,
-			direction: "out" as const,
+			direction: direction === "IN" ? ("in" as const) : ("out" as const),
 			nextDueAt: v.nextDueAt.toISOString(),
 			booked: null,
 			account: null,
@@ -344,11 +358,18 @@ export async function confirmRecurring(
 			templateUpdatedAt: v.templateUpdatedAt.toISOString(),
 			expenseUpdatedAt: v.expenseUpdatedAt.toISOString(),
 		},
-		undo: undoFor(caller, FAMILY, "recurring.unconfirm", {
-			expenseId: v.expenseId,
-			dueAt: v.dueAt.toISOString(),
-			anchorDay: v.anchorDay,
-		}),
+		// An income row the auto post booked is taken back by the income undo,
+		// which the expense undo refuses (it takes OUT rows); the row has no leg.
+		undo: undoFor(
+			caller,
+			FAMILY,
+			direction === "IN" ? "income.unconfirmRecurring" : "recurring.unconfirm",
+			{
+				expenseId: v.expenseId,
+				dueAt: v.dueAt.toISOString(),
+				anchorDay: v.anchorDay,
+			},
+		),
 	};
 }
 
@@ -358,11 +379,11 @@ export async function previewConfirmRecurring(
 ) {
 	const { db, principal } = caller;
 	const direction = await templateDirection(db, principal.userId, input.id);
-	return direction === "IN"
+	return isIncomeConfirm(direction, input)
 		? previewWrite(caller, confirmRecurringIncome, incomeInput(caller, input))
 		: previewWrite(
 				caller,
-				confirmRecurringExpense,
+				confirmMutationFor(direction),
 				expenseInput(caller, input),
 			);
 }

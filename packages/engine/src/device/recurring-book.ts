@@ -14,17 +14,21 @@ import type { ConfirmBody, SettleBody } from "./book";
 // template version the server holds is decided at send, and a device view
 // that has moved on only makes this booking a refusal (the server decides).
 //
-// A person's income confirm or skip is not booked here: v1 answers an income
-// confirm without a client id or a template stamp and the phone's income
-// confirm carries options the device cannot book (the account, keep, the plan),
-// so it stays online (M4, PR B). The engine's own confirm and skip do take an
-// income template, which the poster plans (poster.ts).
+// A person's income confirm or skip is not booked here: the phone's income
+// confirm carries options the device cannot book (the account, keep, the
+// plan), so it stays online. The one income the device books is the poster's
+// (`auto`), row only as the server's sweep posts it; the engine's own confirm
+// and skip take an income template (poster.ts plans it).
 
-/** A write that refuses an income template before it plans anything. */
+/** A write that refuses an income template before it plans anything, unless it is the poster's. */
 const offIncome =
-	(templateId: string, write: WriteFn<unknown>): WriteFn<unknown> =>
+	(
+		templateId: string,
+		write: WriteFn<unknown>,
+		poster = false,
+	): WriteFn<unknown> =>
 	(r) => {
-		if (r.recurringTemplates.get(templateId)?.direction === "IN")
+		if (!poster && r.recurringTemplates.get(templateId)?.direction === "IN")
 			throw new InvalidInputError(INCOME_NOT_ON_DEVICE);
 		return write(r);
 	};
@@ -55,11 +59,13 @@ export function recurringPlanOf(
 			confirmRecurring({
 				...period,
 				clientId: op.body.expenseId,
+				...(op.body.auto ? { auto: true } : {}),
 				...(op.body.amount !== undefined
 					? { confirmedAmount: op.body.amount }
 					: {}),
 				...(op.body.paidOn !== undefined ? { paidOn: op.body.paidOn } : {}),
 			}),
+			op.body.auto === true,
 		),
 	};
 }

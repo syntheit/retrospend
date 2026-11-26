@@ -32,6 +32,8 @@ const seen = (over: Partial<Extract<TemplateSeen, { found: true }>> = {}) =>
 		paused: false,
 		passed: false,
 		posted: false,
+		autoPay: true,
+		amountMode: "FIXED",
 		...over,
 	}) as TemplateSeen;
 
@@ -136,6 +138,19 @@ describe("a parked 404 of a recurring write", () => {
 				retryable: true,
 			});
 			expect(await outbox.all()).toHaveLength(1);
+		}
+	});
+
+	it("auto-pay turned off or Ask each time: a poster entry the server refused retires, a person's stays Couldn't sync", async () => {
+		for (const over of [{ autoPay: false }, { amountMode: "ASK" as const }]) {
+			mockSince.mockResolvedValue(seen(over));
+			const poster = await parked(PARKED_NOT_FOUND, { origin: "poster" });
+			expect(await resolveParked(poster.outbox, api, poster.entry)).toBeNull();
+			expect(await poster.outbox.all()).toEqual([]);
+			const person = await parked(PARKED_NOT_FOUND);
+			expect(
+				await resolveParked(person.outbox, api, person.entry),
+			).toMatchObject({ gone: false, retryable: true });
 		}
 	});
 

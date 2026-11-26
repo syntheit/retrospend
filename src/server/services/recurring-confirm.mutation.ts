@@ -10,6 +10,7 @@ import { planConfirm } from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { EXPENSE_FIGURES } from "./entry/expense.mutation";
+import { INCOME_ROW_FIGURES } from "./income/add.mutation";
 import { postTemplateOf, recurringTitle } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
 import {
@@ -37,9 +38,10 @@ export interface ConfirmRecurringExpenseInput {
 	/** A client-made id for the entry; a taken one is a unique violation (id_taken). */
 	readonly expenseId?: string;
 	/**
-	 * Set only by the auto-post sweep (recurring-auto-post.ts), never by a
-	 * transport: the template must still pay automatically with a fixed
-	 * amount, since the sweep read it before this transaction.
+	 * An auto post (the sweep, recurring-auto-post.ts, or the phone's poster
+	 * through v1's `auto`): the template must still pay automatically with a
+	 * fixed amount, since the caller read it before this transaction. A
+	 * transport may set it because it only adds a refusal.
 	 */
 	readonly auto?: boolean;
 }
@@ -58,18 +60,19 @@ export interface ConfirmedExpense {
 	readonly anchorDay: number | null;
 }
 
-// The confirm books an expense, so it moves what expense.create does.
-const FIGURES = EXPENSE_FIGURES;
 
 export const confirmRecurringExpense: MoneyMutation<
 	ConfirmRecurringExpenseInput,
 	ConfirmedExpense
 > = {
 	id: "recurring.confirm",
-	touches: FIGURES,
+	// An expense row moves what expense.create does; an income template's row
+	// goes through `confirmRecurringIncomeRow`, which declares what it moves.
+	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
-		// Either direction: the web's older confirm still posts recurring income
-		// through here. /api/v1 sends income to its own mutation. The plan
+		// Either direction: the web's confirm and an auto post (the sweep, the
+		// phone's poster through v1) book recurring income here, as the row only.
+		// A person's income confirm on /api/v1 has its own mutation. The plan
 		// refuses a paused template, or an auto post's template that no longer
 		// pays automatically with a fixed amount.
 		const template = await tx.recurringTemplate.findFirst({
@@ -140,6 +143,16 @@ export const confirmRecurringExpense: MoneyMutation<
 	},
 };
 
+/**
+ * The same write for an income template: a row-only INCOME row raises Not
+ * planned yet and left to spend, so a preview must read those figures. Callers
+ * that know the direction pick this one.
+ */
+export const confirmRecurringIncomeRow: typeof confirmRecurringExpense = {
+	...confirmRecurringExpense,
+	touches: INCOME_ROW_FIGURES,
+};
+
 export interface UnconfirmRecurringExpenseInput {
 	readonly expenseId: string;
 	/**
@@ -166,7 +179,7 @@ export const unconfirmRecurringExpense: MoneyMutation<
 	UnconfirmedExpense
 > = {
 	id: "recurring.unconfirm",
-	touches: FIGURES,
+	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
 		const row = await tx.expense.findFirst({
 			where: {

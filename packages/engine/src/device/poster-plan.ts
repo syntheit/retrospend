@@ -9,11 +9,10 @@ import { readRepos } from "../repos";
 // has an unsent or acked entry is the caller's to leave out (`skip`), because
 // its pull has not come back.
 //
-// Income templates are left out here, not in the domain's poster: the domain
-// plans them as the server's sweep posts them (recurring-post/poster.ts), but
-// the phone has no way to send one yet. v1's income confirm refuses an
-// `expenseId` and an `expectedUpdatedAt`, which every poster entry carries, so a
-// queued entry would only park. The phone's poster (M4, PR B) removes this.
+// Income templates are planned like any other: the domain plans them as the
+// server's sweep posts them (recurring-post/poster.ts), row only, and the
+// phone sends each entry with `auto` so v1 books it as the sweep does, when
+// the server says it takes `auto` (`income`).
 
 export interface PosterTemplatePlan {
 	readonly templateId: string;
@@ -28,6 +27,12 @@ export interface PosterPlansInput {
 	readonly now: Date;
 	/** The server's auto-post setting: off means the poster plans nothing. */
 	readonly autoPost: boolean;
+	/**
+	 * Whether the server takes `auto` on a confirm (features.autoConfirm): off,
+	 * an income template is left out, since an older server would run its entry
+	 * as a person's income confirm and refuse it.
+	 */
+	readonly income: boolean;
 	/** Whether the account is protected; a read that fails must say yes. */
 	readonly isProtected: () => Promise<boolean>;
 	/** Templates left out: they have entries the phone has not seen back. */
@@ -41,7 +46,8 @@ export async function planPosterIn(
 	const r = readRepos(view);
 	const plans: PosterTemplatePlan[] = [];
 	for (const row of r.recurringTemplates.list()) {
-		if (input.skip.has(row.id) || row.direction === "IN") continue;
+		if (input.skip.has(row.id) || (row.direction === "IN" && !input.income))
+			continue;
 		const run = await planPosterOver(r, {
 			templateId: row.id,
 			now: input.now,

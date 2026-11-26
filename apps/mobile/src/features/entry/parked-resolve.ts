@@ -67,6 +67,8 @@ const discardOnly = (entry: OutboxEntry, gone = false): ParkedEntry => ({
  *   posted" leaves only if the pull shows the expense it named (its client
  *   id, whatever day a paid-on confirm booked it on); any other person's entry shows "Changed on another device", with
  *   Discard only. Nothing a person typed disappears without a word.
+ * - A poster entry whose template no longer pays automatically with a fixed
+ *   amount leaves too (the server refused it as an auto post).
  * - Template still due and active, but a typed amount no longer fits it (the
  *   currency changed, or it stopped asking): "Changed on another device", with
  *   Discard only.
@@ -101,10 +103,15 @@ async function resolveTemplate(
 			: parkedFrom(entry);
 	const poster = originOf(entry) === "poster";
 	const settledPeriod = seen.found && (seen.passed || seen.paused);
+	// The server refuses a poster entry (an auto post) with a 404 when the
+	// template no longer pays automatically with a fixed amount: the next run
+	// plans nothing for it, so the entry has nothing left to do.
+	const autoOff =
+		seen.found && (!seen.autoPay || seen.amountMode !== "FIXED");
 	const retire = !seen.found
 		? poster || entry.kind === "skip"
 		: poster
-			? settledPeriod
+			? settledPeriod || autoOff
 			: entry.kind === "confirm" &&
 				entry.lastError === RECURRING_ALREADY_POSTED &&
 				seen.passed &&

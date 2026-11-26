@@ -11,7 +11,7 @@ import {
 	type PosterOutboxEntry,
 	type PosterTaskDeps,
 	posterOutboxEntry,
-	readAutoPost,
+	readServerAuto,
 	readProtected,
 	runPoster,
 	runPosterTask,
@@ -65,6 +65,8 @@ const ACKS = [
 interface Options {
 	templates?: ReturnType<typeof template>[];
 	autoPost?: boolean;
+	/** features.autoConfirm; absent from a server before contract 1.13.0. */
+	autoConfirm?: boolean | null;
 	keys?: "none" | "keyed" | "down";
 	now?: string;
 	confirm?: (n: number) => unknown;
@@ -98,7 +100,12 @@ async function setup(options: Options = {}) {
 			: problem(404, "not_found");
 	});
 	const serverInfo = jest.fn(async () => ({
-		features: { autoPost: options.autoPost ?? true },
+		features: {
+			autoPost: options.autoPost ?? true,
+			...(options.autoConfirm === null
+				? {}
+				: { autoConfirm: options.autoConfirm ?? true }),
+		},
 	}));
 	const client = Object.assign(fake.client, {
 		recurring: { confirm },
@@ -134,6 +141,7 @@ describe("a poster run", () => {
 			id: "t1",
 			dueAt: "2026-12-01T03:00:00.000Z",
 			expectedUpdatedAt: STAMP,
+			auto: true,
 		});
 		// Sent and acked: the acked list keeps the device's booking until a pull.
 		const { open: left, acked } = await outbox.snapshot();
@@ -264,21 +272,24 @@ describe("what stops the poster", () => {
 	it("plans nothing when the server does not say, or cannot be asked", async () => {
 		const { client, serverInfo } = await setup();
 		serverInfo.mockResolvedValueOnce({ features: {} } as never);
-		expect(await readAutoPost(client)).toBe(false);
+		const off = { autoPost: false, income: false };
+		expect(await readServerAuto(client)).toEqual(off);
 		serverInfo.mockRejectedValueOnce(new Error("Network request failed"));
-		expect(await readAutoPost(client)).toBe(false);
+		expect(await readServerAuto(client)).toEqual(off);
 	});
 
 	it("the engine itself plans nothing for auto-post off", async () => {
 		const { engine } = await setup();
 		const none = await engine.planPoster({
 			autoPost: false,
+			income: true,
 			isProtected: async () => false,
 			skip: new Set(),
 		});
 		expect(none).toEqual([]);
 		const some = await engine.planPoster({
 			autoPost: true,
+			income: true,
 			isProtected: async () => false,
 			skip: new Set(),
 		});
@@ -305,15 +316,70 @@ describe("what stops the poster", () => {
 		expect(await readProtected(client)).toBe(true);
 	});
 
-	it("never plans an income template", async () => {
+	it("posts an income template as an auto confirm with the stamp, booked row only on the device", async () => {
 		const { client, outbox, confirm } = await setup({
 			templates: [template("t1", { direction: "IN" })],
 		});
+		expect(await runPoster({ api: client, outbox })).toEqual({
+			status: "ran",
+			queued: 1,
+			stoppedByPull: false,
+		});
+		expect(confirm.mock.calls[0]?.[0]).toEqual({
+			id: "t1",
+			dueAt: "2026-12-01T03:00:00.000Z",
+			expenseId: expect.stringMatching(/^c\d+$/),
+			expectedUpdatedAt: STAMP,
+			auto: true,
+		});
+		const { acked } = await outbox.snapshot();
+		const changes = acked[0]?.device?.changes ?? [];
+		expect(changes.map((c) => c.table)).toEqual([
+			"expenses",
+			"recurringTemplates",
+		]);
+		const row = changes[0]?.after as { direction: string } | undefined;
+		expect(row?.direction).toBe("IN");
+	});
+
+	it("a server that does not say it takes auto (before 1.13.0) gets no income entry: the expense template posts, the income one is left alone", async () => {
+		const { client, outbox, confirm } = await setup({
+			autoConfirm: null,
+			templates: [
+				template("t1"),
+				template("t2", { name: "Salary", direction: "IN" }),
+			],
+		});
 		expect(await runPoster({ api: client, outbox })).toMatchObject({
 			status: "ran",
+			queued: 1,
+		});
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(confirm.mock.calls[0]?.[0]).toMatchObject({ id: "t1" });
+		// Asked to say it does not take auto, it is the same.
+		const off = await setup({
+			autoConfirm: false,
+			templates: [template("t2", { direction: "IN" })],
+		});
+		expect(await runPoster({ api: off.client, outbox: off.outbox })).toMatchObject({
 			queued: 0,
 		});
-		expect(confirm).not.toHaveBeenCalled();
+	});
+
+	it("a person's income confirm, without auto, is never booked by the device", async () => {
+		const { engine } = await setup({
+			templates: [template("t1", { direction: "IN" })],
+		});
+		expect(
+			await engine.book({
+				kind: "confirm",
+				body: {
+					templateId: "t1",
+					dueAt: "2026-12-01T03:00:00.000Z",
+					expenseId: "p1",
+				},
+			}),
+		).toBeNull();
 	});
 
 	it("plans nothing for a template that is paused, not due, or asks for an amount", async () => {

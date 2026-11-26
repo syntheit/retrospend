@@ -499,6 +499,10 @@ async function settle(
 		{
 			...stamped,
 			expenseId: entry.clientId,
+			// A poster entry is an auto post: the server refuses it unless the
+			// template still pays automatically with a fixed amount, and books
+			// recurring income as its sweep does.
+			...(originOf(entry) === "poster" ? { auto: true as const } : {}),
 			...(body.amount !== undefined ? { amount: body.amount } : {}),
 			...(body.paidOn !== undefined ? { paidOn: body.paidOn } : {}),
 		},

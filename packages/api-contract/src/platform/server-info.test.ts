@@ -23,6 +23,21 @@ describe("serverInfoSchema features.autoPost", () => {
 		).toBe(true);
 	});
 
+	it("takes features.autoConfirm, and a server before 1.13.0 may leave it out", () => {
+		expect(
+			serverInfoSchema.safeParse({
+				...BASE,
+				features: { advancedProtection: false, autoPost: true, autoConfirm: true },
+			}).success,
+		).toBe(true);
+		expect(
+			serverInfoSchema.safeParse({
+				...BASE,
+				features: { advancedProtection: false, autoPost: true, autoConfirm: "yes" },
+			}).success,
+		).toBe(false);
+	});
+
 	it("refuses a missing or non-boolean value", () => {
 		expect(
 			serverInfoSchema.safeParse({

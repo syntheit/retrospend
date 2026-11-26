@@ -190,6 +190,13 @@ export function autoPostOffReason(
 	return nodeEnv === "production" ? null : "environment";
 }
 
+/**
+ * Whether this server's recurring confirm takes `auto` (contract 1.13.0), told
+ * to apps as features.autoConfirm: an app that posts recurring income itself
+ * plans it only when this is true. The one owner, beside autoPostEnabled.
+ */
+export const AUTO_CONFIRM = true;
+
 /** RECURRING_AUTO_POST, or when unset, on in production only. */
 export function autoPostEnabled(
 	setting = env.RECURRING_AUTO_POST,
