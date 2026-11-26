@@ -48,7 +48,7 @@ const MIDNIGHT_HOUR: Record<string, number> = {
 const postedOf = (row: ExpenseRow): PostedRow => ({
 	...bookedOf(row),
 	id: row.id,
-	recurringTemplateId: row.recurringTemplateId,
+	recurringTemplateId: row.recurringTemplateId ?? null,
 });
 
 function localAdapter(): RecurringAdapter {

@@ -83,9 +83,9 @@ export interface ExpectedTemplate {
 	autoPay: boolean;
 	amount: string;
 	currency: string;
-	frequency: "WEEKLY" | "MONTHLY";
+	frequency: ComparedTemplate["frequency"];
 	categoryId: string | null;
-	amountMode: "FIXED" | "ASK";
+	amountMode: ComparedTemplate["amountMode"];
 }
 
 export interface TemplateVector {
