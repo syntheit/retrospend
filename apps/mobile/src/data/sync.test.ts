@@ -159,6 +159,14 @@ describe("flush with chains", () => {
 const ids = async (outbox: ReturnType<typeof createOutbox>) =>
 	(await outbox.all()).map((e) => [e.clientId, e.state, e.lastError]);
 
+/** Ends a run that keeps sending, so a broken rule fails a test instead of hanging it. */
+const capped =
+	(send: Sender, limit = 5): Sender =>
+	async (e) => {
+		if (--limit < 0) return { status: "retry", reason: "stop" };
+		return send(e);
+	};
+
 describe("recurring confirm and skip entries", () => {
 	it("second poster confirm carries the first ack's templateUpdatedAt", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
@@ -207,12 +215,15 @@ describe("recurring confirm and skip entries", () => {
 		await outbox.enqueue(confirm("c3", "t1", { after: "c2" }, poster));
 		await outbox.enqueue(confirm("d1", "t2", T0, poster));
 		const sent: string[] = [];
-		const report = await flushOutbox(outbox, async (e) => {
-			sent.push(e.clientId);
-			return e.clientId === "c1"
-				? { status: "retired" }
-				: { status: "sent", version: T1 };
-		});
+		const report = await flushOutbox(
+			outbox,
+			capped(async (e) => {
+				sent.push(e.clientId);
+				return e.clientId === "c1"
+					? { status: "retired" }
+					: { status: "sent", version: T1 };
+			}),
+		);
 		expect(sent).toEqual(["c1", "d1"]);
 		expect(report).toMatchObject({ retired: 1, sent: 1, conflicts: 0 });
 		expect(await outbox.all()).toEqual([]);
@@ -228,12 +239,15 @@ describe("recurring confirm and skip entries", () => {
 		);
 		await outbox.enqueue(confirm("p1", "t1", { after: "c2" }));
 		const sent: unknown[] = [];
-		await flushOutbox(outbox, async (e) => {
-			sent.push([e.clientId, e.baseVersion]);
-			return e.clientId === "c1"
-				? { status: "retired" }
-				: { status: "sent", version: T1 };
-		});
+		await flushOutbox(
+			outbox,
+			capped(async (e) => {
+				sent.push([e.clientId, e.baseVersion]);
+				return e.clientId === "c1"
+					? { status: "retired" }
+					: { status: "sent", version: T1 };
+			}),
+		);
 		expect(sent).toEqual([
 			["c1", T0],
 			["p1", T0],
@@ -247,12 +261,15 @@ describe("recurring confirm and skip entries", () => {
 			confirm("c1", "t1", { after: "p1" }, { origin: "poster" }),
 		);
 		const sent: unknown[] = [];
-		await flushOutbox(outbox, async (e) => {
-			sent.push([e.clientId, e.baseVersion]);
-			return e.clientId === "p1"
-				? { status: "retired" }
-				: { status: "sent", version: T1 };
-		});
+		await flushOutbox(
+			outbox,
+			capped(async (e) => {
+				sent.push([e.clientId, e.baseVersion]);
+				return e.clientId === "p1"
+					? { status: "retired" }
+					: { status: "sent", version: T1 };
+			}),
+		);
 		expect(sent).toEqual([
 			["p1", T0],
 			["c1", T0],
@@ -266,6 +283,8 @@ describe("recurring confirm and skip entries", () => {
 		const sent: string[] = [];
 		const report = await flushOutbox(outbox, async (e) => {
 			sent.push(e.clientId);
+			// A run that sends it again must end, so a broken hold fails instead of hanging.
+			if (sent.length > 3) return { status: "retry", reason: "stop" };
 			return e.clientId === "c1"
 				? { status: "later" }
 				: { status: "sent", version: T1 };
