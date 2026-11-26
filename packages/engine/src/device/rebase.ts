@@ -38,6 +38,8 @@ export type TemplateSeen =
 			passed: boolean;
 			posted: boolean;
 			version: string | null;
+			currency: string;
+			amountMode: "FIXED" | "ASK";
 	  };
 
 export function templateSeenOf(
@@ -55,6 +57,8 @@ export function templateSeenOf(
 		passed: row.nextDueDate.getTime() > due,
 		posted: r.get("expenses", expenseId)?.recurringTemplateId === id,
 		version: row.version,
+		currency: row.currency,
+		amountMode: row.amountMode === "ASK" ? "ASK" : "FIXED",
 	};
 }
 

@@ -137,6 +137,8 @@ describe("templateSeenOf", () => {
 			passed: false,
 			posted: false,
 			version: "v1",
+			currency: "USD",
+			amountMode: "FIXED",
 		});
 	});
 
@@ -153,6 +155,8 @@ describe("templateSeenOf", () => {
 			passed: true,
 			posted: true,
 			version: "v1",
+			currency: "USD",
+			amountMode: "FIXED",
 		});
 	});
 
@@ -180,6 +184,14 @@ describe("templateSeenOf", () => {
 		expect(await seen({ ...rows, expenses: [otherTemplate] })).toMatchObject({
 			posted: false,
 		});
+	});
+
+	it("reports the currency and amount mode the template has now", async () => {
+		expect(
+			await seen({
+				template: template({ currency: "ARS", amountMode: "ASK" }),
+			}),
+		).toMatchObject({ currency: "ARS", amountMode: "ASK" });
 	});
 
 	it("a paused template is paused", async () => {

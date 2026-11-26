@@ -25,6 +25,8 @@ const seen = (over: Partial<Extract<TemplateSeen, { found: true }>> = {}) =>
 		passed: false,
 		posted: false,
 		version: V2,
+		currency: "USD",
+		amountMode: "ASK",
 		...over,
 	}) as TemplateSeen;
 
@@ -113,10 +115,42 @@ describe("planRebase of a recurring entry", () => {
 			"a template the device made and the server has not named",
 			seen({ version: null }),
 		],
+		[
+			"a typed USD amount on a template that is ARS now",
+			seen({ currency: "ARS" }),
+		],
+		[
+			"a typed amount on a template that no longer asks for one",
+			seen({ amountMode: "FIXED" }),
+		],
 	])("is null, Discard only, for %s", async (_name, template) => {
 		const { writes, outbox } = setup(template);
 		await park(outbox);
 		expect(await planRebase({ outbox, writes, clientId: "c1" })).toBeNull();
+	});
+
+	it("keeps an amount typed for ARS while the template is still ARS, and needs none for a skip", async () => {
+		const ars = setup(seen({ currency: "ARS" }));
+		await park(ars.outbox, {
+			payload: { dueAt: DUE, amount: "15000", currency: "ARS", title: "Rent" },
+		});
+		expect(
+			await planRebase({
+				outbox: ars.outbox,
+				writes: ars.writes,
+				clientId: "c1",
+			}),
+		).toMatchObject({ op: { kind: "confirm", body: { amount: "15000" } } });
+		// A skip types no amount: a currency change does not stop it.
+		const skip = setup(seen({ currency: "EUR", amountMode: "FIXED" }));
+		await park(skip.outbox, { payload: { dueAt: DUE, title: "Rent" } }, "skip");
+		expect(
+			await planRebase({
+				outbox: skip.outbox,
+				writes: skip.writes,
+				clientId: "c1",
+			}),
+		).not.toBeNull();
 	});
 
 	it("is null for an entry that is not parked, and for one with no due date", async () => {

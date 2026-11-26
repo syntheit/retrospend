@@ -90,6 +90,8 @@ const seen = (over: Partial<Extract<TemplateSeen, { found: true }>> = {}) =>
 		passed: false,
 		posted: false,
 		version: V2,
+		currency: "USD",
+		amountMode: "ASK",
 		...over,
 	}) as TemplateSeen;
 const GONE: TemplateSeen = { found: false };
@@ -367,6 +369,32 @@ describe("Try again and Discard on a recurring row", () => {
 		);
 		await press(tree, DISCARD);
 		expect(await outbox.all()).toEqual([]);
+		act(() => tree.unmount());
+	});
+});
+
+describe("a typed amount that no longer fits the template", () => {
+	it("an ARS amount on a template that is USD now: Changed on another device, Discard only", async () => {
+		const ctx = setup();
+		await ctx.outbox.enqueue(
+			confirm("c1", "t1", STAMP, {
+				payload: {
+					dueAt: DUE,
+					amount: "15000",
+					currency: "ARS",
+					title: "Netflix",
+				},
+			}),
+		);
+		ctx.recurring.confirm.mockRejectedValue(problem(409, RECURRING_CHANGED));
+		mockSince.mockResolvedValue(seen({ currency: "USD" }));
+		await flushEntries(ctx.outbox, ctx.api, apiTransport(ctx.api));
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(<SyncIssues />);
+		});
+		expect(said(tree)).toContain("sync.changed");
+		expect(buttons(tree)).toEqual([DISCARD]);
 		act(() => tree.unmount());
 	});
 });

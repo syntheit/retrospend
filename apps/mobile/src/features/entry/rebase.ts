@@ -3,7 +3,7 @@ import type { DeviceWrites } from "@/data/device-engine";
 import { newClientId } from "@/data/ids";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
 import { deviceOf, exclusive } from "./queue";
-import { recurringPayloadOf } from "./send";
+import { type RecurringPayload, recurringPayloadOf } from "./send";
 import { settleOpOf } from "./settleOp";
 
 // Try again on a parked edit or delete that met another device's change. The
@@ -50,6 +50,23 @@ export interface RebasePlan {
 }
 
 /**
+ * Whether a typed amount still belongs to the template as a pull left it. The
+ * confirm body carries no currency, so an amount typed for ARS would book as
+ * USD if the template's currency changed since, and a template that no longer
+ * asks for an amount refuses one. The one owner of this rule: Try again and the
+ * Sync issues row (Discard only) both read it.
+ */
+export function typedAmountFits(
+	payload: Pick<RecurringPayload, "amount" | "currency">,
+	seen: { currency: string; amountMode: "FIXED" | "ASK" },
+): boolean {
+	return (
+		payload.amount === undefined ||
+		(seen.amountMode === "ASK" && seen.currency === payload.currency)
+	);
+}
+
+/**
  * A parked confirm or skip, saved again over the template as the last pull
  * left it. Only a template that is there, active, versioned and still due on
  * the entry's period re-bases: any other (gone, paused, the period posted,
@@ -69,6 +86,7 @@ async function planSettle(
 		entry.clientId,
 	);
 	if (!seen?.found || seen.paused || seen.passed || !seen.version) return null;
+	if (!typedAmountFits(payload, seen)) return null;
 	return {
 		// The new expense id is made when the entry is replaced.
 		op: settleOpOf(
