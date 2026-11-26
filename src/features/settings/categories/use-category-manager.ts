@@ -27,7 +27,7 @@ export interface CategoryManagerProps {
 	onOpenChange: (open: boolean) => void;
 	/** Open on this category instead of the first (the new Settings rows). */
 	initialCategoryId?: string | null;
-	/** What to do once open: add a new category, or ask to delete the initial one. */
+	/** What to do once open: add a new category, or open the delete sheet on the initial one. */
 	intent?: "add" | "delete" | null;
 }
 
@@ -38,7 +38,7 @@ interface CategoryData {
 	excludeByDefault: boolean;
 }
 
-/** The category manager's state: selection, the edit fields and every save, create and delete. */
+/** The category manager's state: selection, the edit fields and every save and create. */
 export function useCategoryManager({
 	open,
 	onOpenChange,
@@ -79,19 +79,14 @@ export function useCategoryManager({
 	const nameDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const nameInputRef = useRef<HTMLInputElement>(null);
 
-	// Delete state
-	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-	const [showReassignDialog, setShowReassignDialog] = useState(false);
-	const [reassignExpenseCount, setReassignExpenseCount] = useState(0);
-	const [replacementCategoryId, setReplacementCategoryId] =
-		useState("uncategorized");
+	// The delete and merge sheet
+	const [removing, setRemoving] = useState(false);
 
 	// tRPC
 	const { data: categories, refetch: refetchCategories } =
 		api.categories.getAll.useQuery();
 	const createMutation = api.categories.create.useMutation();
 	const updateMutation = api.categories.update.useMutation();
-	const deleteMutation = api.categories.delete.useMutation();
 
 	const selectedCategory = categories?.find((c) => c.id === selectedId);
 
@@ -174,11 +169,6 @@ export function useCategoryManager({
 	useEffect(() => {
 		if (open) setMobileView(initialCategoryId ? "detail" : "list");
 	}, [open, initialCategoryId]);
-
-	// Clear delete confirm when switching categories
-	useEffect(() => {
-		setShowDeleteConfirm(false);
-	}, [selectedId]);
 
 	// Cleanup timeouts
 	useEffect(() => {
@@ -359,7 +349,7 @@ export function useCategoryManager({
 			void handleAddCategory();
 		} else if (selectedId && selectedId === initialCategoryId) {
 			intentDone.current = true;
-			setShowDeleteConfirm(true);
+			setRemoving(true);
 		}
 	}, [
 		open,
@@ -370,66 +360,17 @@ export function useCategoryManager({
 		handleAddCategory,
 	]);
 
-	// --- Delete category ---
-	const confirmDelete = useCallback(async () => {
-		if (!selectedId) return;
-		try {
-			await deleteMutation.mutateAsync({ id: selectedId });
+	// --- Delete category (the sheet commits it; the selection moves off it) ---
+	const handleRemoved = useCallback(
+		async (id: string) => {
 			const result = await refetchCategories();
-			setShowDeleteConfirm(false);
-			const remaining = result.data?.filter(
-				(c: { id: string }) => c.id !== selectedId,
-			);
-			const next = remaining?.[0];
+			const next = result.data?.find((c: { id: string }) => c.id !== id);
 			setSelectedId(next?.id ?? null);
 			if (next) syncEditor(next);
 			setMobileView("list");
-			toast.saved(t("categoryDeleted"));
-		} catch (err) {
-			const errMsg = err instanceof Error ? err.message : t("failedToDelete");
-			const match = errMsg.match(/has (\d+) expense/);
-			if (match?.[1]) {
-				setShowDeleteConfirm(false);
-				setReassignExpenseCount(Number(match[1]));
-				setReplacementCategoryId("uncategorized");
-				setShowReassignDialog(true);
-				return;
-			}
-			toast.failed(errMsg);
-		}
-	}, [selectedId, deleteMutation, refetchCategories, syncEditor]);
-
-	const handleReassignAndDelete = useCallback(async () => {
-		if (!selectedId) return;
-		try {
-			const isUncategorized = replacementCategoryId === "uncategorized";
-			await deleteMutation.mutateAsync({
-				id: selectedId,
-				replacementCategoryId: isUncategorized
-					? undefined
-					: replacementCategoryId,
-				reassignToUncategorized: isUncategorized,
-			});
-			const result = await refetchCategories();
-			setShowReassignDialog(false);
-			const remaining = result.data?.filter(
-				(c: { id: string }) => c.id !== selectedId,
-			);
-			const next = remaining?.[0];
-			setSelectedId(next?.id ?? null);
-			if (next) syncEditor(next);
-			setMobileView("list");
-			toast.saved(t("categoryDeletedReassigned"));
-		} catch (err) {
-			toast.failed(err instanceof Error ? err.message : t("failedToDelete"));
-		}
-	}, [
-		selectedId,
-		replacementCategoryId,
-		deleteMutation,
-		refetchCategories,
-		syncEditor,
-	]);
+		},
+		[refetchCategories, syncEditor],
+	);
 
 	// Always include current color in picker if it's not in the reduced set
 	const displayColors = PICKER_COLORS.includes(editColor)
@@ -444,27 +385,20 @@ export function useCategoryManager({
 		saveStatus,
 		categories,
 		createMutation,
-		deleteMutation,
 		selectedCategory,
 		editName,
 		editIcon,
 		editColor,
 		editExclude,
 		nameInputRef,
-		showDeleteConfirm,
-		setShowDeleteConfirm,
-		showReassignDialog,
-		setShowReassignDialog,
-		reassignExpenseCount,
-		replacementCategoryId,
-		setReplacementCategoryId,
+		removing,
+		setRemoving,
 		displayName,
 		handleNameChange,
 		handleIconChange,
 		handleColorChange,
 		handleExcludeChange,
-		confirmDelete,
-		handleReassignAndDelete,
+		handleRemoved,
 		handleAddCategory,
 		handleOpenChange,
 		handleSelectCategory,

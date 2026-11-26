@@ -132,7 +132,7 @@ function SheetBody(
 								<Button
 									data-sheet-submit=""
 									disabled={props.submitDisabled}
-									kind="primary"
+									kind={props.submitKind ?? "primary"}
 									loading={s.busy}
 									onClick={() => void s.submit()}
 								>

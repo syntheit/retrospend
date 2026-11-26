@@ -228,7 +228,7 @@ export const REGISTRY: Primitive[] = [
 		file: "sheet",
 		status: "core",
 		plan: ["Sheet"],
-		job: "Sheet: one task that finishes in place. Dialog on desktop, medium and large detent sheet on phone; focus return, Cmd+Enter, nested Cancel returns to the parent",
+		job: "Sheet: one task that finishes in place. Dialog on desktop, medium and large detent sheet on phone; focus return, Cmd+Enter, nested Cancel returns to the parent; the submit can be danger for a destructive verb",
 	},
 	{
 		file: "sheet-changes",

@@ -7,17 +7,17 @@ import type { BaseVersion, DeviceBooking, OutboxEntry } from "./outbox";
 // functions over entries; outbox.ts owns the store and the order of steps.
 
 /**
- * The columns of an expense that hold a person's text. The outbox is a plain
- * key-value store, so a `device` row never keeps them (design item 2). This
- * list is a copy of the engine's EXPENSE_TEXT_COLUMNS: the engine stays out of
- * a release bundle, so it cannot be imported here. outbox.test holds the two
- * equal, so a new text column fails there.
+ * The columns of each table that hold a person's text. The outbox is a plain
+ * key-value store, so a `device` row never keeps them (design item 2). Each
+ * list is a copy of the engine's (EXPENSE_TEXT_COLUMNS, TEMPLATE_STRIPPED_COLUMNS):
+ * the engine stays out of a release bundle, so it cannot be imported here.
+ * outbox.test holds each equal to its engine list, so a new text column fails
+ * there; the table key makes a new table in `PendingChange` fail to compile.
  */
-export const DEVICE_TEXT_COLUMNS = [
-	"title",
-	"description",
-	"location",
-] as const;
+export const DEVICE_TEXT_COLUMNS = {
+	expenses: ["title", "description", "location"],
+	recurringTemplates: ["name", "websiteUrl", "paymentSource", "category"],
+} as const satisfies Record<PendingChange["table"], readonly string[]>;
 
 export const PARKED_CHAIN_LOST = "chain_lost";
 /** The server holds a newer version of the row than the entry was based on. */
@@ -33,10 +33,13 @@ export const replacementOf = (entry: OutboxEntry): string | null =>
 		? entry.lastError.slice(REPLACED.length)
 		: null;
 
-function bare<R extends object | null>(row: R): R {
+function bare<R extends object | null>(
+	table: PendingChange["table"],
+	row: R,
+): R {
 	if (row === null) return row;
 	const out: Record<string, unknown> = { ...row };
-	for (const column of DEVICE_TEXT_COLUMNS) delete out[column];
+	for (const column of DEVICE_TEXT_COLUMNS[table]) delete out[column];
 	return out as R;
 }
 
@@ -44,11 +47,20 @@ function bare<R extends object | null>(row: R): R {
 export function withoutDeviceText(device: DeviceBooking): DeviceBooking {
 	return {
 		...device,
-		changes: device.changes.map((c) => ({
-			...c,
-			before: bare(c.before),
-			after: bare(c.after),
-		})),
+		changes: device.changes.map(
+			(c): PendingChange =>
+				c.table === "expenses"
+					? {
+							...c,
+							before: bare(c.table, c.before),
+							after: bare(c.table, c.after),
+						}
+					: {
+							...c,
+							before: bare(c.table, c.before),
+							after: bare(c.table, c.after),
+						},
+		),
 	};
 }
 
@@ -90,12 +102,12 @@ export function stampedBy(
 	const written = new Set(acked.device?.changes.map((c) => c.id));
 	const device = dependent.device && {
 		...dependent.device,
-		changes: dependent.device.changes.map(
-			(c): PendingChange =>
-				c.before && written.has(c.id)
-					? { ...c, before: { ...c.before, version } }
-					: c,
-		),
+		changes: dependent.device.changes.map((c): PendingChange => {
+			if (!c.before || !written.has(c.id)) return c;
+			return c.table === "expenses"
+				? { ...c, before: { ...c.before, version } }
+				: { ...c, before: { ...c.before, version } };
+		}),
 	};
 	return { baseVersion: version, ...(device ? { device } : {}) };
 }

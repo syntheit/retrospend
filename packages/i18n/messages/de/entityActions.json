@@ -150,9 +150,7 @@
 			"label": "Diesmal überspringen"
 		},
 		"delete": {
-			"label": "Löschen",
-			"confirmTitle": "{name} löschen?",
-			"confirmButton": "Wiederkehrende Ausgabe löschen"
+			"label": "Löschen"
 		}
 	},
 	"category": {

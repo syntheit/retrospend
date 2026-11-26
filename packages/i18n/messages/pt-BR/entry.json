@@ -151,7 +151,12 @@
 			"budget_leftToSpend": "Disponível para gastar",
 			"budget_heldForOthers": "Guardado para outros",
 			"project_total": "Total do projeto",
-			"envelope_left": "Envelope"
+			"envelope_left": "Envelope",
+			"recurring_cost_out_month": "Custo recorrente por mês",
+			"recurring_cost_in_month": "Renda recorrente por mês",
+			"budget_planCost": "Custo do plano",
+			"budget_leftInLimits": "Disponível nos seus limites",
+			"budget_holds": "O que o orçamento guarda"
 		},
 		"figuresInline": {
 			"spent": "seus gastos",
@@ -165,7 +170,12 @@
 			"budget_leftToSpend": "o disponível para gastar",
 			"budget_heldForOthers": "o guardado para outros",
 			"project_total": "o total do projeto",
-			"envelope_left": "o envelope"
+			"envelope_left": "o envelope",
+			"recurring_cost_out_month": "custo recorrente por mês",
+			"recurring_cost_in_month": "renda recorrente por mês",
+			"budget_planCost": "o custo do plano",
+			"budget_leftInLimits": "o disponível nos seus limites",
+			"budget_holds": "o que o orçamento guarda"
 		}
 	},
 	"income": {

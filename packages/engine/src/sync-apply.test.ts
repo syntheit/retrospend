@@ -77,8 +77,12 @@ const template = (id: string, categoryId: string | null) =>
 		frequency: "MONTHLY",
 		nextDueDate: "2026-11-01T03:00:00.000Z",
 		anchorDay: 1,
+		websiteUrl: null,
+		paymentSource: null,
 		autoPay: false,
 		isActive: true,
+		createdAt: "2026-09-01T12:00:00.000Z",
+		updatedAt: "2026-10-02T12:00:00.000Z",
 	}) as WireTemplate;
 
 const share = (id: string, o: Partial<WireShare> = {}): WireShare => ({
@@ -227,6 +231,27 @@ describe("applySyncPage", () => {
 		await apply(second, (tx) => applySyncPage(tx, "categories", pages.cats));
 		expect(second.list("expenses")).toEqual(first.list("expenses"));
 		expect(first.get("expenses", "e1")?.categoryKind).toBe("INCOME");
+	});
+
+	it("keeps a template's version and its two text columns", async () => {
+		const store = new MemoryStore();
+		await apply(store, (tx) =>
+			applySyncPage(tx, "recurringTemplates", {
+				items: [
+					{
+						...template("t1", null),
+						websiteUrl: "https://rent.example",
+						paymentSource: "Visa 4242",
+					},
+				],
+				tombstones: [],
+			}),
+		);
+		expect(store.get("recurringTemplates", "t1")).toMatchObject({
+			version: "2026-10-02T12:00:00.000Z",
+			websiteUrl: "https://rent.example",
+			paymentSource: "Visa 4242",
+		});
 	});
 
 	it("gives a template its category name, color and icon when the category arrives, in any order", async () => {

@@ -186,5 +186,15 @@ export {
 	pullShares,
 	type StepReport,
 } from "./sync-pull";
-export type { TemplateRow } from "./templates";
+export type {
+	TemplateRow,
+	TemplateStrippedColumn,
+	TextFreeTemplateRow,
+} from "./templates";
+export {
+	TEMPLATE_JOINED_COLUMNS,
+	TEMPLATE_STRIPPED_COLUMNS,
+	TEMPLATE_TEXT_COLUMNS,
+	templateWithoutText,
+} from "./templates";
 export type { UndoToken } from "./undo";

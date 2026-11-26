@@ -150,9 +150,7 @@
 			"label": "Skip this time"
 		},
 		"delete": {
-			"label": "Delete",
-			"confirmTitle": "Delete {name}?",
-			"confirmButton": "Delete recurring expense"
+			"label": "Delete"
 		}
 	},
 	"category": {

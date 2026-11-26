@@ -151,7 +151,12 @@
 			"budget_leftToSpend": "Можно потратить",
 			"budget_heldForOthers": "Удерживается для других",
 			"project_total": "Итого по проекту",
-			"envelope_left": "Конверт"
+			"envelope_left": "Конверт",
+			"recurring_cost_out_month": "Регулярные расходы в месяц",
+			"recurring_cost_in_month": "Регулярный доход в месяц",
+			"budget_planCost": "Стоимость плана",
+			"budget_leftInLimits": "Осталось в лимитах",
+			"budget_holds": "Что держит бюджет"
 		},
 		"figuresInline": {
 			"spent": "ваши расходы",
@@ -165,7 +170,12 @@
 			"budget_leftToSpend": "доступно к тратам",
 			"budget_heldForOthers": "удерживаемое для других",
 			"project_total": "итог по проекту",
-			"envelope_left": "конверт"
+			"envelope_left": "конверт",
+			"recurring_cost_out_month": "регулярные расходы в месяц",
+			"recurring_cost_in_month": "регулярный доход в месяц",
+			"budget_planCost": "стоимость плана",
+			"budget_leftInLimits": "остаток в лимитах",
+			"budget_holds": "то, что держит бюджет"
 		}
 	},
 	"income": {

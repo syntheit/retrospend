@@ -6,6 +6,7 @@ import {
 	withoutText,
 } from "../expenses";
 import type { Store, Tx, Writer } from "../port";
+import type { TextFreeTemplateRow } from "../templates";
 import { applyChanges } from "../undo";
 import { sameColumnValue } from "../write-parity";
 
@@ -20,12 +21,22 @@ import { sameColumnValue } from "../write-parity";
 // entries count, and how they are replayed.
 
 /** One expense an entry changed, as the device booked it: no title, description or location. */
-export interface PendingChange {
+export interface ExpenseChange {
 	readonly table: "expenses";
 	readonly id: string;
 	readonly before: TextFreeExpenseRow | null;
 	readonly after: TextFreeExpenseRow | null;
 }
+
+/** One recurring template an entry changed: no name, website or payment source, and no joined category. */
+export interface TemplateChange {
+	readonly table: "recurringTemplates";
+	readonly id: string;
+	readonly before: TextFreeTemplateRow | null;
+	readonly after: TextFreeTemplateRow | null;
+}
+
+export type PendingChange = ExpenseChange | TemplateChange;
 
 /** One write in the outbox or the acked list; the engine reads it and never changes it. */
 export interface PendingEntry {
@@ -142,8 +153,16 @@ function isBefore(current: unknown, expected: unknown): boolean {
  * placeholder text.
  */
 function replay(tx: Writer, entry: PendingEntry) {
+	// The compare below reads expense rows only. An entry that also changed a
+	// template is left out whole: a half replay would show a posted expense
+	// beside a template that has not moved. Template replay lands with the
+	// engine's recurring mutations.
+	const changes = entry.changes.filter(
+		(c): c is ExpenseChange => c.table === "expenses",
+	);
+	if (changes.length !== entry.changes.length) return;
 	try {
-		applyChanges(tx, entry.changes, "before", {
+		applyChanges(tx, changes, "before", {
 			matches: isBefore,
 			rowFor: (c, current) =>
 				c.after === null

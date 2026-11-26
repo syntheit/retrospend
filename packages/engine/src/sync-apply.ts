@@ -154,6 +154,10 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		amountMode: w.amountMode,
 		categoryId: w.categoryId,
 		category: categoryRefOf(w.categoryId, categories),
+		websiteUrl: w.websiteUrl,
+		paymentSource: w.paymentSource,
+		// Opaque, like an expense's: the text the server sent, never parsed into a time.
+		version: w.updatedAt,
 	}),
 	accounts: (w) => ({
 		id: w.id,

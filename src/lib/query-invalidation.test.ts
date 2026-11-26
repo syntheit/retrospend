@@ -57,13 +57,22 @@ describe("handleMutationSuccess", () => {
 const REQUIRED_READERS: Record<string, string[]> = {
 	// Category edits change names, colors and exclusions shown everywhere.
 	"categories.update": ["categories", "expense"],
-	"categories.delete": [
+	"categories.remove": [
 		"categories",
 		"expense",
 		"insights",
+		"envelope",
+		"entry",
+		"recurring",
 	],
-	"categories.remove": ["categories", "expense", "insights", "envelope"],
-	"categories.restore": ["categories", "expense", "insights", "envelope"],
+	"categories.restore": [
+		"categories",
+		"expense",
+		"insights",
+		"envelope",
+		"entry",
+		"recurring",
+	],
 	"entry.expense.categorize.save": ["expense", "insights"],
 
 	// The fiscal month start day moves every month boundary.
@@ -109,6 +118,10 @@ const REQUIRED_READERS: Record<string, string[]> = {
 		"verification",
 		"sharedTransaction",
 	],
+
+	// A delete clears BILL envelope targets, which moves the plan; so does its undo.
+	"recurring.delete.save": ["recurring", "envelope"],
+	"recurring.restore.save": ["recurring", "envelope"],
 
 	// Insights reads the same spending, money in and categories.
 	"entry.expense.create.save": ["insights"],

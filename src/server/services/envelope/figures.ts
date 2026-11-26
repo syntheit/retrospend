@@ -45,6 +45,8 @@ export const prismaBudgetReads: BudgetReads<FigureDb> = {
 	/** This month's plan cost read once per pass. */
 	async plan(db, userId, pass) {
 		const read = async () => {
+			// Anew, as `month` does: a delete of a template a bill follows clears its target outside the envelope services.
+			forgetMonthViews(db);
 			if (!(await monthViewIn(db, userId, new Date()))) return null;
 			return planCostIn(db, userId, {}, new Date());
 		};
@@ -54,6 +56,7 @@ export const prismaBudgetReads: BudgetReads<FigureDb> = {
 
 	async debt(db, userId, pass) {
 		const read = async () => {
+			// No forgetMonthViews: the month view only says a budget exists, and projectIn reads the liabilities itself.
 			if (!(await monthViewIn(db, userId, new Date()))) return null;
 			return projectIn(db, userId, {}, new Date());
 		};

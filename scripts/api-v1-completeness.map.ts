@@ -236,7 +236,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── categories ───────────────────────────────────────────────────────
 	"categories.create": to("POST /categories"),
-	"categories.delete": to("DELETE /categories/{id}"),
 	"categories.getAll": to("GET /categories"),
 	"categories.previewRemove": to(
 		"POST /categories/{id}/delete/preview",
@@ -560,11 +559,14 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── recurring ────────────────────────────────────────────────────────
 	"recurring.confirmAndCreate": withPreview("POST /recurring/{id}/confirm"),
 	"recurring.create": to("POST /recurring"),
-	"recurring.delete": to("DELETE /recurring/{id}"),
+	"recurring.delete.preview": to("POST /recurring/{id}/delete/preview"),
+	"recurring.delete.save": to("DELETE /recurring/{id}"),
 	"recurring.get": to("GET /recurring/{id}"),
 	"recurring.getPendingConfirmation": to("GET /needs-you"),
 	"recurring.list": to("GET /recurring"),
 	"recurring.listView": to("GET /recurring", "GET /recurring/summary"),
+	"recurring.restore.preview": to("POST /recurring/delete/undo/preview"),
+	"recurring.restore.save": to("POST /recurring/delete/undo"),
 	"recurring.skip": withPreview("POST /recurring/{id}/skip"),
 	"recurring.unconfirm": to("POST /recurring/undo"),
 	"recurring.unskip": to("POST /recurring/skip/undo"),

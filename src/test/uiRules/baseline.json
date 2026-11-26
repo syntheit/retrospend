@@ -405,7 +405,6 @@
 		"src/server/api/routers/claim.ts": 31,
 		"src/server/api/routers/guest.ts": 144,
 		"src/server/api/routers/invite.ts": 13,
-		"src/server/api/routers/recurring.ts": 11,
 		"src/server/api/routers/shared-transaction.ts": 53,
 		"src/server/services/import-queue.service.ts": 375,
 		"src/server/services/shared-expenses/audit-log-formatter.ts": 338,

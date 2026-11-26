@@ -302,6 +302,12 @@ describe("a file that cannot be trusted", () => {
 		expectWiped();
 	});
 
+	it("empties a file written before templates carried a version", async () => {
+		await seed();
+		tamper("UPDATE meta SET value = '2' WHERE key = 'schemaVersion'");
+		expectWiped();
+	});
+
 	it("empties a file from another schema version", async () => {
 		await seed();
 		tamper("UPDATE meta SET value = '0' WHERE key = 'schemaVersion'");

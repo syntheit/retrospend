@@ -1,7 +1,18 @@
-import { EXPENSE_TEXT_COLUMNS } from "@retrospend/engine";
+import {
+	EXPENSE_TEXT_COLUMNS,
+	TEMPLATE_STRIPPED_COLUMNS,
+} from "@retrospend/engine";
 import { ACKED_MAX, ACKED_MAX_AGE_MS, createOutbox } from "./outbox";
 import { DEVICE_TEXT_COLUMNS } from "./outbox-chain";
-import { bookedRow, booking, create, edit, SENTINEL } from "./outboxFixtures";
+import {
+	bookedRow,
+	booking,
+	create,
+	edit,
+	SENTINEL,
+	TEMPLATE_SENTINEL,
+	templateRow,
+} from "./outboxFixtures";
 import { createMemoryStore } from "./store";
 import { flushOutbox } from "./sync";
 
@@ -52,21 +63,95 @@ describe("device field", () => {
 				expect(raw).not.toContain(text);
 		}
 		const row = (await outbox.all())[0]?.device?.changes[0]?.after;
-		for (const column of DEVICE_TEXT_COLUMNS)
+		for (const column of DEVICE_TEXT_COLUMNS.expenses)
 			expect(row).not.toHaveProperty(column);
 	});
 
-	it("names the same text columns as the engine", () => {
-		expect([...DEVICE_TEXT_COLUMNS]).toEqual([...EXPENSE_TEXT_COLUMNS]);
+	it("template rows hold no name, websiteUrl or paymentSource", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		await outbox.enqueue(
+			edit(
+				"t1",
+				"t1",
+				null,
+				booking(
+					"t1",
+					templateRow("t1", {}, true),
+					templateRow("t1", { autoPay: false }, true),
+					{},
+					"recurringTemplates",
+				),
+			),
+		);
+		const texts = [
+			TEMPLATE_SENTINEL.name,
+			TEMPLATE_SENTINEL.websiteUrl,
+			TEMPLATE_SENTINEL.paymentSource,
+			TEMPLATE_SENTINEL.category.name,
+		];
+		for (const key of await store.keys("")) {
+			const raw = (await store.get(key)) ?? "";
+			for (const text of texts) expect(raw).not.toContain(text);
+		}
+		const change = (await outbox.all())[0]?.device?.changes[0];
+		expect(change?.table).toBe("recurringTemplates");
+		for (const side of [change?.before, change?.after]) {
+			for (const column of DEVICE_TEXT_COLUMNS.recurringTemplates)
+				expect(side).not.toHaveProperty(column);
+			expect(side).toMatchObject({ id: "t1", amountMode: "FIXED" });
+		}
+	});
+
+	it("stamps a chained template edit with the version its predecessor was acked at", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		const t = (
+			before: Record<string, unknown>,
+			after: Record<string, unknown>,
+		) => booking("t1", before, after, {}, "recurringTemplates");
+		await outbox.enqueue(
+			edit(
+				"u1",
+				"t1",
+				"v0",
+				t(templateRow("t1"), templateRow("t1", { autoPay: false })),
+			),
+		);
+		await outbox.enqueue(
+			edit(
+				"u2",
+				"t1",
+				{ after: "u1" },
+				t(
+					templateRow("t1", { autoPay: false }),
+					templateRow("t1", { isActive: false }),
+				),
+			),
+		);
+		await outbox.markSent("u1", { version: T1, pull: 1 });
+		const [second] = await outbox.all();
+		expect(second?.baseVersion).toBe(T1);
+		expect(second?.device?.changes[0]?.before).toMatchObject({ version: T1 });
+	});
+
+	it("names the same text columns as the engine, table by table", () => {
+		expect([...DEVICE_TEXT_COLUMNS.expenses]).toEqual([
+			...EXPENSE_TEXT_COLUMNS,
+		]);
+		expect([...DEVICE_TEXT_COLUMNS.recurringTemplates]).toEqual([
+			...TEMPLATE_STRIPPED_COLUMNS,
+		]);
 	});
 
 	it("reads rows back with real dates and the booked decimal text", async () => {
 		const store = createMemoryStore();
 		await createOutbox(store, "a").enqueue(create("e1", device("e1")));
-		const after = (await createOutbox(store, "a").all())[0]?.device?.changes[0]
-			?.after;
-		expect(after?.date).toEqual(new Date("2026-10-05T03:00:00.000Z"));
-		expect(after?.amount).toBe("100.00");
+		const change = (await createOutbox(store, "a").all())[0]?.device
+			?.changes[0];
+		expect(change?.after).toMatchObject({
+			date: new Date("2026-10-05T03:00:00.000Z"),
+			amount: "100.00",
+		});
 	});
 });
 

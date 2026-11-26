@@ -151,7 +151,12 @@
 			"budget_leftToSpend": "Reste à dépenser",
 			"budget_heldForOthers": "Gardé pour les autres",
 			"project_total": "Total du projet",
-			"envelope_left": "Enveloppe"
+			"envelope_left": "Enveloppe",
+			"recurring_cost_out_month": "Coût récurrent par mois",
+			"recurring_cost_in_month": "Revenu récurrent par mois",
+			"budget_planCost": "Coût du plan",
+			"budget_leftInLimits": "Reste dans tes limites",
+			"budget_holds": "Ce que contient le budget"
 		},
 		"figuresInline": {
 			"spent": "tes dépenses",
@@ -165,7 +170,12 @@
 			"budget_leftToSpend": "le reste à dépenser",
 			"budget_heldForOthers": "ce qui est gardé pour les autres",
 			"project_total": "le total du projet",
-			"envelope_left": "l'enveloppe"
+			"envelope_left": "l'enveloppe",
+			"recurring_cost_out_month": "coût récurrent par mois",
+			"recurring_cost_in_month": "revenu récurrent par mois",
+			"budget_planCost": "le coût du plan",
+			"budget_leftInLimits": "le reste dans tes limites",
+			"budget_holds": "ce que contient le budget"
 		}
 	},
 	"income": {

@@ -119,5 +119,19 @@
 		"next": "Next due",
 		"nextValue": "{before} → {after}",
 		"unchanged": "Nothing else changes: no expense is logged and the amount stays the same."
+	},
+	"deleteSheet": {
+		"title": "Delete {name}?",
+		"submit": "Delete recurring expense",
+		"submitIn": "Delete recurring income",
+		"future": "Future occurrences",
+		"futureValue": "Stop, next was {date}",
+		"autoPay": "Record automatically",
+		"autoPayValue": "Stops",
+		"targets": "Envelope targets",
+		"targetsValue": "Cleared",
+		"logged": "Entries already logged",
+		"loggedValue": "Stay",
+		"previewFailed": "Couldn't check what this changes."
 	}
 }

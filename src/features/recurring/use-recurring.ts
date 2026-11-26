@@ -21,7 +21,7 @@ export const canConfirm = (r: RecurringItemDTO) =>
  * Confirm opens the confirm step first (R30); a template whose amount
  * varies needs the Confirm sheet's amount field (2E), so it has no Confirm
  * here. Skip opens its own step (nothing is logged, only the date moves) and
- * both end with an Undo toast.
+ * so does Delete (what it stops and what stays); each ends with an Undo toast.
  */
 export function useRecurring() {
 	const t = useTranslations("activityRecurring.actions");
@@ -39,12 +39,14 @@ export function useRecurring() {
 	);
 	const update = api.recurring.update.useMutation();
 	const confirm = api.recurring.confirmAndCreate.useMutation();
-	const remove = api.recurring.delete.useMutation();
+	const remove = api.recurring.delete.save.useMutation();
+	const restore = api.recurring.restore.save.useMutation();
 	const unconfirm = api.recurring.unconfirm.useMutation();
 	const skip = api.recurring.skip.useMutation();
 	const unskip = api.recurring.unskip.useMutation();
 	const [confirming, setConfirming] = useState<RecurringItemDTO | null>(null);
 	const [skipping, setSkipping] = useState<RecurringItemDTO | null>(null);
+	const [deleting, setDeleting] = useState<RecurringItemDTO | null>(null);
 	// Templates with a save in flight: their Confirm and Auto-pay controls wait.
 	const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 	const mark = useCallback(
@@ -175,6 +177,32 @@ export function useRecurring() {
 		[skip, unskip, toast, t, refresh, mark],
 	);
 
+	/**
+	 * Deletes the template from the delete step. A failure throws its own words,
+	 * so the sheet stays open with them inline. The toast puts the template
+	 * back as it was, with the envelopes and entries that followed it.
+	 */
+	const deleteItem = useCallback(
+		async (r: RecurringItemDTO) => {
+			mark(r.id, true);
+			try {
+				const done = await remove.mutateAsync({ id: r.id });
+				toast.saved(t("deleted", { name: r.title }), {
+					undo: async () => {
+						await restore.mutateAsync({ token: done.restore });
+						await refresh();
+					},
+				});
+			} catch (error) {
+				throw new Error(t(`error.${saveError(error)}`));
+			} finally {
+				mark(r.id, false);
+				await refresh();
+			}
+		},
+		[remove, restore, toast, t, refresh, mark],
+	);
+
 	const handlers = useMemo<ActionHandlers<RecurringTarget>>(() => {
 		const item = (target: RecurringTarget) => byId.get(target.id);
 		const on =
@@ -188,14 +216,9 @@ export function useRecurring() {
 			editAmount: on((r) => modal.openRecurring(r.id)),
 			pause: on((r) => setActive(r, false)),
 			resume: on((r) => setActive(r, true)),
-			delete: on((r) =>
-				run(
-					() => remove.mutateAsync({ id: r.id }),
-					t("deleted", { name: r.title }),
-				),
-			),
+			delete: on(setDeleting),
 		};
-	}, [byId, modal, setActive, run, remove, t]);
+	}, [byId, modal, setActive]);
 
 	// Confirm and Skip only act on a due one; the server refuses an early one.
 	// A template whose amount varies can be skipped but not confirmed here.
@@ -224,6 +247,9 @@ export function useRecurring() {
 		askSkip: setSkipping,
 		closeSkip: () => setSkipping(null),
 		skipItem,
+		deleting,
+		closeDelete: () => setDeleting(null),
+		deleteItem,
 		busy,
 		setAutoPay,
 		openNew: modal.openNewRecurring,

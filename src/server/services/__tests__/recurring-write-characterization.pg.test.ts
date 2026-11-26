@@ -1008,7 +1008,7 @@ describe("template ids and delete", () => {
 		);
 	});
 
-	it("deleting a template a BILL envelope follows: tRPC and v1 end alike, but only v1 hands back an undo", async () => {
+	it("deleting a template a BILL envelope follows: tRPC and v1 end alike, and both hand back an undo", async () => {
 		const booked$ = await bookedUser();
 		const me = booked$.user.id;
 		const [viaTrpc, viaV1] = [
@@ -1043,8 +1043,12 @@ describe("template ids and delete", () => {
 		const trpc = await trpcFor(me);
 		const v1 = await v1For(me);
 		at(NOW);
-		await expect(trpc.recurring.delete({ id: viaTrpc })).resolves.toEqual({
-			success: true,
+		// The web answers with an Undo token, as v1 does (it used to answer { success: true }).
+		await expect(
+			trpc.recurring.delete.save({ id: viaTrpc }),
+		).resolves.toEqual({
+			id: viaTrpc,
+			restore: { data: expect.any(String), sig: expect.any(String) },
 		});
 		const done = await expectBody<{ undo?: string }>(
 			await v1("DELETE", `/recurring/${viaV1}`),

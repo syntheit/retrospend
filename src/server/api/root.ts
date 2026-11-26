@@ -28,6 +28,7 @@ import { preferencesRouter } from "~/server/api/routers/preferences";
 import { profileRouter } from "~/server/api/routers/profile";
 import { projectRouter } from "~/server/api/routers/project";
 import { recurringRouter } from "~/server/api/routers/recurring";
+import { recurringDeleteRouter } from "~/server/api/routers/recurring-delete";
 import { recurringStepsRouter } from "~/server/api/routers/recurring-steps";
 import { recurringViewRouter } from "~/server/api/routers/recurring-view";
 import { settingsRouter } from "~/server/api/routers/settings";
@@ -47,6 +48,7 @@ import {
 const expenseAllRouter = mergeRouters(expenseRouter, expenseV2Router);
 const recurringAllRouter = mergeRouters(
 	recurringRouter,
+	recurringDeleteRouter,
 	recurringViewRouter,
 	recurringStepsRouter,
 );

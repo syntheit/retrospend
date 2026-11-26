@@ -203,6 +203,19 @@ describe("S14 a card payment with old debt and interest", () => {
 		expect(await balance(w.visa)).toBe("1200");
 	});
 
+	it("the preview's total debt is the one the payment leaves, not a remembered one", async () => {
+		const p = await forUser(w.user.id).preview(
+			recordDebtPaymentMutation,
+			payment,
+		);
+		// Visa owes 1,200.00 and the Loan 10,000.00; 200.00 is paid toward Visa: 1,120,000 to 1,100,000.
+		expect(p.changes.find((c) => c.id === "budget.totalDebt")).toMatchObject({
+			before: usd(1_120_000),
+			after: usd(1_100_000),
+			delta: usd(-20_000),
+		});
+	});
+
 	it("principal leaves Pay down Visa, interest is Fees spending, nothing else moves", async () => {
 		const before = await getMonth(w.user.id);
 		const r = await forUser(w.user.id).apply(
