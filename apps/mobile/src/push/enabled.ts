@@ -12,10 +12,11 @@ export interface PushEnabled {
 
 const KEY = "push.enabled";
 
-export function createEnabledStore(store: KeyValueStore) {
+/** `key` names another background task's record of the same shape (the recurring poster's). */
+export function createEnabledStore(store: KeyValueStore, key = KEY) {
 	return {
 		async get(): Promise<PushEnabled | null> {
-			const raw = await store.get(KEY);
+			const raw = await store.get(key);
 			if (!raw) return null;
 			try {
 				const v = JSON.parse(raw) as Partial<PushEnabled>;
@@ -26,8 +27,8 @@ export function createEnabledStore(store: KeyValueStore) {
 				return null;
 			}
 		},
-		set: (value: PushEnabled) => store.set(KEY, JSON.stringify(value)),
-		clear: () => store.delete(KEY),
+		set: (value: PushEnabled) => store.set(key, JSON.stringify(value)),
+		clear: () => store.delete(key),
 	};
 }
 
