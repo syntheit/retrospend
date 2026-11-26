@@ -136,6 +136,7 @@ describe("templateSeenOf", () => {
 			paused: false,
 			passed: false,
 			posted: false,
+			version: "v1",
 		});
 	});
 
@@ -146,7 +147,13 @@ describe("templateSeenOf", () => {
 				template: template({ nextDueDate: JAN_1 }),
 				expenses: [posted],
 			}),
-		).toEqual({ found: true, paused: false, passed: true, posted: true });
+		).toEqual({
+			found: true,
+			paused: false,
+			passed: true,
+			posted: true,
+			version: "v1",
+		});
 	});
 
 	it("a paid-on confirm booked on another day is posted by its id, not by the due date", async () => {

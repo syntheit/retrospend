@@ -1,5 +1,11 @@
 export type { WriteVerdict } from "../write-parity";
-export type { BookedWrite, WriteBody, WriteOp } from "./book";
+export type {
+	BookedWrite,
+	ConfirmBody,
+	SettleBody,
+	WriteBody,
+	WriteOp,
+} from "./book";
 export type { BulkAnswer, BulkBooked, BulkOp } from "./bulk";
 export {
 	type CheckPlan,

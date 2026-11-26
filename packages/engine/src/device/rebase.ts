@@ -27,10 +27,18 @@ const text = (v: { toString(): string } | null | undefined) =>
  * moved), and whether the expense the write named (`expenseId`, the confirm's
  * client id) is in the store as an expense of the template. The id is the
  * exact proof: a confirm paid on another day books on that day, not on `dueAt`.
+ * `version` is the template's `updatedAt` as pulled, the stamp Try again checks
+ * the re-based write against (null for a template the device made itself).
  */
 export type TemplateSeen =
 	| { found: false }
-	| { found: true; paused: boolean; passed: boolean; posted: boolean };
+	| {
+			found: true;
+			paused: boolean;
+			passed: boolean;
+			posted: boolean;
+			version: string | null;
+	  };
 
 export function templateSeenOf(
 	r: Reader,
@@ -46,6 +54,7 @@ export function templateSeenOf(
 		paused: !row.isActive,
 		passed: row.nextDueDate.getTime() > due,
 		posted: r.get("expenses", expenseId)?.recurringTemplateId === id,
+		version: row.version,
 	};
 }
 

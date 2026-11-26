@@ -1,7 +1,12 @@
 import { toBookingInput } from "@retrospend/domain/expense-input";
 import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
+import {
+	RecurringInputRefusal,
+	RecurringRefusal,
+} from "@retrospend/domain/recurring-post/refusals";
 import { dayKey } from "@retrospend/domain/time-zone";
+import { NotFoundError } from "../errors";
 import { createExpense, EXPENSE_CREATE } from "../expense-create";
 import {
 	deleteExpense,
@@ -17,8 +22,11 @@ import {
 	SETTINGS_ID,
 	type Writer,
 } from "../port";
+import { EXPENSE_FIGURES } from "../preview";
+import { type TemplateRow, templateWithoutText } from "../templates";
 import type { UndoToken } from "../undo";
-import type { ExpenseChange } from "./pending";
+import type { ExpenseChange, PendingChange } from "./pending";
+import { recurringPlanOf } from "./recurring-book";
 
 // What the phone saves, as the device books it: the same engine mutations a
 // preview runs, over the pending writes, in a transaction that is thrown away
@@ -44,12 +52,39 @@ export interface WriteBody {
 	amortizeOver?: number;
 }
 
+/**
+ * One due period of a recurring template that a person confirms or skips. The
+ * template is the row the write is about; `expenseId` is the id the posted
+ * expense takes (the outbox entry's client id), so the device row and the
+ * server's meet.
+ */
+export interface SettleBody {
+	templateId: string;
+	/** The due instant being settled (ISO). */
+	dueAt: string;
+}
+
+export interface ConfirmBody extends SettleBody {
+	expenseId: string;
+	/** Decimal text: the real amount of an "Amount varies" template. */
+	amount?: string;
+	/** YYYY-MM-DD: the day it was really paid. */
+	paidOn?: string;
+}
+
 export type WriteOp =
 	| { kind: "create" | "update"; body: WriteBody }
-	| { kind: "delete"; id: string };
+	| { kind: "delete"; id: string }
+	| { kind: "confirm"; body: ConfirmBody }
+	| { kind: "skip"; body: SettleBody };
 
+/** The row id the write is about: the expense, or the template of a confirm or skip. */
 export const targetOf = (op: WriteOp): string =>
-	op.kind === "delete" ? op.id : op.body.id;
+	op.kind === "delete"
+		? op.id
+		: op.kind === "confirm" || op.kind === "skip"
+			? op.body.templateId
+			: op.body.id;
 
 /** The sync cursors a fee check reads (the engine's own). */
 export type WriteCursors = Readonly<
@@ -60,8 +95,8 @@ export type WriteCursors = Readonly<
 export interface BookedWrite {
 	/** Epoch ms the device booked it. */
 	bookedAt: number;
-	/** Each expense it changed; empty when the device had no rate. */
-	changes: ExpenseChange[];
+	/** Each expense and template it changed; empty when the device had no rate. */
+	changes: PendingChange[];
 	/** The body fields the person changed (names only). */
 	changed: string[];
 	/** The device had no rate: the server books it. */
@@ -73,9 +108,25 @@ export interface BookedWrite {
 	base: string | null;
 }
 
-/** The write function and the mutation id of `op`, over what `r` holds. Throws InvalidInputError. */
+/**
+ * The write function and the mutation id of `op`, over what `r` holds, with
+ * the figures it moves. `now` is the clock a recurring period is read at.
+ * Throws InvalidInputError.
+ */
 export function planOf(
 	op: WriteOp,
+	r: Reader,
+	cursors: WriteCursors,
+	now: Date,
+): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
+	if (op.kind === "confirm" || op.kind === "skip")
+		return recurringPlanOf(op, now);
+	const planned = expensePlanOf(op, r, cursors);
+	return { ...planned, touches: EXPENSE_FIGURES };
+}
+
+function expensePlanOf(
+	op: Exclude<WriteOp, { kind: "confirm" | "skip" }>,
 	r: Reader,
 	cursors: WriteCursors,
 ): { id: string; write: WriteFn<ExpenseRow> } {
@@ -159,6 +210,35 @@ export function pendingChangesOf(undo: UndoToken): ExpenseChange[] {
 }
 
 /**
+ * The expense and template rows a write changed, in the order it changed
+ * them, as an outbox entry keeps them: a recurring confirm changes both.
+ */
+export function bookedChangesOf(undo: UndoToken): PendingChange[] {
+	const rows = undo.kind === "revert" ? undo.changes : [];
+	const expenses = pendingChangesOf(undo);
+	return rows.flatMap((c): PendingChange[] => {
+		if (c.table === "expenses")
+			return expenses.filter((e) => e.id === c.id).slice(0, 1);
+		if (c.table !== "recurringTemplates") return [];
+		return [
+			{
+				table: "recurringTemplates",
+				id: c.id,
+				before: c.before ? templateWithoutText(c.before as TemplateRow) : null,
+				after: c.after ? templateWithoutText(c.after as TemplateRow) : null,
+			},
+		];
+	});
+}
+
+/** The refusals a booking meets that are the domain's answer, not a fault: the server decides. */
+export const isDeviceRefusal = (error: unknown): boolean =>
+	error instanceof InvalidInputError ||
+	error instanceof NotFoundError ||
+	error instanceof RecurringRefusal ||
+	error instanceof RecurringInputRefusal;
+
+/**
  * Books `op` in `tx` (a transaction the caller throws away). A refusal throws
  * InvalidInputError or NotFoundError; a missing rate is `unbooked`, never a
  * booking at 1 or 0.
@@ -169,16 +249,23 @@ export async function bookIn(
 	cursors: WriteCursors,
 	bookedAt: number,
 ): Promise<BookedWrite> {
-	const { id, write } = planOf(op, tx, cursors);
+	const { id, write } = planOf(op, tx, cursors, new Date(bookedAt));
+	const settling = op.kind === "confirm" || op.kind === "skip";
 	const row =
-		op.kind === "create" ? undefined : tx.get("expenses", targetOf(op));
+		op.kind === "create"
+			? undefined
+			: settling
+				? tx.get("recurringTemplates", targetOf(op))
+				: tx.get("expenses", targetOf(op));
 	const zone = tx.get("settings", SETTINGS_ID)?.timeZone ?? "";
 	const base = { bookedAt, base: row?.version ?? null };
 	const changed =
-		op.kind === "update" && row ? changedOf(row, op.body, zone) : [];
+		op.kind === "update" && row
+			? changedOf(row as ExpenseRow, op.body, zone)
+			: [];
 	try {
 		const { undo } = await recordWrite(tx, id, write);
-		const changes = pendingChangesOf(undo);
+		const changes = bookedChangesOf(undo);
 		return { ...base, changes, changed };
 	} catch (error) {
 		if (error instanceof MissingRateError)

@@ -7,6 +7,7 @@ import {
 } from "../expense-bulk-local";
 import { recordWrite, type WriteFn } from "../local-db";
 import type { Reader, Writer } from "../port";
+import { EXPENSE_FIGURES } from "../preview";
 import { compareWrite, type WriteVerdict } from "../write-parity";
 import { pendingChangesOf, type WriteCursors } from "./book";
 import type { ExpenseChange } from "./pending";
@@ -30,10 +31,15 @@ export type BulkOp =
 export function bulkPlanOf(
 	op: BulkOp,
 	cursors: WriteCursors,
-): { id: string; write: WriteFn<Pick<BulkBooked, "skipped" | "reached">> } {
+): {
+	id: string;
+	touches: readonly string[];
+	write: WriteFn<Pick<BulkBooked, "skipped" | "reached">>;
+} {
 	return op.kind === "deleteMany"
 		? {
 				id: EXPENSE_DELETE_MANY,
+				touches: EXPENSE_FIGURES,
 				write: async (r) => {
 					const done = await deleteExpenses({ ids: op.ids, cursors })(r);
 					return { skipped: done.skipped, reached: done.deleted.length };
@@ -41,6 +47,7 @@ export function bulkPlanOf(
 			}
 		: {
 				id: EXPENSE_CATEGORIZE,
+				touches: EXPENSE_FIGURES,
 				write: async (r) => {
 					const done = await categorizeExpenses({
 						moves: [{ categoryId: op.categoryId, ids: op.ids }],

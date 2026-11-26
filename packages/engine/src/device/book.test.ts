@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { WriteBody } from "./book";
 import { createDeviceEngine, type DeviceEngine } from "./engine";
 import { cursor, expense, fakeDeviceApi } from "./fake-api";
-import type { PendingEntry, PendingSource } from "./pending";
-import type { WriteBody } from "./book";
+import type {
+	ExpenseChange,
+	PendingChange,
+	PendingEntry,
+	PendingSource,
+} from "./pending";
 
 // The device booking of a save, over the pending writes. Home is ARS in Buenos
 // Aires and blue is 1545 (stamped Oct 14 09:05Z). Expected values by hand:
@@ -49,6 +54,12 @@ const page = (items: unknown[]) => ({
 	hasMore: false,
 });
 
+/** The expense change at `index`: an expense write changes no other table. */
+const expenseAt = (
+	changes: readonly PendingChange[] | undefined,
+	index: number,
+) => changes?.[index] as ExpenseChange | undefined;
+
 class Pending implements PendingSource {
 	list: PendingEntry[] = [];
 	entries = () => this.list;
@@ -80,7 +91,7 @@ describe("DeviceEngine.book", () => {
 		expect(booked?.unbooked).toBeUndefined();
 		expect(booked?.base).toBeNull();
 		expect(booked?.changes).toHaveLength(1);
-		const after = booked?.changes[0]?.after;
+		const after = expenseAt(booked?.changes, 0)?.after;
 		expect(after?.homeAmount).toBe("154500.00");
 		expect(JSON.stringify(booked)).not.toContain(SECRET);
 	});
@@ -102,8 +113,8 @@ describe("DeviceEngine.book", () => {
 		});
 		expect(booked?.base).toBe(DAY);
 		expect(booked?.changed).toEqual(["title", "amount"]);
-		expect(booked?.changes[0]?.after?.homeAmount).toBe("185400.00");
-		expect(booked?.changes[0]?.before?.homeAmount).toBe("154500.00");
+		expect(expenseAt(booked?.changes, 0)?.after?.homeAmount).toBe("185400.00");
+		expect(expenseAt(booked?.changes, 0)?.before?.homeAmount).toBe("154500.00");
 	});
 
 	it("names only the title when only the title changed", async () => {
@@ -132,8 +143,8 @@ describe("DeviceEngine.book", () => {
 			body: body({ amount: "120" }),
 		});
 		expect(edit?.base).toBeNull();
-		expect(edit?.changes[0]?.before?.homeAmount).toBe("154500.00");
-		expect(edit?.changes[0]?.after?.homeAmount).toBe("185400.00");
+		expect(expenseAt(edit?.changes, 0)?.before?.homeAmount).toBe("154500.00");
+		expect(expenseAt(edit?.changes, 0)?.after?.homeAmount).toBe("185400.00");
 	});
 
 	it("books a delete as the row going away", async () => {

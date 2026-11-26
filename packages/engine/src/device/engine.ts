@@ -14,7 +14,13 @@ import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
 import { compareChange, type WriteVerdict } from "../write-parity";
-import { type BookedWrite, bookIn, targetOf, type WriteOp } from "./book";
+import {
+	type BookedWrite,
+	bookIn,
+	isDeviceRefusal,
+	targetOf,
+	type WriteOp,
+} from "./book";
 import {
 	answerVerdicts,
 	type BulkAnswer,
@@ -653,11 +659,7 @@ export function createDeviceEngine(
 				(tx) => bookIn(tx, op, cursors, now()),
 			).catch((error) => {
 				// A refusal is the domain's answer, not a fault: the server decides.
-				if (
-					error instanceof InvalidInputError ||
-					error instanceof NotFoundError
-				)
-					return null;
+				if (isDeviceRefusal(error)) return null;
 				throw error;
 			});
 			return pullsBegun !== begun || status !== "ready" ? null : booked;
