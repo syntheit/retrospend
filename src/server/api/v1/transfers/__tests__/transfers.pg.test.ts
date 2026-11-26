@@ -344,11 +344,13 @@ describe("/api/v1/transfers undo of a delete keeps the envelope", () => {
 			],
 			timeZone: "UTC",
 		});
-		const dining = (
-			await adminDb.envelope.findFirstOrThrow({
-				where: { name: "Dining", book: { createdById: userId } },
-			})
-		).id;
+		// Names are sealed under encryption: read the book's envelopes, then pick by name.
+		const envelopes = await adminDb.envelope.findMany({
+			where: { book: { createdById: userId } },
+			select: { id: true, name: true },
+		});
+		const dining = envelopes.find((e) => e.name === "Dining")?.id;
+		if (!dining) throw new Error("the setup made no Dining envelope");
 
 		const moved = await expectBody<Write>(
 			await call("/transfers", {
