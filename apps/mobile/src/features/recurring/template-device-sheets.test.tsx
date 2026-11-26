@@ -467,6 +467,17 @@ describe("Delete under the dev flag", () => {
 		expect(words(await openDelete())).toContain("Sync first");
 	});
 
+	it("an outbox that cannot be read counts as a write waiting: Sync first, never a delete", async () => {
+		const { recurring } = setup();
+		jest
+			.spyOn(world.local.outbox, "snapshot")
+			.mockRejectedValue(new Error("unreadable"));
+		const tree = await openDelete();
+		expect(words(tree)).toContain("Sync first");
+		expect(disabled(tree, "Delete recurring expense")).toBe(true);
+		expect(recurring.delete).not.toHaveBeenCalled();
+	});
+
 	it("a write to another template does not stand in the way", async () => {
 		setup();
 		await waiting("w1", "rec-other");
