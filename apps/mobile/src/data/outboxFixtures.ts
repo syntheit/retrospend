@@ -112,3 +112,61 @@ export const edit = (
 	payload: { id: target },
 	...(device ? { device } : {}),
 });
+
+/** An edit of a recurring template (the entity the phone calls "recurring"). */
+export const templateEdit = (
+	clientId: string,
+	target: string,
+	base: NewOutboxEntry["baseVersion"],
+	device?: DeviceBooking,
+): NewOutboxEntry => ({
+	...edit(clientId, target, base, device),
+	entity: "recurring",
+});
+
+/** A confirm of one period of `template`; the expense it books takes `clientId` as its id. */
+export const confirm = (
+	clientId: string,
+	template: string,
+	base: NewOutboxEntry["baseVersion"],
+	over: Partial<NewOutboxEntry> = {},
+): NewOutboxEntry => ({
+	clientId,
+	entity: "recurring",
+	kind: "confirm",
+	targetId: template,
+	baseVersion: base,
+	payload: { id: template, dueAt: "2026-12-01T03:00:00.000Z" },
+	...over,
+});
+
+/** A booking of a confirm: the expense it creates, then the template it advances. */
+export function confirmBooking(
+	expenseId: string,
+	template: string,
+	over: { withText?: boolean } = {},
+): DeviceBooking {
+	const withText = over.withText ?? false;
+	return {
+		bookedAt: Date.parse("2026-12-01T03:05:00.000Z"),
+		changes: [
+			{
+				table: "expenses",
+				id: expenseId,
+				before: null,
+				after: bookedRow(expenseId, {}, withText) as never,
+			},
+			{
+				table: "recurringTemplates",
+				id: template,
+				before: templateRow(template, {}, withText) as never,
+				after: templateRow(
+					template,
+					{ nextDueDate: new Date("2027-01-01T03:00:00.000Z") },
+					withText,
+				) as never,
+			},
+		],
+		changed: [],
+	};
+}
