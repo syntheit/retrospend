@@ -24,8 +24,9 @@ const rates = {
 		},
 	],
 };
-const plan = (autoPost: boolean, skip: string[] = []) => ({
+const plan = (autoPost: boolean, skip: string[] = [], income = true) => ({
 	autoPost,
+	income,
 	isProtected: async () => false,
 	skip: new Set(skip),
 });
@@ -79,6 +80,19 @@ describe("DeviceEngine.planPoster", () => {
 		const plans = await e.planPoster(plan(true));
 		expect(plans?.map((p) => p.templateId)).toEqual(["t1", "t3"]);
 		expect(plans?.[1]?.run.entries).toHaveLength(1);
+	});
+
+	it("leaves an income template out when the server does not take auto, and plans the expense one as ever", async () => {
+		const { api } = fakeDeviceApi({
+			rates,
+			expenses: [page([])],
+			transfers: [page([])],
+			templates: [page([template("t1"), template("t3", { direction: "IN" })])],
+		});
+		const e = createDeviceEngine(api, "u1", () => NOW, { warn: vi.fn() });
+		await e.pull();
+		const plans = await e.planPoster(plan(true, [], false));
+		expect(plans?.map((p) => p.templateId)).toEqual(["t1"]);
 	});
 
 	it("answers null before the first pull and after dispose, never a plan on a guess", async () => {

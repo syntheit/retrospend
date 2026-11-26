@@ -31,6 +31,10 @@ export const serverInfoSchema = z
 					description:
 						"Whether this server's recurring auto-post is on (RECURRING_AUTO_POST, or on in production when unset). Instance setting, the same for every caller. An app that posts due recurring expenses itself posts only when this is true.",
 				}),
+				autoConfirm: z.boolean().optional().meta({
+					description:
+						"Whether POST /recurring/{id}/confirm takes `auto` (contract 1.13.0), which an app that posts recurring income itself needs: a server before 1.13.0 leaves this out and would run such a confirm as a person's income confirm. An app plans recurring income only when this is true.",
+				}),
 			})
 			.meta({ description: "Optional server capabilities." }),
 		auth: z.object({

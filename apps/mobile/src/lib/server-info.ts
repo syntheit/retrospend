@@ -27,6 +27,17 @@ export function serverAutoPost(info: {
 	return info.features.autoPost === true;
 }
 
+/**
+ * Whether the server's recurring confirm takes `auto` (features.autoConfirm,
+ * contract 1.13.0). A server before that leaves it out and runs the confirm as
+ * a person's income confirm, so absent counts as off: the app posts no income.
+ */
+export function serverAutoConfirm(info: {
+	features: Record<string, boolean | undefined>;
+}): boolean {
+	return info.features.autoConfirm === true;
+}
+
 export type ProbeResult =
 	| { ok: true; baseUrl: string; insecure: boolean; info: ServerInfo }
 	| { ok: false; reason: "invalidUrl" | "unreachable" | "notRetrospend" }

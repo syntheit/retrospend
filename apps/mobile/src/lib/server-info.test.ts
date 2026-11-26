@@ -3,6 +3,7 @@ import {
 	initialServerAddress,
 	normalizeServerUrl,
 	probeServer,
+	serverAutoConfirm,
 	serverAutoPost,
 	type ServerInfo,
 } from "./server-info";
@@ -185,6 +186,22 @@ describe("serverAutoPost", () => {
 		expect(serverAutoPost({ features: {} })).toBe(false);
 		expect(
 			serverAutoPost({ features: { autoPost: "true" as unknown as boolean } }),
+		).toBe(false);
+	});
+});
+
+describe("serverAutoConfirm", () => {
+	it("is on only when the server says true", () => {
+		expect(serverAutoConfirm({ features: { autoConfirm: true } })).toBe(true);
+		expect(serverAutoConfirm({ features: { autoConfirm: false } })).toBe(false);
+	});
+
+	it("fails closed for a server before 1.13.0, which leaves it out", () => {
+		expect(serverAutoConfirm({ features: { autoPost: true } })).toBe(false);
+		expect(
+			serverAutoConfirm({
+				features: { autoConfirm: "true" as unknown as boolean },
+			}),
 		).toBe(false);
 	});
 });

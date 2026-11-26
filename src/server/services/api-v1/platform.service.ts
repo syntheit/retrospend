@@ -3,7 +3,10 @@ import { env } from "~/env";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
 import { type PushConfig, pushConfig } from "~/server/services/push/config";
-import { autoPostEnabled } from "~/server/services/recurring-auto-post";
+import {
+	AUTO_CONFIRM,
+	autoPostEnabled,
+} from "~/server/services/recurring-auto-post";
 import {
 	isAllowAllUsersToGenerateInvitesEnabled,
 	isInviteOnlyEnabled,
@@ -34,6 +37,7 @@ export async function getServerInfo(
 		features: {
 			advancedProtection: env.ADVANCED_PROTECTION_ENABLED,
 			autoPost: autoPostEnabled(),
+			autoConfirm: AUTO_CONFIRM,
 		},
 		auth: {
 			methods: ["password", "totp", "bearer", "apiKey", "deviceAuthorization"],

@@ -8,7 +8,7 @@ import type { NewOutboxEntry, Outbox } from "@/data/outbox";
 import { transportFor } from "@/data/transport";
 import { deviceOf, exclusive, flushEntries } from "@/features/entry/queue";
 import type { RecurringPayload } from "@/features/entry/send";
-import { serverAutoPost } from "@/lib/server-info";
+import { serverAutoConfirm, serverAutoPost } from "@/lib/server-info";
 import type { PushEnabled } from "@/push/enabled";
 import { withTimeout } from "./deviceSettle";
 
@@ -52,16 +52,24 @@ export async function readProtected(api: RetrospendClient): Promise<boolean> {
 	}
 }
 
-/** The server's auto-post setting; any failure reads as off. */
-export async function readAutoPost(api: RetrospendClient): Promise<boolean> {
+/**
+ * What the server says about auto posting: its setting, and whether its
+ * confirm takes `auto` (which recurring income needs). Any failure reads as
+ * off for both.
+ */
+export async function readServerAuto(
+	api: RetrospendClient,
+): Promise<{ autoPost: boolean; income: boolean }> {
 	try {
-		return serverAutoPost(
-			await withTimeout((options) =>
-				api.platform.serverInfo(undefined, options),
-			),
+		const info = await withTimeout((options) =>
+			api.platform.serverInfo(undefined, options),
 		);
+		return {
+			autoPost: serverAutoPost(info),
+			income: serverAutoConfirm(info),
+		};
 	} catch {
-		return false;
+		return { autoPost: false, income: false };
 	}
 }
 
@@ -166,7 +174,7 @@ export async function runPoster(input: PosterRunInput): Promise<PosterOutcome> {
 	if (!device) return { status: "off" };
 
 	// Read before the plan, never inside it: the plan holds the store open.
-	const autoPost = await readAutoPost(api);
+	const { autoPost, income } = await readServerAuto(api);
 	if (!autoPost) return { status: "auto_post_off" };
 	const isProtected = await readProtected(api);
 	if (isProtected) return { status: "protected" };
@@ -183,6 +191,7 @@ export async function runPoster(input: PosterRunInput): Promise<PosterOutcome> {
 		);
 		const plans = await device.planPoster({
 			autoPost,
+			income,
 			isProtected: async () => isProtected,
 			skip: busy,
 		});

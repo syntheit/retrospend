@@ -61,12 +61,20 @@ describe("server-info features.autoPost", () => {
 		},
 	);
 
+	it("says the confirm takes auto, whatever the auto-post setting", async () => {
+		for (const setting of ["true", "false"]) {
+			env.RECURRING_AUTO_POST = setting;
+			expect((await getServerInfo(NO_PUSH)).features.autoConfirm).toBe(true);
+		}
+	});
+
 	it("leaves the other features alone", async () => {
 		env.ADVANCED_PROTECTION_ENABLED = true;
 		const info = await getServerInfo(NO_PUSH);
 		expect(info.features).toEqual({
 			advancedProtection: true,
 			autoPost: true,
+			autoConfirm: true,
 		});
 		env.ADVANCED_PROTECTION_ENABLED = false;
 	});
