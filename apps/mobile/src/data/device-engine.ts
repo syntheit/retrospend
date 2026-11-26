@@ -5,6 +5,8 @@ import type {
 	BulkBooked,
 	BulkOp,
 	DeviceApi,
+	PosterPlansInput,
+	PosterTemplatePlan,
 	Rebase,
 	ServerPreview,
 	TemplateSeen,
@@ -89,6 +91,15 @@ export interface DeviceWrites {
 	refresh(): Promise<void>;
 }
 
+/** What the recurring poster needs of the engine of its client. */
+export interface DevicePoster
+	extends Pick<DeviceWrites, "book" | "pullsBegun" | "refresh"> {
+	/** The plan of each template's due periods over the pulled rows (see `DeviceEngine.planPoster`); null when it cannot be made. */
+	planPoster(
+		input: Omit<PosterPlansInput, "now">,
+	): Promise<readonly PosterTemplatePlan[] | null>;
+}
+
 /** What a bulk categorize or delete needs of the engine of its client. */
 export interface DeviceBulkWrites {
 	/** What the device books for a bulk categorize or delete; null when it could not. */
@@ -122,6 +133,20 @@ export function bulkWritesFor(api: RetrospendClient): DeviceBulkWrites | null {
 			engine.settleBulk(key, booked, answer, ids),
 		undoneBulk: (key) => engine.undoneBulk(key),
 		bulkUnsettled: () => engine.bulkUnsettled(),
+	};
+}
+
+/** The poster side of the engine of `api`, or null when it has none (or it was disposed). */
+export function posterFor(api: RetrospendClient): DevicePoster | null {
+	const writes = writesFor(api);
+	const held = engines.get(api);
+	if (!writes || !held) return null;
+	const { engine } = held;
+	return {
+		book: writes.book,
+		pullsBegun: writes.pullsBegun,
+		refresh: writes.refresh,
+		planPoster: (input) => engine.planPoster(input),
 	};
 }
 
