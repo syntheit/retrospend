@@ -1,5 +1,7 @@
 /**
- * Vectors for recurring confirm, skip and catch-up. Every expected value is
+ * Vectors for recurring confirm, skip and the poster. A "poster" step plans
+ * the run with the domain (`planPosterRun`) and books each planned period with
+ * one confirm. Every expected value is
  * derived by hand in the comment above it, from the rules the server runs
  * (slice-device-recurring.md, test plan):
  *
@@ -20,7 +22,7 @@
  * the saved zone, so a post that read the phone's own zone would give another
  * answer than the vector says.
  */
-import type { CatchUpStop } from "@retrospend/domain/recurring-post/plan";
+import type { PosterStop } from "@retrospend/domain/recurring-post/poster";
 import type { RateSeed } from "./expense-create-conformance";
 import { at, BA, rate } from "./expense-create-vectors";
 
@@ -55,8 +57,13 @@ export interface ExpectedPost {
 }
 
 export type RecurringStep = {
-	call: "confirm" | "skip" | "catchUp";
+	call: "confirm" | "skip" | "poster";
 	now: Date;
+	/**
+	 * A pull ran before this step. A poster plans from the template as last
+	 * pulled, and a local write clears its version, so a second run needs one.
+	 */
+	afterPull?: true;
 	/** The request zone of a manual confirm; the saved zone when absent. */
 	zone?: string;
 	paidOn?: string;
@@ -68,7 +75,7 @@ export type RecurringStep = {
 				posted: ExpectedPost[];
 				/** The template's due date after the step. */
 				nextDueDate: string;
-				stopped?: CatchUpStop;
+				stopped?: PosterStop;
 				refusal?: string;
 		  }
 		| {
@@ -76,7 +83,7 @@ export type RecurringStep = {
 				count: number;
 				homeTotal: string;
 				nextDueDate: string;
-				stopped: CatchUpStop;
+				stopped: PosterStop;
 		  }
 		/** A refusal of the core: RecurringRefusal or input kind. The template is unchanged. */
 		| { refused: string }
@@ -147,12 +154,8 @@ const withTemplate = (
 });
 
 /** The step that leaves the template where it was: nothing due. */
-const idle = (
-	now: string,
-	nextDueDate: string,
-	call: "catchUp" = "catchUp",
-): RecurringStep => ({
-	call,
+const idle = (now: string, nextDueDate: string): RecurringStep => ({
+	call: "poster",
 	now: D(now),
 	expect: { posted: [], nextDueDate, stopped: "caught_up" },
 });
@@ -253,7 +256,7 @@ export const recurringVectors: RecurringVector[] = [
 		steps: [
 			idle("2026-11-30T15:30:00Z", wasDue),
 			{
-				call: "catchUp",
+				call: "poster",
 				now: DEC_1,
 				expect: {
 					posted: [BASE_POST],
@@ -292,7 +295,7 @@ export const recurringVectors: RecurringVector[] = [
 	// 30,000.00, 20 x 1520 = 30,400.00, 20 x 1545 = 30,900.00; today's rate for
 	// all three would give 92,700.00 instead of 91,300.00. Next: Dec 1.
 	base({
-		name: "catch-up books each due date at its own rate",
+		name: "the poster books each due date at its own rate",
 		seed: withTemplate({ nextDueDate: D("2026-09-01T03:00:00Z") }, [
 			rate("ARS", "blue", "1500", "2026-09-01T00:00:00Z"),
 			rate("ARS", "blue", "1520", "2026-10-01T00:00:00Z"),
@@ -300,7 +303,7 @@ export const recurringVectors: RecurringVector[] = [
 		]),
 		steps: [
 			{
-				call: "catchUp",
+				call: "poster",
 				now: D("2026-11-15T12:00:00Z"),
 				expect: {
 					posted: [
@@ -330,14 +333,14 @@ export const recurringVectors: RecurringVector[] = [
 		],
 	}),
 	// No ARS rate at all: a confirm is refused (never booked at 1), and a
-	// catch-up posts nothing and rests on the same due date.
+	// the poster plans nothing and rests on the same due date.
 	base({
-		name: "missing rate: a confirm is refused and a catch-up posts nothing",
+		name: "missing rate: a confirm is refused and the poster plans nothing",
 		seed: withTemplate({}, []),
 		steps: [
 			{ call: "confirm", now: DEC_1, expect: { missingRate: ["ARS"] } },
 			{
-				call: "catchUp",
+				call: "poster",
 				now: DEC_1,
 				expect: {
 					posted: [],
@@ -352,13 +355,14 @@ export const recurringVectors: RecurringVector[] = [
 	// Oct 10 12:00Z, k = 39 is Oct 7 (Jan 7 is day 7, + 273 = day 280 = Oct 7)
 	// and k = 40 is Oct 14, so 40 are due. Run 1 posts 31 (k 0 to 30) at 1545:
 	// 31 x 30,900.00 = 957,900.00, and rests on k = 31, Aug 12 (day 224).
-	// Run 2 posts the other 9: 278,100.00, resting on Oct 14. Total 1,236,000.00.
+	// Run 2, after a pull, posts the other 9: 278,100.00, resting on Oct 14.
+	// Total 1,236,000.00.
 	base({
 		name: "cap: 40 weekly periods post as 31 and then 9",
 		seed: weekly,
 		steps: [
 			{
-				call: "catchUp",
+				call: "poster",
 				now: D("2026-10-10T12:00:00Z"),
 				expect: {
 					count: 31,
@@ -368,8 +372,9 @@ export const recurringVectors: RecurringVector[] = [
 				},
 			},
 			{
-				call: "catchUp",
+				call: "poster",
 				now: D("2026-10-10T12:00:00Z"),
+				afterPull: true,
 				expect: {
 					count: 9,
 					homeTotal: "278100.00",
@@ -451,7 +456,7 @@ export const recurringVectors: RecurringVector[] = [
 		seed: withTemplate({ amountMode: "ASK" }),
 		steps: [
 			{
-				call: "catchUp",
+				call: "poster",
 				now: DEC_1,
 				expect: {
 					posted: [],

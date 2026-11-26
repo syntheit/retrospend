@@ -32,9 +32,7 @@ import {
 import { recordWrite, type WriteFn } from "./local-db";
 import type { Reader, Store, Tx } from "./port";
 import {
-	catchUpRecurring,
 	confirmRecurring,
-	RECURRING_CATCH_UP,
 	RECURRING_CONFIRM,
 	RECURRING_SKIP,
 	skipRecurring,
@@ -111,13 +109,10 @@ export const EXPENSE_DELETE_MUTATION = deviceMutation({
 	write: deleteExpense,
 });
 
-/** What a recurring confirm can change, as the server's mutation lists it (recurring-confirm.mutation.ts, FIGURES). */
-export const RECURRING_CONFIRM_FIGURES = ["spent"] as const;
-
-/** recurring.confirm on the device: one due period posted. */
+/** recurring.confirm on the device: one due period posted, an expense like any other (the server's FIGURES, recurring-confirm.mutation.ts). */
 export const RECURRING_CONFIRM_MUTATION = deviceMutation({
 	id: RECURRING_CONFIRM,
-	touches: RECURRING_CONFIRM_FIGURES,
+	touches: EXPENSE_FIGURES,
 	write: confirmRecurring,
 });
 
@@ -126,13 +121,6 @@ export const RECURRING_SKIP_MUTATION = deviceMutation({
 	id: RECURRING_SKIP,
 	touches: [],
 	write: skipRecurring,
-});
-
-/** Every due period of a template at once: confirms, so the confirm's figures. */
-export const RECURRING_CATCH_UP_MUTATION = deviceMutation({
-	id: RECURRING_CATCH_UP,
-	touches: RECURRING_CONFIRM_FIGURES,
-	write: catchUpRecurring,
 });
 
 /**

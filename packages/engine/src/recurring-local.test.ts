@@ -1,5 +1,5 @@
 /**
- * Recurring confirm, skip and catch-up on the device store, against the
+ * Recurring confirm, skip and the poster's per-entry confirms on the device store, against the
  * hand-derived vectors (recurring-vectors.ts), and the preview, undo and
  * refusal behavior around them. Home is ARS at blue 1545 in Buenos Aires
  * unless a case says otherwise; the vectors carry their own arithmetic.
@@ -14,21 +14,20 @@ import {
 } from "@retrospend/domain/recurring-post/refusals";
 import { afterEach, describe, expect, it } from "vitest";
 import { ConflictError } from "./errors";
+import type { ExpenseRow } from "./expenses";
 import { LocalDb } from "./local-db";
 import { seededStore } from "./local-expense-create";
 import { dump } from "./local-fixtures";
 import { InvalidInputError, type Store } from "./port";
 import {
 	createDevicePreviewRunner,
-	RECURRING_CATCH_UP_MUTATION,
 	RECURRING_CONFIRM_MUTATION,
 	RECURRING_SKIP_MUTATION,
 } from "./preview";
 import {
-	catchUpRecurring,
 	confirmRecurring,
 	INCOME_NOT_ON_DEVICE,
-	RECURRING_CATCH_UP,
+	planPosterOver,
 	RECURRING_CONFIRM,
 	RECURRING_SKIP,
 	skipRecurring,
@@ -121,15 +120,57 @@ async function perform(db: LocalDb, step: RecurringStep, n: number) {
 		);
 		return { posted: [value.expense], stopped: undefined, refusal: undefined };
 	}
-	const { value } = await db.write(
-		RECURRING_CATCH_UP,
-		catchUpRecurring({
-			...base,
-			clientId: (i) => `p${n}-${i}`,
-			isProtected: notProtected,
-		}),
+	return runPoster(db, { now: step.now, n });
+}
+
+/** A pull names the template's version again, which a local write cleared. */
+async function pull(store: Store, version: string) {
+	await store.transaction((tx) =>
+		tx.put("recurringTemplates", { ...template(store), version }),
 	);
-	return value;
+}
+
+/**
+ * What the phone's poster does: the domain plans the run, then each entry is
+ * one confirm with the entry's due date, the auto flag and, for the first
+ * entry, its stamp. A later entry's stamp is "after": a device write has none.
+ */
+async function runPoster(
+	db: LocalDb,
+	input: {
+		now: Date;
+		n?: number;
+		autoPost?: boolean;
+		isProtected?: () => Promise<boolean>;
+	},
+) {
+	const plan = await planPosterOver(db.reads(), {
+		templateId: "t1",
+		now: input.now,
+		autoPost: input.autoPost ?? true,
+		isProtected: input.isProtected ?? notProtected,
+	});
+	const posted: ExpenseRow[] = [];
+	for (const entry of plan.entries) {
+		const { value } = await db.write(
+			RECURRING_CONFIRM,
+			confirmRecurring({
+				templateId: "t1",
+				now: input.now,
+				clientId: `p${input.n ?? 0}-${entry.index}`,
+				dueAt: entry.dueAt,
+				auto: true,
+				expectedVersion:
+					"version" in entry.expectedStamp
+						? entry.expectedStamp.version
+						: undefined,
+			}),
+		);
+		// The planned row is the booked row.
+		expect(value.expense.homeAmount).toBe(entry.plan.entry.homeAmount);
+		posted.push(value.expense);
+	}
+	return { posted, stopped: plan.stopped, refusal: plan.refusal, plan };
 }
 
 function expectPost(
@@ -163,6 +204,7 @@ async function runVector(v: RecurringVector) {
 	let n = 0;
 	for (const step of v.steps) {
 		n += 1;
+		if (step.afterPull) await pull(store, `v${n}`);
 		const before = dump(store);
 		const want = step.expect;
 		if ("refused" in want || "missingRate" in want) {
@@ -204,7 +246,7 @@ async function runVector(v: RecurringVector) {
 	}
 }
 
-describe("recurring confirm, skip and catch-up vectors", () => {
+describe("recurring confirm, skip and poster vectors", () => {
 	for (const v of recurringVectors) it(v.name, () => runVector(v));
 });
 
@@ -354,33 +396,21 @@ describe("the posted row and the template", () => {
 					RECURRING_SKIP,
 					skipRecurring({ templateId: "t1", now: DEC_1 }),
 				),
-			() =>
-				db.write(
-					RECURRING_CATCH_UP,
-					catchUpRecurring({
-						templateId: "t1",
-						now: DEC_1,
-						clientId: () => "p",
-						isProtected: notProtected,
-					}),
-				),
 		]) {
 			const error = await run().catch((e) => e);
 			expect(error).toBeInstanceOf(InvalidInputError);
 			expect((error as Error).message).toBe(INCOME_NOT_ON_DEVICE);
 		}
 		expect(dump(store)).toEqual(before);
+		// The poster plans no income either.
+		const plan = await runPoster(db, { now: DEC_1 });
+		expect(plan).toMatchObject({ posted: [], stopped: "income" });
+		expect(dump(store)).toEqual(before);
 	});
 });
 
-describe("catch-up stops", () => {
-	const catchUp = (isProtected: () => Promise<boolean>) =>
-		catchUpRecurring({
-			templateId: "t1",
-			now: new Date("2026-11-15T12:00:00Z"),
-			clientId: (i) => `p${i}`,
-			isProtected,
-		});
+describe("poster runs", () => {
+	const midNovember = new Date("2026-11-15T12:00:00Z");
 	const threeBehind = () =>
 		open({
 			...base.seed,
@@ -410,11 +440,8 @@ describe("catch-up stops", () => {
 				"protection_unreadable",
 			],
 		] as const) {
-			const { value } = await db.write(
-				RECURRING_CATCH_UP,
-				catchUp(isProtected),
-			);
-			expect(value).toEqual({ posted: [], stopped });
+			const run = await runPoster(db, { now: midNovember, isProtected });
+			expect(run).toMatchObject({ posted: [], stopped });
 		}
 		expect(dump(store)).toEqual(before);
 	});
@@ -422,12 +449,12 @@ describe("catch-up stops", () => {
 	it("reads protection again before every later period", async () => {
 		const { store, db } = await threeBehind();
 		let reads = 0;
-		const { value } = await db.write(
-			RECURRING_CATCH_UP,
-			catchUp(async () => ++reads > 1),
-		);
-		expect(value.stopped).toBe("protected");
-		expect(value.posted.map((e) => e.date.toISOString())).toEqual([
+		const run = await runPoster(db, {
+			now: midNovember,
+			isProtected: async () => ++reads > 1,
+		});
+		expect(run.stopped).toBe("protected");
+		expect(run.posted.map((e) => e.date.toISOString())).toEqual([
 			"2026-09-01T03:00:00.000Z",
 		]);
 		expect(template(store).nextDueDate.toISOString()).toBe(
@@ -435,25 +462,104 @@ describe("catch-up stops", () => {
 		);
 	});
 
-	it("posts nothing for a paused template or one that no longer pays automatically", async () => {
+	it("plans nothing when the server's auto-post setting is off", async () => {
+		const { store, db } = await threeBehind();
+		const before = dump(store);
+		const run = await runPoster(db, { now: midNovember, autoPost: false });
+		expect(run).toMatchObject({ posted: [], stopped: "auto_post_off" });
+		expect(dump(store)).toEqual(before);
+	});
+
+	it("plans nothing for a template with no version to name", async () => {
+		const { store, db } = await open(base.seed, { version: null });
+		const before = dump(store);
+		const run = await runPoster(db, { now: DEC_1 });
+		expect(run).toMatchObject({ posted: [], stopped: "no_stamp" });
+		expect(dump(store)).toEqual(before);
+	});
+
+	it("plans nothing for a paused template or one that no longer pays automatically", async () => {
 		for (const over of [{ isActive: false }, { autoPay: false }]) {
 			const { store, db } = await open(base.seed, over);
-			const { value } = await db.write(
-				RECURRING_CATCH_UP,
-				catchUpRecurring({
-					templateId: "t1",
-					now: DEC_1,
-					clientId: () => "p",
-					isProtected: notProtected,
-				}),
-			);
-			expect(value).toEqual({
+			const run = await runPoster(db, { now: DEC_1 });
+			expect(run).toMatchObject({
 				posted: [],
 				stopped: "refused",
 				refusal: "not_found",
 			});
 			expect(store.list("expenses")).toEqual([]);
 		}
+	});
+
+	// The first entry carries the stamp the run was planned at. The web changes
+	// the amount after the plan: the version moved, so the confirm answers
+	// "changed" and books nothing, at the old amount.
+	it("books nothing for an entry whose template changed after planning", async () => {
+		const { store, db } = await open(base.seed);
+		const plan = await planPosterOver(db.reads(), {
+			templateId: "t1",
+			now: DEC_1,
+			autoPost: true,
+			isProtected: notProtected,
+		});
+		const entry = plan.entries[0];
+		expect(entry?.expectedStamp).toEqual({ version: "v1" });
+		await store.transaction((tx) =>
+			tx.put("recurringTemplates", {
+				...template(store),
+				amount: "25",
+				version: "v2",
+			}),
+		);
+		const before = dump(store);
+		await expect(
+			db.write(
+				RECURRING_CONFIRM,
+				confirmRecurring({
+					templateId: "t1",
+					now: DEC_1,
+					clientId: "p0",
+					dueAt: entry?.dueAt,
+					auto: true,
+					expectedVersion: "v1",
+				}),
+			),
+		).rejects.toSatisfy(
+			(e) => e instanceof RecurringRefusal && e.kind === "changed",
+		);
+		expect(dump(store)).toEqual(before);
+	});
+
+	// Without a stamp the auto flag is what refuses it: auto-pay off is "not found".
+	it("an auto confirm refuses a template that stopped paying automatically", async () => {
+		const { store, db } = await open(base.seed, { autoPay: false });
+		const before = dump(store);
+		await expect(
+			db.write(
+				RECURRING_CONFIRM,
+				confirmRecurring({
+					templateId: "t1",
+					now: DEC_1,
+					clientId: "p0",
+					dueAt: DEC_1,
+					auto: true,
+				}),
+			),
+		).rejects.toSatisfy(
+			(e) => e instanceof RecurringRefusal && e.kind === "not_found",
+		);
+		expect(dump(store)).toEqual(before);
+	});
+
+	it("chains a run: the first entry names the pulled version, the rest 'after'", async () => {
+		const { db } = await threeBehind();
+		const run = await runPoster(db, { now: midNovember });
+		expect(run.plan.entries.map((e) => e.expectedStamp)).toEqual([
+			{ version: "v1" },
+			{ after: 0 },
+			{ after: 1 },
+		]);
+		expect(run.posted).toHaveLength(3);
 	});
 });
 
@@ -466,7 +572,9 @@ describe("preview and undo", () => {
 			actor,
 		});
 
-	// USD 20 into spent: 20.00 USD (2,000 minor), as the server's confirm lists it.
+	// USD 20 into spent: 20.00 USD (2,000 minor). Glance.spent totals in ARS:
+	// 20 x 1,545 = 30,900.00 = 3,090,000 minor, from 0. The server's confirm
+	// lists both, as expense.create does.
 	it("previews a confirm as the write rolled back, and applies exactly that", async () => {
 		const { store } = await open(base.seed);
 		const runner = runnerOver(store);
@@ -483,6 +591,14 @@ describe("preview and undo", () => {
 				delta: { minor: 2_000, currency: "USD" },
 				figureAfter: [{ minor: 2_000, currency: "USD" }],
 			},
+			{
+				id: "glance.spent",
+				currency: "ARS",
+				before: { minor: 0, currency: "ARS" },
+				after: { minor: 3_090_000, currency: "ARS" },
+				delta: { minor: 3_090_000, currency: "ARS" },
+				figureAfter: [{ minor: 3_090_000, currency: "ARS" }],
+			},
 		]);
 		const { undo, ...applied } = await runner.apply(
 			RECURRING_CONFIRM_MUTATION,
@@ -493,23 +609,13 @@ describe("preview and undo", () => {
 		expect(undo).toMatchObject({ kind: "revert", mutation: RECURRING_CONFIRM });
 	});
 
-	it("previews a skip as no figure change and a catch-up as the confirms it makes", async () => {
+	it("previews a skip as no figure change", async () => {
 		const { store } = await open(base.seed);
-		const runner = runnerOver(store);
-		const skip = await runner.preview(RECURRING_SKIP_MUTATION, {
+		const skip = await runnerOver(store).preview(RECURRING_SKIP_MUTATION, {
 			templateId: "t1",
 			now: DEC_1,
 		});
 		expect(skip.changes).toEqual([]);
-		const run = await runner.preview(RECURRING_CATCH_UP_MUTATION, {
-			templateId: "t1",
-			now: DEC_1,
-			clientId: () => "p",
-			isProtected: notProtected,
-		});
-		expect(run.changes.map((c) => [c.id, c.delta.minor])).toEqual([
-			["spent", 2_000],
-		]);
 	});
 
 	it("undoes a confirm, expense and template together, and the undo of the undo redoes it", async () => {

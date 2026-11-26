@@ -1,5 +1,5 @@
 /**
- * Recurring confirm, skip and catch-up on the device: the writes the server
+ * Recurring confirm and skip on the device: the writes the server
  * runs through the domain's plan-post core (recurring-post/plan.ts), here over
  * the store. The core owns every rule and its order (what is due and in which
  * zone, the paid-on day, the amount, the rate, the step to the next due date),
@@ -17,6 +17,9 @@
  *   a store transaction is one writer.
  * - Recurring income is not on the device until M4: it is refused, never
  *   posted. The poster plans none either.
+ * - A run of due periods is never one write. The poster plans the periods
+ *   (`planPosterOver`) and each one is its own `confirmRecurring`, so each
+ *   has its own id, due date, stamp, ack and undo, as the server's confirms do.
  * - After a write the template has no version, as a booked expense has none,
  *   until the server's answer names one.
  *
@@ -24,34 +27,31 @@
  * (preview.ts). A write's undo token reverts the expense and the template
  * together, and only while both are as the write left them.
  */
-import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
 import type { RateChoice } from "@retrospend/domain/rate-booking";
 import {
-	type CatchUpStop,
 	type PostTemplate,
 	planConfirm,
 	planSkip,
-	protectionStop,
-	readProtection,
-	runCatchUp,
 } from "@retrospend/domain/recurring-post/plan";
+import {
+	type PosterRun,
+	planPosterRun,
+} from "@retrospend/domain/recurring-post/poster";
 import {
 	RECURRING_NOT_FOUND,
 	RecurringRefusal,
-	type RecurringRefusalKind,
 } from "@retrospend/domain/recurring-post/refusals";
 import { rateBookOf, refusing } from "./expense-create";
 import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
 import { InvalidInputError } from "./port";
 import { categoryKindOf } from "./reference";
-import type { Repos } from "./repos";
+import type { ReadRepos, Repos } from "./repos";
 import type { TemplateRow } from "./templates";
 
 export const RECURRING_CONFIRM = "recurring.confirm";
 export const RECURRING_SKIP = "recurring.skip";
-export const RECURRING_CATCH_UP = "recurring.catchUp";
 
 export const INCOME_NOT_ON_DEVICE = "Recurring income is confirmed online";
 
@@ -209,68 +209,36 @@ export function skipRecurring(input: SkipRecurringInput): WriteFn<TemplateRow> {
 	};
 }
 
-export interface CatchUpRecurringInput {
+export interface PosterPlanInput {
 	readonly templateId: string;
 	readonly now: Date;
-	/** The id of the expense posted for the period at `index`, from 0. */
-	readonly clientId: (index: number) => string;
+	/** The server's auto-post setting: off means nothing posts on its own. */
+	readonly autoPost: boolean;
 	/** Whether the account is protected now; a read that fails counts as protected. */
 	readonly isProtected: () => Promise<boolean>;
 }
 
-export interface CaughtUp {
-	/** The expenses posted, oldest period first. */
-	readonly posted: readonly ExpenseRow[];
-	readonly stopped: CatchUpStop;
-	/** Why the period after the last one did not post, when `stopped` is `refused`. */
-	readonly refusal?: RecurringRefusalKind | "missing_rate";
-}
-
 /**
- * Every due period of one template, oldest first, each as an auto confirm at
- * its own due date, through the core's `runCatchUp` (its due instant gate,
- * protection read, stop at the first period that does not post, and cap).
- * A missing rate on period k leaves k and everything after it unposted.
+ * The domain poster's plan (`planPosterRun`) for one template over the store
+ * as last pulled: one entry per due period, each to be queued as one
+ * `confirmRecurring` with `auto: true`, that entry's `dueAt` and, for the
+ * first entry, its stamp as `expectedVersion`. A later entry's stamp is
+ * `{ after }`: the version an earlier entry's ack names, which a device write
+ * cannot know. Nothing is written here and the loop is the domain's.
  */
-export function catchUpRecurring(
-	input: CatchUpRecurringInput,
-): WriteFn<CaughtUp> {
-	return async (r) => {
-		const row = loadTemplate(r, input.templateId);
-		const first = protectionStop(await readProtection(input.isProtected));
-		if (first) return { posted: [], stopped: first };
-		const posted: ExpenseRow[] = [];
-		const run = await runCatchUp<RecurringRefusalKind | "missing_rate">(
-			{
-				isProtected: input.isProtected,
-				post: async ({ dueAt, index }) => {
-					try {
-						const done = await confirmIn(r, {
-							templateId: input.templateId,
-							now: input.now,
-							clientId: input.clientId(index),
-							dueAt,
-							auto: true,
-						});
-						posted.push(done.expense);
-						return { posted: true, nextDueDate: done.template.nextDueDate };
-					} catch (error) {
-						if (error instanceof RecurringRefusal)
-							return { posted: false, outcome: error.kind };
-						if (error instanceof MissingRateError)
-							return { posted: false, outcome: "missing_rate" };
-						throw error;
-					}
-				},
-			},
-			row.nextDueDate,
-			input.now,
-		);
-		const last = run.results.at(-1);
-		return {
-			posted,
-			stopped: run.stopped,
-			...(last && !last.posted && { refusal: last.outcome }),
-		};
-	};
+export function planPosterOver(
+	r: Pick<ReadRepos, "recurringTemplates" | "settings" | "rates">,
+	input: PosterPlanInput,
+): Promise<PosterRun> {
+	const row = r.recurringTemplates.get(input.templateId);
+	const zone = r.settings.require().timeZone;
+	return planPosterRun({
+		userId: DEVICE_USER,
+		template: row ? postTemplateOf(row) : null,
+		autoPost: input.autoPost,
+		now: input.now,
+		zone,
+		book: rateBookOf(r),
+		isProtected: input.isProtected,
+	});
 }
