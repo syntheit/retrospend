@@ -37,10 +37,12 @@ export type SendResult =
 /**
  * The recurring confirm and skip answers' stamp after the write, as contract
  * 1.10.0 (PR4) adds it. The contract does not have it on this branch yet, so
- * the shape is typed here to match: a timestamp string, `templateUpdatedAt`.
+ * the shape is typed here to match: a timestamp string on skip, nullable on
+ * confirm (null for recurring income). A null leaves the chain without a
+ * stamp, so its dependents park.
  */
 export interface TemplateAnswer {
-	templateUpdatedAt: string;
+	templateUpdatedAt: string | null;
 }
 
 /** A confirm or skip the server took: the next entry for the template takes this stamp. */
