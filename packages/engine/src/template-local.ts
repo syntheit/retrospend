@@ -51,8 +51,12 @@ import { DEVICE_FIGURE_IDS } from "./registry";
 import type { Repos } from "./repos";
 import type { TemplateRow } from "./templates";
 
-/** An income template is made and edited online until the device books income (M4, tranche 2). */
-export const INCOME_NOT_ON_DEVICE = "Recurring income is set up online";
+/**
+ * What the device refuses of an income template: creating or editing one
+ * (M4, tranche 2) and a person's confirm or skip of it (the poster is the one
+ * confirm the device books for income).
+ */
+export const INCOME_NOT_ON_DEVICE = "Recurring income is handled online";
 
 export const TEMPLATE_CREATE = "recurring.create";
 export const TEMPLATE_UPDATE = "recurring.update";

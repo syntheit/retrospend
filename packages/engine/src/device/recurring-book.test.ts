@@ -131,6 +131,7 @@ describe("DeviceEngine.book of a recurring confirm or skip", () => {
 	it("is null for recurring income, which stays online", async () => {
 		const { engine } = await setup(template("t1", { direction: "IN" }));
 		expect(await engine.book(confirm())).toBeNull();
+		expect(await engine.book(skip)).toBeNull();
 	});
 });
 
