@@ -94,7 +94,7 @@ describe("template stamps and client ids on recurring writes", () => {
 				>
 			>;
 		};
-		expect(doc.info.version).toBe("1.10.0");
+		expect(doc.info.version).toBe("1.11.0");
 		const body = (path: string) =>
 			Object.keys(
 				doc.paths[path]?.post?.requestBody?.content["application/json"].schema

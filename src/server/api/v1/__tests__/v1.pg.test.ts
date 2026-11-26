@@ -22,6 +22,7 @@ import {
 	fixtureDb,
 	fixtureNameIndex,
 } from "~/test/pg-harness";
+import { autoPostEnabled } from "~/server/services/recurring-auto-post";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
 import { RATE_LIMITS } from "../rate-limit";
@@ -220,11 +221,12 @@ describe("/api/v1 on Postgres", () => {
 			expect(body).toMatchObject({
 				name: "Retrospend",
 				apiVersion: "v1",
-				features: { advancedProtection: false },
+				features: { advancedProtection: false, autoPost: autoPostEnabled() },
 				auth: { signUp: "open" },
 				push: { transports: [] },
 			});
 			expect(body.auth.methods).toContain("deviceAuthorization");
+			expect(body.features.autoPost).toBe(autoPostEnabled());
 		});
 	});
 
@@ -493,6 +495,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(info.status).toBe(200);
 			expect((await info.json()).features).toEqual({
 				advancedProtection: false,
+				autoPost: autoPostEnabled(),
 			});
 		});
 	});

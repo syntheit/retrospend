@@ -3,6 +3,7 @@ import {
 	initialServerAddress,
 	normalizeServerUrl,
 	probeServer,
+	serverAutoPost,
 	type ServerInfo,
 } from "./server-info";
 
@@ -171,5 +172,19 @@ describe("initialServerAddress", () => {
 	it("ignores a value that is not a web address", () => {
 		expect(initialServerAddress("ftp://x")).toBe("retrospend.app");
 		expect(initialServerAddress(42)).toBe("retrospend.app");
+	});
+});
+
+describe("serverAutoPost", () => {
+	it("is on only when the server says true", () => {
+		expect(serverAutoPost({ features: { autoPost: true } })).toBe(true);
+		expect(serverAutoPost({ features: { autoPost: false } })).toBe(false);
+	});
+
+	it("fails closed when the server does not say", () => {
+		expect(serverAutoPost({ features: {} })).toBe(false);
+		expect(
+			serverAutoPost({ features: { autoPost: "true" as unknown as boolean } }),
+		).toBe(false);
 	});
 });
