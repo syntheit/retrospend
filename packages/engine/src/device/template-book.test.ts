@@ -59,7 +59,7 @@ async function setup(row = template("t1")) {
 	return engine;
 }
 
-const after = (booked: { changes: unknown[] } | null) =>
+const afterOf = (booked: { changes: unknown[] } | null) =>
 	(booked?.changes[0] as TemplateChange | undefined)?.after;
 
 describe("DeviceEngine.book of a template create or edit", () => {
@@ -72,7 +72,7 @@ describe("DeviceEngine.book of a template create or edit", () => {
 			id: "t2",
 			before: null,
 		});
-		expect(after(booked)).toMatchObject({
+		expect(afterOf(booked)).toMatchObject({
 			nextDueDate: new Date("2026-12-15T03:00:00.000Z"),
 			anchorDay: 15,
 			autoPay: false,
@@ -85,7 +85,7 @@ describe("DeviceEngine.book of a template create or edit", () => {
 	it("books a pause as the template's own flag, based on the pulled version", async () => {
 		const booked = await (await setup()).book(edit({ paused: true }));
 		expect(booked?.base).toBe("2026-11-18T10:00:00.000Z");
-		expect(after(booked)).toMatchObject({ isActive: false, amount: "20" });
+		expect(afterOf(booked)).toMatchObject({ isActive: false, amount: "20" });
 		// An edit that names nothing changes nothing.
 		expect(await (await setup()).book(edit({}))).toMatchObject({
 			changes: [],
@@ -96,7 +96,7 @@ describe("DeviceEngine.book of a template create or edit", () => {
 		const booked = await (await setup()).book(
 			edit({ nextDueDate: "2026-12-20" }),
 		);
-		expect(after(booked)).toMatchObject({
+		expect(afterOf(booked)).toMatchObject({
 			nextDueDate: new Date("2026-12-20T03:00:00.000Z"),
 			anchorDay: 20,
 		});

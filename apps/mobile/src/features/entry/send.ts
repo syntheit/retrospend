@@ -365,12 +365,14 @@ async function editTemplate(
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
+	// `title` is kept for the Sync issues row and never sent.
+	const { title: _title, ...patch } = entry.payload as Omit<
+		Body<typeof api.recurring.update>,
+		"id" | "expectedUpdatedAt"
+	> & { title?: string };
 	const written = await api.recurring.update(
 		{
-			...(entry.payload as Omit<
-				Body<typeof api.recurring.update>,
-				"id" | "expectedUpdatedAt"
-			>),
+			...patch,
 			id: entry.targetId,
 			expectedUpdatedAt: entry.baseVersion as string,
 		},

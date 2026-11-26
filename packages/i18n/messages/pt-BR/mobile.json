@@ -2964,7 +2964,8 @@
 			"toast": "{title} excluída",
 			"error": "Não foi possível excluir. Tente de novo.",
 			"logged": "Lançamentos já registrados",
-			"loggedStays": "Permanecem"
+			"loggedStays": "Permanecem",
+			"syncFirst": "Sincronize primeiro: algumas alterações ainda não foram sincronizadas."
 		},
 		"pick": "Escolha uma despesa recorrente"
 	},

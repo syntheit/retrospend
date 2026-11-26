@@ -2964,7 +2964,8 @@
 			"toast": "{title} deleted",
 			"error": "Couldn't delete it. Try again.",
 			"logged": "Entries already logged",
-			"loggedStays": "Stay"
+			"loggedStays": "Stay",
+			"syncFirst": "Sync first: some changes haven't synced yet."
 		},
 		"pick": "Pick a recurring expense"
 	},

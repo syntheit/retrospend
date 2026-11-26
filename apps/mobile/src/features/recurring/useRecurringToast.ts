@@ -15,24 +15,28 @@ export function useRecurringToast() {
 	return useCallback(
 		(done: {
 			message: string;
-			undo: () => Promise<void>;
+			/** Left out, the write cannot be taken back and the toast has no Undo. */
+			undo?: () => Promise<void>;
 			onChanged: () => void;
 		}) => {
+			const { undo } = done;
 			done.onChanged();
 			toast.show({
 				message: done.message,
-				undo: {
-					label: tc("undo"),
-					onUndo: async () => {
-						try {
-							await done.undo();
-							toast.show({ message: tw("undone") });
-							done.onChanged();
-						} catch {
-							toast.show({ message: tw("undoError") });
+				undo: undo
+					? {
+							label: tc("undo"),
+							onUndo: async () => {
+								try {
+									await undo();
+									toast.show({ message: tw("undone") });
+									done.onChanged();
+								} catch {
+									toast.show({ message: tw("undoError") });
+								}
+							},
 						}
-					},
-				},
+					: undefined,
 			});
 		},
 		[toast, tc, tw],

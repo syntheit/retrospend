@@ -2964,7 +2964,8 @@
 			"toast": "{title} supprimée",
 			"error": "Impossible de supprimer. Réessaie.",
 			"logged": "Entrées déjà enregistrées",
-			"loggedStays": "Restent"
+			"loggedStays": "Restent",
+			"syncFirst": "Synchronise d'abord : certaines modifications ne sont pas encore synchronisées."
 		},
 		"pick": "Choisissez une dépense récurrente"
 	},

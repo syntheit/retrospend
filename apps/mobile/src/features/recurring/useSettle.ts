@@ -8,21 +8,31 @@ import { isOfflineError } from "@/features/entry/preview";
 import { undoSaved } from "@/features/entry/queue";
 import { useToast } from "@/ui/Toast";
 import type { SettleAnswer, SettleDevice } from "./deviceSettle";
+import type { TemplateAnswer } from "./deviceTemplate";
 import type { RecurringItem } from "./source";
+import { useRecurringToast } from "./useRecurringToast";
 
 // The hooks of the device settle (deviceSettle.ts): which sheets use it, and
 // the toast that ends it.
 
 /**
- * The device's write side for one item, or null: the flag is off, no engine
- * runs yet, nothing is signed in, or the item is income (income is confirmed
- * online until the device books it).
+ * The device's write side, or null: the flag is off, no engine runs yet, or
+ * nothing is signed in. For a new template, which is an expense template.
  */
-export function useSettleDevice(item: RecurringItem): SettleDevice | null {
+export function useTemplateDevice(): SettleDevice | null {
 	const { api, local } = useSession();
-	if (!api || !local || item.direction !== "out") return null;
+	if (!api || !local) return null;
 	const writes = deviceWrites(api);
 	return writes ? { api, outbox: local.outbox, writes } : null;
+}
+
+/**
+ * The same for one item, or null when the item is income (income is confirmed
+ * and edited online until the device books it).
+ */
+export function useSettleDevice(item: RecurringItem): SettleDevice | null {
+	const device = useTemplateDevice();
+	return item.direction === "out" ? device : null;
 }
 
 /**
@@ -117,5 +127,55 @@ export function useSettleToast() {
 			});
 		},
 		[t, tq, tc, tw, toast],
+	);
+}
+
+/**
+ * The toast that ends a template create or edit: what happened, and Undo
+ * while it can be taken back. A refusal to queue (an earlier write to the
+ * template is still going) is a sentence and nothing else.
+ */
+export function useTemplateToast() {
+	const t = useTranslations("mobile.recurring.device");
+	const tq = useTranslations("mobile.composer.toast");
+	const toast = useToast();
+	const announce = useRecurringToast();
+	return useCallback(
+		(
+			answer: TemplateAnswer,
+			done: {
+				title: string;
+				/** The sentence for a write the server has. */
+				synced: string;
+				/** Takes it back; given the answer so it can tell a waiting write from a sent one. */
+				undo: (
+					answer: Extract<TemplateAnswer, { clientId: string }>,
+				) => Promise<void>;
+				onChanged: () => void;
+			},
+		) => {
+			const { title } = done;
+			if (
+				answer.settled !== "synced" &&
+				answer.settled !== "queued" &&
+				answer.settled !== "parked"
+			) {
+				toast.show({ message: t(answer.settled, { title }) });
+				return;
+			}
+			announceEntryChange();
+			announce({
+				message:
+					answer.settled === "synced"
+						? done.synced
+						: answer.settled === "queued"
+							? tq("queued", { title })
+							: t("parked", { title }),
+				// A parked write is not taken back here: Couldn't sync discards it.
+				undo: answer.settled === "parked" ? undefined : () => done.undo(answer),
+				onChanged: done.onChanged,
+			});
+		},
+		[t, tq, toast, announce],
 	);
 }

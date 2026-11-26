@@ -110,9 +110,23 @@ jest.mock("@/ui/DateField", () => ({ DateField: () => null }));
 jest.mock("@/ui/GlyphPill", () => ({ GlyphPill: () => null }));
 jest.mock("@/ui/Picker", () => ({ WheelField: () => null }));
 jest.mock("@/ui/Sheet", () => require("../../../test/native").sheetMock);
+const mockWrites = jest.fn();
+jest.mock("@/data/deviceWrites", () => ({ deviceWrites: () => mockWrites() }));
+const mockAnchor = jest.fn();
+jest.mock("@retrospend/domain/recurring-post/template", () => {
+	const actual = jest.requireActual(
+		"@retrospend/domain/recurring-post/template",
+	);
+	return {
+		...actual,
+		anchorOf: (day: string) => mockAnchor(day) ?? actual.anchorOf(day),
+	};
+});
 
 beforeEach(() => {
 	world.me = { ...world.me, homeCurrency: "USD", defaultCurrency: "USD" };
+	mockWrites.mockReset().mockReturnValue(null);
+	mockAnchor.mockReset();
 });
 
 const catalog = {
@@ -219,6 +233,130 @@ describe("Add a recurring expense", () => {
 		});
 		expect(calls.find((c) => c.route === "delete")?.input).toEqual({
 			id: "tpl-new",
+		});
+	});
+});
+
+describe("Add a recurring expense under the dev flag", () => {
+	const dry = { changes: [], unchanged: [], unavailable: [] };
+	function device(over: { create?: () => Promise<unknown> } = {}) {
+		const recurring = {
+			previewCreate: jest.fn(async (_body: unknown) => dry),
+			create: jest.fn(
+				async (input: { id: string }): Promise<unknown> =>
+					over.create
+						? over.create()
+						: { id: input.id, updatedAt: "2026-11-02T10:00:00.000Z" },
+			),
+			delete: jest.fn(async () => ({ ok: true })),
+		};
+		const writes = {
+			book: jest.fn(async () => ({
+				bookedAt: 1,
+				changes: [],
+				changed: [],
+				base: null,
+			})),
+			comparePreview: jest.fn(async () => undefined),
+			refresh: jest.fn(async () => undefined),
+			pullsBegun: () => 1,
+		};
+		world.api = { recurring } as unknown as RetrospendClient;
+		mockWrites.mockReturnValue(writes);
+		return { recurring, writes };
+	}
+	async function fill() {
+		const tree = await mount(
+			<RecurringComposer
+				catalog={catalog as never}
+				onClose={jest.fn()}
+				onDone={jest.fn()}
+			/>,
+		);
+		await pressAsync(tree, "Name");
+		await pressAsync(tree, "Type amount");
+		await wait(400);
+		return tree;
+	}
+
+	it("shows the server's dry run, holds the device's against it, and queues the create under the write's key", async () => {
+		const { recurring, writes } = device();
+		const tree = await fill();
+		expect(recurring.previewCreate).toHaveBeenCalledTimes(1);
+		expect(writes.comparePreview).toHaveBeenCalledTimes(1);
+		await pressAsync(tree, "Add");
+		const [body, init] = recurring.create.mock.calls[0] as unknown as [
+			Record<string, unknown>,
+			{ context: { idempotencyKey: string } },
+		];
+		const id = init.context.idempotencyKey;
+		expect(body).toMatchObject({ id, name: "Streamly", amount: "12.50" });
+		expect(writes.book).toHaveBeenCalledWith({ kind: "templateCreate", body });
+		const entries = await world.local.outbox.snapshot();
+		expect(entries.acked.map((e) => e.clientId)).toEqual([id]);
+		expect(lastToast().message).toBe("Streamly added");
+		await act(async () => {
+			await lastToast().undo?.onUndo();
+		});
+		expect(recurring.delete).toHaveBeenCalledWith({ id }, expect.anything());
+	});
+
+	it("waits on the phone when the dry run cannot reach the server: Add is on and the create is queued", async () => {
+		const { recurring } = device({
+			create: async () => {
+				throw new Error("Network request failed");
+			},
+		});
+		recurring.previewCreate.mockRejectedValue(
+			new Error("Network request failed"),
+		);
+		const tree = await fill();
+		expect(disabled(tree, "Add")).toBe(false);
+		await pressAsync(tree, "Add");
+		const [entry] = await world.local.outbox.all();
+		expect(entry).toMatchObject({
+			entity: "recurring",
+			kind: "create",
+			baseVersion: null,
+			payload: { name: "Streamly" },
+		});
+		expect(entry?.targetId).toBe(entry?.clientId);
+		expect(lastToast().message).toBe(
+			"Saved Streamly on this phone. It syncs when you're online.",
+		);
+	});
+
+	it("a server error on the dry run keeps Add off", async () => {
+		const { recurring } = device();
+		recurring.previewCreate.mockRejectedValue(
+			Object.assign(new Error("boom"), { status: 503, code: "unavailable" }),
+		);
+		const tree = await fill();
+		expect(disabled(tree, "Add")).toBe(true);
+	});
+
+	it("flag off: the plain preview and create, no engine call, nothing queued", async () => {
+		const { recurring, writes } = device();
+		mockWrites.mockReturnValue(null);
+		const tree = await fill();
+		await pressAsync(tree, "Add");
+		expect(recurring.create).toHaveBeenCalledTimes(1);
+		const [sent] = recurring.create.mock.calls[0] as unknown as [object];
+		expect("id" in sent).toBe(false);
+		expect(writes.book).not.toHaveBeenCalled();
+		expect(writes.comparePreview).not.toHaveBeenCalled();
+		expect(await world.local.outbox.snapshot()).toEqual({
+			open: [],
+			acked: [],
+		});
+	});
+
+	it("takes the monthly anchor from the domain's one rule", async () => {
+		mockAnchor.mockReturnValue(7);
+		const { recurring } = device();
+		await fill();
+		expect(recurring.previewCreate.mock.calls[0]?.[0]).toMatchObject({
+			anchorDay: 7,
 		});
 	});
 });

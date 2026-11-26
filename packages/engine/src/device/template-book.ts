@@ -13,15 +13,27 @@ import {
 // no stamp (as recurring-book.ts): which version the server holds is decided
 // at send, and a view that has moved on only makes this booking a refusal.
 
+/** The wire says direction and amount mode in lower case; the engine's rows in upper. */
+const DIRECTION = { out: "OUT", in: "IN" } as const;
+const AMOUNT_MODE = { fixed: "FIXED", ask: "ASK" } as const;
+
 /** The body of POST /recurring: the template's fields under its client-made id. */
-export type TemplateCreateBody = CreateTemplateInput;
+export interface TemplateCreateBody
+	extends Omit<CreateTemplateInput, "direction" | "amountMode"> {
+	direction?: keyof typeof DIRECTION;
+	amountMode?: keyof typeof AMOUNT_MODE;
+}
 
 /**
  * The body of PATCH /recurring/{id} without its stamp: only the fields the
  * edit names, with `paused` as the wire says it.
  */
 export interface TemplateUpdateBody
-	extends Omit<UpdateTemplateInput, "isActive" | "expectedVersion"> {
+	extends Omit<
+		UpdateTemplateInput,
+		"isActive" | "expectedVersion" | "amountMode"
+	> {
+	amountMode?: keyof typeof AMOUNT_MODE;
 	paused?: boolean;
 }
 
@@ -31,18 +43,25 @@ export function templatePlanOf(
 		| { kind: "templateCreate"; body: TemplateCreateBody }
 		| { kind: "templateUpdate"; body: TemplateUpdateBody },
 ) {
-	if (op.kind === "templateCreate")
+	if (op.kind === "templateCreate") {
+		const { direction, amountMode, ...rest } = op.body;
 		return {
 			id: TEMPLATE_CREATE_MUTATION.id,
 			touches: TEMPLATE_CREATE_MUTATION.touches,
-			write: createTemplate(op.body),
+			write: createTemplate({
+				...rest,
+				...(direction ? { direction: DIRECTION[direction] } : {}),
+				...(amountMode ? { amountMode: AMOUNT_MODE[amountMode] } : {}),
+			}),
 		};
-	const { paused, ...edit } = op.body;
+	}
+	const { paused, amountMode, ...edit } = op.body;
 	return {
 		id: TEMPLATE_UPDATE_MUTATION.id,
 		touches: TEMPLATE_UPDATE_MUTATION.touches,
 		write: updateTemplate({
 			...edit,
+			...(amountMode ? { amountMode: AMOUNT_MODE[amountMode] } : {}),
 			...(paused !== undefined ? { isActive: !paused } : {}),
 		}),
 	};

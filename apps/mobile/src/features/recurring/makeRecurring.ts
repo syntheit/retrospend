@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { addMonthsClamped } from "@retrospend/domain/recurring";
+import { anchorOf } from "@retrospend/domain/recurring-post/template";
 import type { ActivityItem } from "@/features/activity/source";
 import { wireAmount } from "@/features/write/amount";
 import { dayDate, dayKey } from "@/lib/days";
@@ -50,7 +51,7 @@ export function templateBody(item: ActivityItem) {
 		...(item.category?.id ? { categoryId: item.category.id } : {}),
 		frequency: "MONTHLY" as const,
 		nextDueDate: nextMonthly(item.date),
-		anchorDay: Number(item.date.slice(8, 10)),
+		anchorDay: anchorOf(item.date),
 		autoPay: false,
 	};
 }

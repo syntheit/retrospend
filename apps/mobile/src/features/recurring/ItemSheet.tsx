@@ -11,14 +11,18 @@ import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { useDayText } from "./ConfirmSheet";
+import { editTemplateOnDevice, undoTemplateEdit } from "./deviceTemplate";
 import { RECURRING_ACTIONS } from "./recurringActions";
 import type { RecurringItem } from "./source";
 import { useRecurringToast } from "./useRecurringToast";
+import { useSettleDevice, useTemplateToast } from "./useSettle";
 
 /**
  * One recurring template that is not due: when it comes next, the auto-pay
  * switch and Pause or Resume. These change the template only (no money
- * moves), and each ends in a toast that puts it back.
+ * moves), and each ends in a toast that puts it back. Under the dev flag an
+ * expense template's change is booked on the device and queued with the
+ * template's version as its stamp, so it also works offline.
  */
 export function ItemSheet({
 	item,
@@ -39,6 +43,8 @@ export function ItemSheet({
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const announce = useRecurringToast();
+	const device = useSettleDevice(item);
+	const announceTemplate = useTemplateToast();
 	const money = useMoneyText();
 	const day = useDayText();
 	const { space } = useTheme();
@@ -61,7 +67,6 @@ export function ItemSheet({
 				{ context: { idempotencyKey: newClientId() } },
 			);
 		try {
-			await write(patch);
 			const back =
 				patch.paused !== undefined
 					? { paused: item.paused }
@@ -74,6 +79,31 @@ export function ItemSheet({
 						: t(patch.autoPay ? "autoOnToast" : "autoOffToast", {
 								title: item.title,
 							});
+			if (device) {
+				const answer = await editTemplateOnDevice({
+					device,
+					id: item.id,
+					patch,
+					opened: item.updatedAt,
+					title: item.title,
+				});
+				announceTemplate(answer, {
+					title: item.title,
+					synced: message,
+					undo: (made) =>
+						undoTemplateEdit({
+							device,
+							answer: made,
+							id: item.id,
+							back,
+							title: item.title,
+						}),
+					onChanged: onDone,
+				});
+				close();
+				return;
+			}
+			await write(patch);
 			announce({
 				message,
 				undo: async () => {

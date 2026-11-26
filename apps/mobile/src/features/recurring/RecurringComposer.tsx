@@ -1,4 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
+import { anchorOf } from "@retrospend/domain/recurring-post/template";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useState } from "react";
 import { View } from "react-native";
@@ -37,8 +38,19 @@ import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useDayText } from "./ConfirmSheet";
+import {
+	createTemplateOnDevice,
+	previewTemplate,
+	type TemplateAnswer,
+	undoTemplateCreate,
+} from "./deviceTemplate";
 import { nextMonthly, nextOnDay } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
+import {
+	useOfflineDryRun,
+	useTemplateDevice,
+	useTemplateToast,
+} from "./useSettle";
 
 type Frequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
 type FrequencyKey = "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
@@ -64,6 +76,10 @@ const NAMES: PanelName[] = ["category", "repeats", "changes"];
  * nothing until a confirm, so the server's dry run says what is added and
  * that every total stays; Add stays off until it is in. The write carries one
  * key per body, and the toast undoes it by deleting the template (R30, R15).
+ * Under the dev flag the device books the template and queues it under that
+ * key as its id: the server's dry run is still what the sheet shows (the
+ * device's is only held against it), and Add waits on the phone when the
+ * server cannot be reached.
  */
 export function RecurringComposer({
 	catalog,
@@ -80,6 +96,9 @@ export function RecurringComposer({
 	const { state } = useSession();
 	const me = state.status === "signedIn" ? state.me : null;
 	const announce = useRecurringToast();
+	const device = useTemplateDevice();
+	const announceTemplate = useTemplateToast();
+	const { offline, track } = useOfflineDryRun();
 	const day = useDayText();
 	const locale = useAmountLocale();
 	const { format } = useFormatMoney();
@@ -94,7 +113,7 @@ export function RecurringComposer({
 	const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
 	const [first, setFirst] = useState(() => nextMonthly(dayKey(new Date())));
 	const [anchor, setAnchor] = useState(() =>
-		Number(nextMonthly(dayKey(new Date())).slice(8, 10)),
+		anchorOf(nextMonthly(dayKey(new Date()))),
 	);
 	const [autoPay, setAutoPay] = useState(false);
 	const [tried, setTried] = useState(false);
@@ -120,12 +139,24 @@ export function RecurringComposer({
 	const flow = useMoneyWrite({
 		input,
 		idempotencyKey: input ? idFor("write") : null,
-		preview: (body) => (api ? api.recurring.previewCreate(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.recurring.create(body, { context: { idempotencyKey: key } })
-				: noSession(),
+		preview: (body) =>
+			!api
+				? noSession()
+				: device
+					? track(previewTemplate(device, body))
+					: api.recurring.previewCreate(body),
+		write: (
+			body,
+			key,
+		): Promise<TemplateAnswer | { id: string; title: string }> =>
+			!api
+				? noSession()
+				: device
+					? createTemplateOnDevice({ device, id: key, body })
+					: api.recurring.create(body, { context: { idempotencyKey: key } }),
 	});
+	// Add waits on the phone when the dry run could not reach the server.
+	const queuesOffline = device !== null && offline && flow.status === "failed";
 
 	async function submit() {
 		if (input === null) {
@@ -134,6 +165,17 @@ export function RecurringComposer({
 		}
 		const made = await flow.commit();
 		if (!made) return;
+		if ("settled" in made) {
+			if (!device) return;
+			announceTemplate(made, {
+				title,
+				synced: t("add.toast", { title }),
+				undo: (answer) => undoTemplateCreate(device, answer.clientId),
+				onChanged: onDone,
+			});
+			onClose();
+			return;
+		}
 		announce({
 			message: t("add.toast", { title: made.title }),
 			undo: async () => {
@@ -258,6 +300,7 @@ export function RecurringComposer({
 				{ key: "repeats", label: t("add.repeats"), value: frequencyWord },
 				{ key: "first", label: t("add.first"), value: day(first) },
 			]}
+			message={queuesOffline ? tc("changes.offline") : undefined}
 			preview={flow.preview}
 			status={flow.status}
 		/>,
@@ -296,7 +339,7 @@ export function RecurringComposer({
 				label: t("add.submit"),
 				description: t("add.title"),
 				folded: t("add.title"),
-				off: flow.status !== "ready" || flow.committing,
+				off: (flow.status !== "ready" && !queuesOffline) || flow.committing,
 				busy: flow.committing,
 			}}
 			amount={
