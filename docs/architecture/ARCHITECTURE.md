@@ -151,7 +151,7 @@ A single Go binary (`sidecar/main.go`) on port 8080, sharing the Postgres databa
 - **How the app and the sidecar talk:**
   - The app calls the sidecar at `SIDECAR_URL` with `Authorization: Bearer $WORKER_API_KEY` (`src/server/services/integration.service.ts`).
   - The scheduler calls back into the app at `/api/internal/webhooks` with the same key.
-- **Recurring expenses are posted by the app** (`src/server/services/recurring-auto-post.ts`), never by the sidecar. A Go test fails if any sidecar file inserts an expense or moves a template.
+- **Recurring expenses are posted by the app** (`src/server/services/recurring-auto-post.ts`), never by the sidecar. A Go test fails if any sidecar file inserts an expense or moves a template. With the device engine flag the phone posts auto-pay expenses too (`apps/mobile/src/features/recurring/poster.ts`): on app open and, on Android, from a Google-free background task. It queues one confirm per due period through the outbox, each carrying the template's version, obeys `RECURRING_AUTO_POST` through `features.autoPost` in server info, and leaves income and protected accounts alone. The server sweep keeps running and whichever posts a period first wins; the other retires on `recurring_already_posted`.
 - **The sidecar copies text it is given and never composes user-facing text.**
 
 ## Mobile app (`apps/mobile`)
@@ -232,7 +232,7 @@ Preferred, for the same reason:
 | Opening is always on when a master key is set; sealing is behind `DATA_KEYS_WRITE`; the epoch (`fieldEncryptionSince`) is set once and never cleared | A flag-off or older-version server can still read what a flag-on one wrote. After the epoch, search and filters on text must run in the app, whatever a process's own flag says. |
 | A sealing floor and start gates refuse a start that could silently make a new key or read ciphertext as text (D11 PR 9) | An older binary cannot protect itself, so the database records the highest floor and refuses a lower build, a missing master key or a lost instance key. |
 | Contact lookup by a keyed hash on the instance key, with the table in the label (D11 Rev 3) | An address cannot be matched once it is sealed. One instance key keeps claim and resume working across creators, at the cost that a keyless dump shows who shares an address. |
-| Recurring auto-post runs in the app; the sidecar keeps only its heartbeat | The sidecar then never holds the master key, and posting uses the same confirm code, undo and events as a manual confirm. |
+| Recurring auto-post runs in the app; the sidecar keeps only its heartbeat | The sidecar then never holds the master key, and posting uses the same confirm code, undo and events as a manual confirm. With the device engine flag the phone posts auto-pay expenses as well (app open, Android background), under the same setting; income still posts on the server. |
 | JSON copies (undo stashes, replayed responses, import rows, audit text) are sealed too | They held the same text as the columns in plaintext, so sealing the columns alone would not have changed what a dump shows. |
 | No matching of category names across people (D19) | The creator's category name is under the creator's key, and the server never compares names across users. A shared expense routes by the viewer's own category or envelope rules. |
 | Wording is "encrypted at rest; the server holds the keys", never "end-to-end" | The server opens every cell it needs, and no audit exists yet. |
