@@ -221,7 +221,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(body).toMatchObject({
 				name: "Retrospend",
 				apiVersion: "v1",
-				features: { advancedProtection: false, autoPost: false },
+				features: { advancedProtection: false, autoPost: autoPostEnabled() },
 				auth: { signUp: "open" },
 				push: { transports: [] },
 			});
@@ -495,7 +495,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(info.status).toBe(200);
 			expect((await info.json()).features).toEqual({
 				advancedProtection: false,
-				autoPost: false,
+				autoPost: autoPostEnabled(),
 			});
 		});
 	});
