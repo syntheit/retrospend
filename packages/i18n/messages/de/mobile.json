@@ -2914,7 +2914,8 @@
 			"parked": "{title} ließ sich nicht senden. Es bleibt auf diesem Telefon.",
 			"busy": "{title} wird noch gesendet. Versuche es gleich noch einmal.",
 			"blocked": "Kläre {title} zuerst unter „Synchronisierung fehlgeschlagen“.",
-			"unreadable": "{title} konnte nicht gelesen werden. Versuche es gleich noch einmal."
+			"unreadable": "{title} konnte nicht gelesen werden. Versuche es gleich noch einmal.",
+			"pending": "Für {title} wartet auf diesem Telefon schon eine Änderung."
 		},
 		"autoPayOn": "Wird automatisch erfasst",
 		"autoPayOff": "Jedes Mal bestätigen",

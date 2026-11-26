@@ -2914,7 +2914,8 @@
 			"parked": "Impossible d'envoyer {title}. Il reste sur ce téléphone.",
 			"busy": "{title} est encore en cours d'envoi. Réessaie dans un instant.",
 			"blocked": "Règle d'abord {title} sous « Synchronisation impossible ».",
-			"unreadable": "Impossible de lire {title}. Réessaie dans un instant."
+			"unreadable": "Impossible de lire {title}. Réessaie dans un instant.",
+			"pending": "{title} a déjà une modification en attente sur ce téléphone."
 		},
 		"autoPayOn": "S'enregistre automatiquement",
 		"autoPayOff": "Confirmer à chaque fois",

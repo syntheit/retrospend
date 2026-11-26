@@ -255,9 +255,13 @@ describe("a skip on the device", () => {
 });
 
 describe("a write that meets an earlier one for the same template", () => {
-	it("chains behind a waiting entry and is not sent before it", async () => {
+	it("chains behind a waiting entry of an earlier period and is not sent before it", async () => {
 		const { device, recurring, outbox } = setup();
-		await outbox.enqueue(confirm("c0", "t1", STAMP));
+		await outbox.enqueue(
+			confirm("c0", "t1", STAMP, {
+				payload: { dueAt: "2026-10-01T12:00:00.000Z" },
+			}),
+		);
 		recurring.confirm.mockRejectedValue(network());
 		await settleOnDevice({
 			device,
@@ -270,6 +274,20 @@ describe("a write that meets an earlier one for the same template", () => {
 		expect(entries.map((e) => e.clientId)).toEqual(["c0", CID]);
 		expect(entries[1]?.baseVersion).toEqual({ after: "c0" });
 		expect(recurring.skip).not.toHaveBeenCalled();
+	});
+
+	it("refuses a second write for a period that already has one waiting, and books nothing", async () => {
+		const { device, writes, outbox } = setup();
+		await outbox.enqueue(
+			confirm("c0", "t1", STAMP, { payload: { dueAt: DUE } }),
+		);
+		for (const kind of ["skip", "confirm"] as const) {
+			expect(
+				await settleOnDevice({ device, kind, body, clientId: CID, item }),
+			).toEqual({ settled: "pending" });
+		}
+		expect(await outbox.all()).toHaveLength(1);
+		expect(writes.book).not.toHaveBeenCalled();
 	});
 
 	it("is busy, queues nothing and books nothing, while an earlier one may be on the server", async () => {

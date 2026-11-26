@@ -2914,7 +2914,8 @@
 			"parked": "Não foi possível enviar {title}. Fica neste celular.",
 			"busy": "{title} ainda está sendo enviado. Tente de novo em instantes.",
 			"blocked": "Resolva {title} primeiro em “Não foi possível sincronizar”.",
-			"unreadable": "Não foi possível ler {title}. Tente de novo em instantes."
+			"unreadable": "Não foi possível ler {title}. Tente de novo em instantes.",
+			"pending": "{title} já tem uma alteração esperando neste celular."
 		},
 		"autoPayOn": "Registra automaticamente",
 		"autoPayOff": "Confirmar a cada vez",

@@ -2914,7 +2914,8 @@
 			"parked": "Couldn't send {title}. It stays on this phone.",
 			"busy": "{title} is still sending. Try again in a moment.",
 			"blocked": "Fix {title} under Couldn't sync first.",
-			"unreadable": "Couldn't read {title}. Try again in a moment."
+			"unreadable": "Couldn't read {title}. Try again in a moment.",
+			"pending": "{title} already has a change waiting on this phone."
 		},
 		"autoPayOn": "Records automatically",
 		"autoPayOff": "Confirm each time",

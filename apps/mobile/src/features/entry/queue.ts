@@ -364,6 +364,40 @@ export type QueuedChange =
 	| { status: "unreadable" };
 
 /**
+ * What stands in the way of a new write to a row, from every entry in the
+ * outbox: a parked entry blocks (it has begun a send too, and waiting never
+ * clears it), an entry whose send began may be on the server and nothing
+ * stacks on it yet, and otherwise the new write chains behind the last entry
+ * for the row. The one owner of the rule, for every queued write to an
+ * existing row (an expense edit or delete, a recurring confirm or skip).
+ */
+export function chainGate(
+	entries: readonly OutboxEntry[],
+	targetId: string,
+):
+	| { status: "parked" | "busy" }
+	| { status: "open"; earlier: OutboxEntry | undefined } {
+	const forRow = entries.filter((e) => e.targetId === targetId);
+	if (forRow.some((e) => e.state === "conflict")) return { status: "parked" };
+	const earlier = forRow.at(-1);
+	if (earlier && earlier.attempts > 0) return { status: "busy" };
+	return { status: "open", earlier };
+}
+
+/**
+ * The version a queued write is based on: the entry it chains behind, or the
+ * row's version as read. Null with neither: an entry with no stamp would
+ * overwrite unchecked, so it is never queued.
+ */
+export function chainBase(
+	earlier: OutboxEntry | undefined,
+	version: string | null,
+): BaseVersion | null {
+	if (earlier) return { after: earlier.clientId };
+	return version;
+}
+
+/**
  * Queues an edit or a delete of a saved expense, under the dev flag. The
  * device books it over the writes still waiting; the entry is chained after
  * the last waiting entry for the row, or based on `opened`, the `updatedAt`
@@ -392,21 +426,14 @@ export function queueExpenseChange(input: {
 			? { kind: "delete", id: targetId }
 			: { kind: "update", body: change.body as unknown as WriteBody };
 	return exclusive(outbox, async () => {
-		const forRow = (await outbox.all()).filter((e) => e.targetId === targetId);
-		// Any parked entry for the row blocks, not only the last: a parked entry
-		// has begun a send too, and waiting never clears it.
-		if (forRow.some((e) => e.state === "conflict")) return { status: "parked" };
-		const earlier = forRow.at(-1);
-		if (earlier && earlier.attempts > 0) return { status: "busy" };
+		const gate = chainGate(await outbox.all(), targetId);
+		if (gate.status !== "open") return { status: gate.status };
 		const booked = await writes.book(op);
 		// Which fields this phone changed comes from the booking alone. Without it
 		// a later re-base could not tell an edit from no edit: never queued blind.
 		if (change.kind === "update" && !booked) return { status: "unreadable" };
-		const version = opened ?? booked?.base ?? null;
-		if (!earlier && !version) return { status: "unreadable" };
-		const base: BaseVersion = earlier
-			? { after: earlier.clientId }
-			: (version as string);
+		const base = chainBase(gate.earlier, opened ?? booked?.base ?? null);
+		if (!base) return { status: "unreadable" };
 		const clientId = newClientId();
 		await outbox.enqueue({
 			clientId,

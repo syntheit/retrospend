@@ -2914,7 +2914,8 @@
 			"parked": "No se pudo enviar {title}. Queda en este teléfono.",
 			"busy": "{title} todavía se está enviando. Probá de nuevo en un momento.",
 			"blocked": "Resolvé {title} primero en «No se pudo sincronizar».",
-			"unreadable": "No se pudo leer {title}. Probá de nuevo en un momento."
+			"unreadable": "No se pudo leer {title}. Probá de nuevo en un momento.",
+			"pending": "{title} ya tiene un cambio en espera en este teléfono."
 		},
 		"autoPayOn": "Se registra automáticamente",
 		"autoPayOff": "Confirmar cada vez",

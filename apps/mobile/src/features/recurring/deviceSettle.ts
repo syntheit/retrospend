@@ -3,6 +3,8 @@ import type { DeviceWrites } from "@/data/device-engine";
 import type { Outbox } from "@/data/outbox";
 import { transportFor } from "@/data/transport";
 import {
+	chainBase,
+	chainGate,
 	deviceOf,
 	exclusive,
 	flushThenOutcome,
@@ -10,6 +12,7 @@ import {
 } from "@/features/entry/queue";
 import {
 	type RecurringPayload,
+	recurringPayloadOf,
 	SEND_TIMEOUT_MS,
 	type UndoRef,
 } from "@/features/entry/send";
@@ -78,7 +81,9 @@ export type SettleAnswer =
 	/** An earlier write to this template is parked: Couldn't sync resolves it first. */
 	| { settled: "blocked" }
 	/** Neither the screen nor the device has a version of the template: never guessed. */
-	| { settled: "unreadable" };
+	| { settled: "unreadable" }
+	/** This period already has a write waiting on the phone. */
+	| { settled: "pending" };
 
 export const isSettled = (out: object): out is SettleAnswer => "settled" in out;
 
@@ -96,20 +101,26 @@ function queueSettle(input: {
 	opened: string | null;
 	title: string;
 	currency: string;
-}): Promise<QueuedChange> {
+}): Promise<QueuedChange | { status: "samePeriod" }> {
 	const { device, kind, body, clientId, opened, title, currency } = input;
 	const { outbox, writes } = device;
 	return exclusive(outbox, async () => {
 		const all = await outbox.all();
 		if (all.some((e) => e.clientId === clientId))
 			return { status: "queued", clientId };
-		const forRow = all.filter((e) => e.targetId === body.id);
-		if (forRow.some((e) => e.state === "conflict")) return { status: "parked" };
-		const earlier = forRow.at(-1);
-		if (earlier && earlier.attempts > 0) return { status: "busy" };
+		const gate = chainGate(all, body.id);
+		if (gate.status !== "open") return { status: gate.status };
+		// One period is settled once: another entry for it can only be refused later.
+		if (
+			all.some(
+				(e) =>
+					e.targetId === body.id && recurringPayloadOf(e)?.dueAt === body.dueAt,
+			)
+		)
+			return { status: "samePeriod" };
 		const booked = await writes.book(settleOpOf(kind, body, clientId));
-		const version = opened ?? booked?.base ?? null;
-		if (!earlier && !version) return { status: "unreadable" };
+		const base = chainBase(gate.earlier, opened ?? booked?.base ?? null);
+		if (!base) return { status: "unreadable" };
 		const payload: RecurringPayload = {
 			dueAt: body.dueAt,
 			title,
@@ -122,7 +133,7 @@ function queueSettle(input: {
 			entity: "recurring",
 			kind,
 			targetId: body.id,
-			baseVersion: earlier ? { after: earlier.clientId } : (version as string),
+			baseVersion: base,
 			payload,
 			...(booked ? { device: deviceOf(booked) } : {}),
 		});
@@ -157,7 +168,9 @@ export async function settleOnDevice(input: {
 					? "busy"
 					: queued.status === "parked"
 						? "blocked"
-						: "unreadable",
+						: queued.status === "samePeriod"
+							? "pending"
+							: "unreadable",
 		};
 	const sent = await flushThenOutcome({
 		outbox: device.outbox,
