@@ -1,12 +1,17 @@
 import { filterFieldsOf } from "../budget-book";
+import type { RowChange } from "../changes";
 import { ConflictError } from "../errors";
 import {
 	type ExpenseRow,
 	type TextFreeExpenseRow,
 	withoutText,
 } from "../expenses";
-import type { Store, Tx, Writer } from "../port";
-import type { TextFreeTemplateRow } from "../templates";
+import type { Store, TableName, Tx, Writer } from "../port";
+import {
+	type TemplateRow,
+	type TextFreeTemplateRow,
+	templateWithoutText,
+} from "../templates";
 import { applyChanges } from "../undo";
 import { sameColumnValue } from "../write-parity";
 
@@ -87,6 +92,14 @@ export interface PendingSource {
 /** The text a created row has in an overlay: the device keeps none, so it never shows. */
 export const CREATE_TEXT = { title: "", description: null, location: null };
 
+/** The same for a created template: no name, website, payment source or category. */
+export const CREATE_TEMPLATE_TEXT = {
+	name: "",
+	websiteUrl: null,
+	paymentSource: null,
+	category: null,
+};
+
 /**
  * Whether the overlay replays `entry`. A parked entry may never be sent and an
  * unbooked one has no device booking, so neither counts. An acked one counts
@@ -130,11 +143,11 @@ function settled(row: TextFreeExpenseRow): Record<string, unknown> {
 }
 
 /**
- * Whether the stored row is the one an entry's `before` names: every column
- * the device keeps, decimals by value (a pulled row's text is the server's,
- * a device-booked row's is the column's scale), the rest exactly.
+ * Whether the stored expense is the one an entry's `before` names: every
+ * column the device keeps, decimals by value (a pulled row's text is the
+ * server's, a device-booked row's is the column's scale), the rest exactly.
  */
-function isBefore(current: unknown, expected: unknown): boolean {
+function isBeforeExpense(current: unknown, expected: unknown): boolean {
 	if (current === null || expected === null) return current === expected;
 	const stored = settled(withoutText(current as ExpenseRow));
 	const wanted = settled(expected as TextFreeExpenseRow);
@@ -144,36 +157,61 @@ function isBefore(current: unknown, expected: unknown): boolean {
 }
 
 /**
+ * The same for a template, over the columns the device keeps outside the
+ * store. A column the outbox's round trip dropped (undefined) is a null one.
+ */
+function isBeforeTemplate(current: unknown, expected: unknown): boolean {
+	if (current === null || expected === null) return current === expected;
+	const stored: Record<string, unknown> = templateWithoutText(
+		current as TemplateRow,
+	);
+	const wanted = expected as Record<string, unknown>;
+	return [...new Set([...Object.keys(stored), ...Object.keys(wanted)])].every(
+		(column) =>
+			sameColumnValue(column, stored[column] ?? null, wanted[column] ?? null),
+	);
+}
+
+const isBefore = (current: unknown, expected: unknown, table: TableName) =>
+	table === "recurringTemplates"
+		? isBeforeTemplate(current, expected)
+		: isBeforeExpense(current, expected);
+
+/**
  * Replays one entry over `tx`. A row it would change must equal its `before`
  * on every column the device keeps, as the entries before it left it (so a
  * chain is held against the row its predecessor wrote, not the store's). Any
  * row that does not (a pull brought a newer one, another entry moved it)
- * leaves the whole entry out and the store as it was. An edit lays its fields
+ * leaves the whole entry out and the store as it was, so a posted expense is
+ * never shown beside a template that has not moved. An edit lays its fields
  * over the stored row, so the text stays the store's; a create has the fixed
  * placeholder text.
+ *
+ * An acked entry's `ack.version` is the server's version of the row it names:
+ * the template's for an entry that changed one (a confirm or skip answers with
+ * the template's), the expense's otherwise.
  */
 function replay(tx: Writer, entry: PendingEntry) {
-	// The compare below reads expense rows only. An entry that also changed a
-	// template is left out whole: a half replay would show a posted expense
-	// beside a template that has not moved. Template replay lands with the
-	// engine's recurring mutations.
-	const changes = entry.changes.filter(
-		(c): c is ExpenseChange => c.table === "expenses",
-	);
-	if (changes.length !== entry.changes.length) return;
+	const versioned: TableName = entry.changes.some(
+		(c) => c.table === "recurringTemplates",
+	)
+		? "recurringTemplates"
+		: "expenses";
 	try {
-		applyChanges(tx, changes, "before", {
+		applyChanges(tx, entry.changes as readonly RowChange[], "before", {
 			matches: isBefore,
-			rowFor: (c, current) =>
-				c.after === null
-					? null
-					: ({
-							...(current ?? CREATE_TEXT),
-							...c.after,
-							// An acked write is the server's row at its ack: the entries
-							// stacked on it name that version as their base.
-							...(entry.ack?.version ? { version: entry.ack.version } : {}),
-						} as ExpenseRow),
+			rowFor: (c, current) => {
+				if (c.after === null) return null;
+				const text =
+					c.table === "recurringTemplates" ? CREATE_TEMPLATE_TEXT : CREATE_TEXT;
+				return {
+					...(current ?? text),
+					...c.after,
+					...(entry.ack?.version && c.table === versioned
+						? { version: entry.ack.version }
+						: {}),
+				} as RowChange["after"];
+			},
 		});
 	} catch (error) {
 		if (!(error instanceof ConflictError)) throw error;
