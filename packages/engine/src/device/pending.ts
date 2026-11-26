@@ -1,3 +1,4 @@
+import { ackedTableOf } from "@retrospend/domain/recurring-post/acked-table";
 import { filterFieldsOf } from "../budget-book";
 import type { RowChange } from "../changes";
 import { ConflictError } from "../errors";
@@ -192,11 +193,7 @@ const isBefore = (current: unknown, expected: unknown, table: TableName) =>
  * the template's), the expense's otherwise.
  */
 function replay(tx: Writer, entry: PendingEntry) {
-	const versioned: TableName = entry.changes.some(
-		(c) => c.table === "recurringTemplates",
-	)
-		? "recurringTemplates"
-		: "expenses";
+	const versioned = ackedTableOf(entry.changes);
 	try {
 		applyChanges(tx, entry.changes as readonly RowChange[], "before", {
 			matches: isBefore,
