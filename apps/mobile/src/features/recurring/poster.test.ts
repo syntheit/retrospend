@@ -234,6 +234,23 @@ describe("a poster run", () => {
 	});
 });
 
+describe("protection turned on mid-run", () => {
+	it("stops the run at the refused entry, keeps it, and goes on to no other template", async () => {
+		const { client, outbox, confirm } = await setup({
+			templates: [template("t1"), template("t2", { name: "Gym" })],
+			confirm: () => problem(403, "protected_account"),
+		});
+		await runPoster({ api: client, outbox });
+		expect(confirm).toHaveBeenCalledTimes(1);
+		const entries = await open(outbox);
+		expect(entries.map((e) => [e.targetId, e.state])).toEqual([
+			["t1", "failed"],
+			["t2", "pending"],
+		]);
+		expect(entries.every((e) => e.origin === "poster")).toBe(true);
+	});
+});
+
 describe("what stops the poster", () => {
 	it("plans nothing when the server's auto-post is off", async () => {
 		const { client, outbox, confirm } = await setup({ autoPost: false });
