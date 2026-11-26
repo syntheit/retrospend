@@ -19,10 +19,10 @@ import type { BookContext } from "../rate-booking";
 import { preferredRateType } from "../rate-booking";
 import type { RecurringEntryRow } from "./entry-row";
 import {
-	assertAdvanced,
 	type CatchUpPort,
 	type ConfirmInput,
 	type ConfirmPlan,
+	lostAdvance,
 	type PostTemplate,
 	planConfirm,
 	planSkip,
@@ -130,7 +130,7 @@ export class FakeStore {
 			this.book,
 		);
 		this.beforeWrite?.();
-		this.advance(plan);
+		this.advance(plan, "confirm", input.expectedStamp);
 		this.expenses.push({
 			...plan.entry,
 			id: `e${this.expenses.length + 1}`,
@@ -142,15 +142,26 @@ export class FakeStore {
 	skip(now: Date, input: Partial<SkipInput> = {}): SkipPlan {
 		const plan = planSkip(this.template, { ...this.timing(now), ...input });
 		this.beforeWrite?.();
-		this.advance(plan);
+		this.advance(plan, "skip", input.expectedStamp);
 		return plan;
 	}
 
-	/** The compare-and-set: moves the template only while it is still on the due date read. */
-	private advance(plan: ConfirmPlan | SkipPlan) {
-		const rows =
-			this.template.nextDueDate.getTime() === plan.dueAt.getTime() ? 1 : 0;
-		assertAdvanced(rows, "entry" in plan ? "confirm" : "skip");
+	/**
+	 * The compare-and-set, as the server's: moves the template only while it is
+	 * still on the due date read and, when the caller named one, still has the
+	 * stamp it saw.
+	 */
+	private advance(
+		plan: ConfirmPlan | SkipPlan,
+		call: "confirm" | "skip",
+		expectedStamp: string | null | undefined,
+	) {
+		const t = this.template;
+		if (
+			t.nextDueDate.getTime() !== plan.dueAt.getTime() ||
+			(expectedStamp && t.stamp !== expectedStamp)
+		)
+			throw lostAdvance(call, t, plan.dueAt, expectedStamp);
 		this.edit({ nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay });
 	}
 

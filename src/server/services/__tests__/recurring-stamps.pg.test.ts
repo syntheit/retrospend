@@ -549,6 +549,14 @@ describe("tRPC template ids", () => {
 			expenses: 0,
 		});
 	});
+	it("the web's delete preview and delete accept a uuid template id", async () => {
+		const me = await arsUser();
+		const id = await manual(me, { id: randomUUID() });
+		const trpc = await trpcFor(me);
+		await expect(trpc.recurring.delete.preview({ id })).resolves.toBeDefined();
+		await trpc.recurring.delete.save({ id });
+		expect(await fixtureDb.recurringTemplate.count({ where: { id } })).toBe(0);
+	});
 });
 
 /**
@@ -572,7 +580,11 @@ describe("an edit that commits between the plan's read and the write", () => {
 	}
 
 	/** Runs `request` while another transaction holds an uncommitted edit of the template, then commits it. */
-	async function racing(id: string, request: () => Promise<unknown>) {
+	async function racing(
+		id: string,
+		request: () => Promise<unknown>,
+		hold: "edit" | "delete" = "edit",
+	) {
 		let release!: () => void;
 		const gate = new Promise<void>((resolve) => {
 			release = resolve;
@@ -582,10 +594,13 @@ describe("an edit that commits between the plan's read and the write", () => {
 			locked = resolve;
 		});
 		const edit = adminDb.$transaction(async (tx) => {
-			await tx.recurringTemplate.update({
-				where: { id },
-				data: { amount: "25" },
-			});
+			if (hold === "delete")
+				await tx.recurringTemplate.delete({ where: { id } });
+			else
+				await tx.recurringTemplate.update({
+					where: { id },
+					data: { amount: "25" },
+				});
 			locked();
 			await gate;
 		});
@@ -675,5 +690,35 @@ describe("an edit that commits between the plan's read and the write", () => {
 			message: CHANGED,
 		});
 		await untouched(me, id);
+	});
+	it("a template deleted between the plan and the write is 404 on confirm and skip, with or without a stamp", async () => {
+		const me = await arsUser();
+		const v1 = await v1For(me);
+		const trpc = await trpcFor(me);
+		at(NOW);
+		const gone = async (run: (id: string) => Promise<unknown>) => {
+			const id = await manual(me);
+			return racing(id, () => run(id), "delete");
+		};
+		for (const stamp of [undefined, STAMP]) {
+			for (const path of ["confirm", "skip"]) {
+				const out = await gone((id) =>
+					v1("POST", `/recurring/${id}/${path}`, {
+						dueAt: DUE,
+						expectedUpdatedAt: stamp,
+					}),
+				);
+				await expectRefusal((out as { value: Response }).value, [
+					404,
+					"not_found",
+				]);
+			}
+		}
+		const viaTrpc = await gone((id) => confirmViaTrpc(trpc, id));
+		expect((viaTrpc as { error: unknown }).error).toMatchObject({
+			code: "NOT_FOUND",
+			message: "Recurring template not found",
+		});
+		expect(await booked(me)).toEqual([]);
 	});
 });

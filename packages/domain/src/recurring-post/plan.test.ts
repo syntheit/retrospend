@@ -286,6 +286,35 @@ describe("planConfirm", () => {
 			expect(store.expenses).toEqual([]);
 		});
 
+		it("an edit between the read and the write is changed on confirm, and nothing is booked or moved", async () => {
+			const store = baseStore();
+			const seen = store.template.stamp;
+			// Another client edits the amount after this call planned: the due date is unchanged.
+			store.beforeWrite = () => store.edit({ amount: "25" });
+			await expect(
+				store.confirm(NOW, { dueAt: DUE, expectedStamp: seen }),
+			).rejects.toMatchObject({ kind: "changed" });
+			expect(store.expenses).toEqual([]);
+			expect(store.template.nextDueDate).toEqual(DUE);
+		});
+
+		it("an edit between the read and the write is changed on skip, and nothing moves", () => {
+			const store = baseStore();
+			const seen = store.template.stamp;
+			store.beforeWrite = () => store.edit({ amount: "25" });
+			expect(() =>
+				store.skip(NOW, { dueAt: DUE, expectedStamp: seen }),
+			).toThrowError(expect.objectContaining({ kind: "changed" }));
+			expect(store.template.nextDueDate).toEqual(DUE);
+		});
+
+		it("with no stamp, the same edit between the read and the write does not stop the post", async () => {
+			const store = baseStore();
+			store.beforeWrite = () => store.edit({ amount: "25" });
+			await store.confirm(NOW, { dueAt: DUE });
+			expect(store.expenses).toHaveLength(1);
+		});
+
 		it("the current stamp books, and a call with no stamp is not compared", async () => {
 			const store = baseStore();
 			const seen = store.template.stamp;
