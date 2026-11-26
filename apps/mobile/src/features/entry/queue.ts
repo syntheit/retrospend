@@ -115,20 +115,31 @@ export function flushEntries(
 		const before = await mine.pending();
 		const writes = deviceWrites(api);
 		const pullsBegun = options?.pullsBegun ?? writes?.pullsBegun;
+		const send = createEntrySender(transport, {
+			...options,
+			pullsBegun,
+			keepSealed: (clientId, bytes) => outbox.seal(clientId, bytes),
+		});
+		// Only an entry the server answered "sent" is kept as sent: a retired
+		// one (and the poster entries dropped with it) left without the server
+		// taking it, and must never show as a write that landed.
+		const sent = new Set<string>();
 		const report = await flushOutbox(
 			mine,
-			createEntrySender(transport, {
-				...options,
-				pullsBegun,
-				keepSealed: (clientId, bytes) => outbox.seal(clientId, bytes),
-			}),
+			async (entry) => {
+				const result = await send(entry);
+				if (result.status === "sent") sent.add(entry.clientId);
+				return result;
+			},
 			{ pullsBegun },
 		);
 		// The engine reads the lists as of the last refresh: it sees the acks of this run.
 		await writes?.refresh().catch(() => undefined);
 		// What left the outbox was sent: lists hold it until the server's row lands.
 		const left = new Set((await outbox.all()).map((e) => e.clientId));
-		retainSent(before.filter((e) => !left.has(e.clientId)));
+		retainSent(
+			before.filter((e) => sent.has(e.clientId) && !left.has(e.clientId)),
+		);
 		return report;
 	});
 }
@@ -284,6 +295,17 @@ export function undoSaved(input: {
 			})(entry);
 			if (sent.status === "retry") {
 				await outbox.markFailed(clientId, sent.reason, sent.kind);
+				return "failed";
+			}
+			// Not yet, so this send did not land: nothing to undo.
+			if (sent.status === "later") {
+				await outbox.discard(clientId);
+				return "undone";
+			}
+			// The server has the period already (a poster's plan met a template
+			// that moved): no token to undo with, and the entry is not a Sync issue.
+			if (sent.status === "retired") {
+				await outbox.dropRetired(clientId);
 				return "failed";
 			}
 			if (sent.status === "conflict") {

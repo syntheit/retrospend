@@ -1,6 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { Outbox, OutboxEntry } from "@/data/outbox";
-import { PARKED_STAMP } from "@/data/outbox-chain";
+import type { Outbox, OutboxEntry, OutboxKind } from "@/data/outbox";
+import { originOf, PARKED_STAMP } from "@/data/outbox-chain";
 import type { Sender, SendResult } from "@/data/sync";
 
 // Sends the composers' outbox entries to API v1. The entry's client id is the
@@ -13,6 +13,8 @@ export interface UndoRef {
 	token: string;
 	/** The row the write was about, when the sender knows it: undo checks nothing else waits on it. */
 	target?: string;
+	/** A recurring write's kind: a confirm and a skip undo through different routes. */
+	kind?: OutboxKind;
 }
 
 export const ENTRY_ENTITIES = [
@@ -20,6 +22,7 @@ export const ENTRY_ENTITIES = [
 	"shared-expenses",
 	"income",
 	"transfers",
+	"recurring",
 ] as const;
 export type EntryEntity = (typeof ENTRY_ENTITIES)[number];
 
@@ -28,12 +31,22 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 }
 
 /**
- * What this sender can send: a create of its own entities, and an update or
- * delete of an expense (only the dev flag queues those). An entry of another
- * stream has no sender here and must not stop the queue.
+ * The one table of what this sender can send: a create of its own entities, an
+ * update or delete of an expense, and a confirm or skip of a recurring
+ * template (only the dev flag queues those). A kind not listed for its entity
+ * has no sender here (a template create or edit waits for its own PR) and must
+ * not stop the queue.
  */
+const SENDABLE: Record<EntryEntity, readonly OutboxKind[]> = {
+	expenses: ["create", "update", "delete"],
+	"shared-expenses": ["create"],
+	income: ["create"],
+	transfers: ["create"],
+	recurring: ["confirm", "skip"],
+};
+
 const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
-	isEntryEntity(e.entity) && (e.kind === "create" || e.entity === "expenses");
+	isEntryEntity(e.entity) && SENDABLE[e.entity].includes(e.kind);
 
 /** The outbox as the composers' flush sees it: only what `sendable` names. */
 export function entryOutbox(outbox: Outbox): Outbox {
@@ -68,6 +81,16 @@ export const PARKED_NOT_FOUND = "not_found";
 export const KEY_REUSED = "idempotency_key_reused";
 /** An update or delete with no stamp to check: never sent, never guessed. */
 export const PARKED_NO_STAMP = "no_stamp";
+/** A recurring confirm or skip that names no due date: never sent, never guessed. */
+export const PARKED_NO_DUE = "no_due_date";
+/** The id a confirm named for its expense is held by another row: nothing was booked. */
+export const PARKED_ID_TAKEN = "id_taken";
+/** The server read the account as protected: the run stops and the entry stays. */
+export const PROTECTED_ACCOUNT = "protected_account";
+/** The server's typed answers to a recurring write that name why it did not book. */
+export const RECURRING_ALREADY_POSTED = "recurring_already_posted";
+export const RECURRING_NOT_DUE = "recurring_not_due";
+export const RECURRING_CHANGED = "recurring_changed";
 
 /** The server answered that it did not take the write, and said nothing of an earlier try. */
 export function notStored(sent: { http?: number; reason: string }): boolean {
@@ -102,10 +125,17 @@ export function undoFor(clientId: string): UndoRef | undefined {
 }
 
 /**
- * What parks an update or delete when its row may be gone: API v1 answers 404
- * for a gone row; the vault answers 409 for a gone row and a changed one alike.
+ * What parks a write to an existing row when the row may be gone or settled
+ * elsewhere: API v1 answers 404 for a gone row; the vault answers 409 for a
+ * gone row and a changed one alike. A person's recurring write answered "already
+ * posted" or "changed" waits for the same thing: a pull that shows the template.
  */
-export const MAYBE_GONE: readonly string[] = [PARKED_NOT_FOUND, PARKED_STAMP];
+export const MAYBE_GONE: readonly string[] = [
+	PARKED_NOT_FOUND,
+	PARKED_STAMP,
+	RECURRING_ALREADY_POSTED,
+	RECURRING_CHANGED,
+];
 
 /**
  * The `pullsBegun` reading when a send of an update or delete was parked for
@@ -128,11 +158,45 @@ function idTaken(error: unknown): boolean {
 }
 
 /**
+ * What a recurring confirm or skip is told apart by (null: the common rules
+ * decide). A poster entry was planned over a template that has since moved, so
+ * "already posted" and "changed" end it silently and the next run plans again.
+ * A person's entry parks and waits for a pull: nothing a person typed
+ * disappears without a word.
+ */
+function recurringAnswer(
+	entry: Pick<OutboxEntry, "origin">,
+	reason: string,
+	http: number,
+): SendResult | null {
+	switch (reason) {
+		case RECURRING_ALREADY_POSTED:
+		case RECURRING_CHANGED:
+			return originOf(entry) === "poster"
+				? { status: "retired" }
+				: { status: "conflict", reason, http };
+		// The day has not come: waits, never parked, never held against it.
+		case RECURRING_NOT_DUE:
+			return { status: "later" };
+		// Protection turned on: nothing more goes this run, and the entry stays.
+		case PROTECTED_ACCOUNT:
+			return { status: "retry", reason, kind: "network" };
+		default:
+			return null;
+	}
+}
+
+/**
  * Network failures and server trouble retry; a refused write is parked.
  * `serverErrors` is how often this write already met a 5xx: a write must not
  * hold the whole queue forever behind a server error that never clears.
+ * `entry` is the write it answers, for the answers that depend on it.
  */
-export function classify(error: unknown, serverErrors = 0): SendResult {
+export function classify(
+	error: unknown,
+	serverErrors = 0,
+	entry?: Pick<OutboxEntry, "entity" | "origin">,
+): SendResult {
 	const { status, code } = (error ?? {}) as { status?: number; code?: string };
 	const reason = code ?? (error instanceof Error ? error.message : "unknown");
 	// No status: the request never got an answer (offline, timeout).
@@ -152,6 +216,10 @@ export function classify(error: unknown, serverErrors = 0): SendResult {
 		return serverErrors >= MAX_SERVER_ERRORS
 			? { status: "conflict", reason, http: status }
 			: { status: "retry", reason, kind: "server" };
+	}
+	if (entry?.entity === "recurring") {
+		const typed = recurringAnswer(entry, reason, status);
+		if (typed) return typed;
 	}
 	// 400, 403, 404, 409, 422: the server read it and said no.
 	return { status: "conflict", reason, http: status };
@@ -203,6 +271,8 @@ export function createEntrySender(
 		if (entry.kind !== "create" && typeof entry.baseVersion !== "string") {
 			return { status: "conflict", reason: PARKED_NO_STAMP };
 		}
+		if (entry.entity === "recurring" && !recurringPayloadOf(entry))
+			return { status: "conflict", reason: PARKED_NO_DUE };
 		const timeout = new AbortController();
 		const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 		const stop = () => timeout.abort();
@@ -221,6 +291,7 @@ export function createEntrySender(
 				entity: entry.entity,
 				token,
 				target: entry.targetId,
+				...(entry.entity === "recurring" ? { kind: entry.kind } : {}),
 			});
 			// A delete names null: nothing chained after it has a version to take.
 			return {
@@ -232,7 +303,7 @@ export function createEntrySender(
 			// No answer, so no version: an entry chained after it parks as
 			// chain_lost, and Try again re-bases it over the pulled row.
 			if (entry.kind === "create" && idTaken(error)) return { status: "sent" };
-			const result = classify(error, entry.serverErrors);
+			const result = classify(error, entry.serverErrors, entry);
 			if (
 				entry.kind !== "create" &&
 				result.status === "conflict" &&
@@ -274,6 +345,8 @@ async function change(
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
+	if (entry.entity !== "expenses")
+		throw new Error(`no ${entry.kind} of ${entry.entity}`);
 	const expectedUpdatedAt = entry.baseVersion as string;
 	if (entry.kind === "delete") {
 		const gone = await api.expenses.delete(
@@ -295,14 +368,87 @@ async function change(
 	return { undo: written.undo, version: written.expense?.updatedAt };
 }
 
-function dispatch(
+/**
+ * Each kind goes to its own call, so a confirm or skip can never go out as a
+ * PUT of an expense under a template's id. A kind this sender does not know,
+ * or one aimed at an entity that has no such call, throws before any request.
+ */
+async function dispatch(
 	api: RetrospendClient,
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
-	return entry.kind === "create"
-		? create(api, entry, options)
-		: change(api, entry, options);
+	switch (entry.kind) {
+		case "create":
+			return create(api, entry, options);
+		case "update":
+		case "delete":
+			return change(api, entry, options);
+		case "confirm":
+		case "skip":
+			return settle(api, entry, options);
+		default:
+			throw new Error(`no sender for ${String(entry.kind)}`);
+	}
+}
+
+/** What a recurring entry's payload holds. The template is `targetId`, its stamp `baseVersion`, the booked expense's id `clientId`. */
+export interface RecurringPayload {
+	/** The due instant being settled (ISO): a period already settled is refused, never booked twice. */
+	dueAt: string;
+	/** Confirm only: the typed amount of an "Amount varies" template. */
+	amount?: string;
+	/** Confirm only: the day it was really paid (yyyy-MM-dd). */
+	paidOn?: string;
+}
+
+/** The payload as a recurring write needs it, or null when it names no due date. */
+export function recurringPayloadOf(
+	entry: Pick<OutboxEntry, "payload">,
+): RecurringPayload | null {
+	const body = entry.payload as Partial<RecurringPayload> | null;
+	return typeof body?.dueAt === "string" &&
+		Number.isFinite(Date.parse(body.dueAt))
+		? (body as RecurringPayload)
+		: null;
+}
+
+/**
+ * A confirm or skip of a template, checked against the template version it
+ * was based on. A confirm names its booked expense by the entry's client id,
+ * so the phone's row and the server's are one. The answer names the
+ * template's version after the write: the next entry for it takes that.
+ */
+async function settle(
+	api: RetrospendClient,
+	entry: OutboxEntry,
+	options: CallOptions,
+): Promise<Created> {
+	const body = recurringPayloadOf(entry);
+	if (entry.entity !== "recurring" || !body)
+		throw new Error(`no ${entry.kind} of ${entry.entity}`);
+	const stamped = {
+		id: entry.targetId,
+		dueAt: body.dueAt,
+		expectedUpdatedAt: entry.baseVersion as string,
+	};
+	if (entry.kind === "skip") {
+		const skipped = await api.recurring.skip(stamped, options);
+		return { undo: skipped.undo, version: skipped.skipped.templateUpdatedAt };
+	}
+	const confirmed = await api.recurring.confirm(
+		{
+			...stamped,
+			expenseId: entry.clientId,
+			...(body.amount !== undefined ? { amount: body.amount } : {}),
+			...(body.paidOn !== undefined ? { paidOn: body.paidOn } : {}),
+		},
+		options,
+	);
+	return {
+		undo: confirmed.undo,
+		version: confirmed.confirmed.templateUpdatedAt,
+	};
 }
 
 async function create(
@@ -345,6 +491,8 @@ async function create(
 					)
 				).undo,
 			};
+		case "recurring":
+			throw new Error("no create of recurring");
 	}
 }
 
@@ -386,6 +534,12 @@ async function undoWithKey(
 			await api["shared-expenses"].undo(input, options);
 		} else if (ref.entity === "transfers") {
 			await api.transfers.undo(input, options);
+		} else if (ref.entity === "recurring") {
+			// A confirm and a skip are undone by different routes: never guess.
+			if (ref.kind === "confirm") await api.recurring.undo(input, options);
+			else if (ref.kind === "skip")
+				await api.recurring.undoSkip(input, options);
+			else throw new Error("An undo of a recurring write needs its kind");
 		} else await api.income.undo(input, options);
 	} finally {
 		clearTimeout(timer);

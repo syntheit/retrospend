@@ -138,6 +138,9 @@ export function pendingRow(
 				amount,
 			};
 		}
+		// A template's write is not a row of the list.
+		case "recurring":
+			return null;
 	}
 }
 
