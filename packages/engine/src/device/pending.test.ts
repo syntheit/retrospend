@@ -538,6 +538,7 @@ describe("retiring and comparing on a pull", () => {
 			version: string | null = null,
 			// Rows the same entry changed before the template, as a confirm's posted expense.
 			before: (e1: Row) => PendingChange[] = () => [],
+			expenseVersion?: string,
 		) {
 			const pending = new FakePending();
 			const { api } = fakeDeviceApi({
@@ -573,7 +574,13 @@ describe("retiring and comparing on a pull", () => {
 							after: templateWithoutText(after(pulled)),
 						},
 					],
-					{ ack: { version, pull: engine.pullsBegun } },
+					{
+						ack: {
+							version,
+							...(expenseVersion ? { expenseVersion } : {}),
+							pull: engine.pullsBegun,
+						},
+					},
 				),
 			];
 			await engine.pull();
@@ -594,6 +601,45 @@ describe("retiring and comparing on a pull", () => {
 				(e1) => [change("e1", e1, e1)],
 			);
 			expect(engine.writeParity.counts).toEqual({ match: 2 });
+		});
+
+		describe("a confirm's booked expense, edited on the web after the confirm", () => {
+			// The device booked USD 120; the pulled row is the web's edit (USD 100).
+			const device = (e1: Row) => [change("e1", e1, { ...e1, ...AMOUNT_120 })];
+			const TEMPLATE_VERSION = "2026-11-18T10:00:00.000Z";
+
+			it("is skipped as changed since when the ack named the expense's own version", async () => {
+				const { engine } = await ackedTemplate(
+					(t) => t,
+					TEMPLATE_VERSION,
+					device,
+					"2026-10-04T00:00:00.000Z",
+				);
+				expect(engine.writeParity.counts).toEqual({
+					"skipped:changed_since": 1,
+					match: 1,
+				});
+			});
+
+			it("is a difference, never a match, when an older server named none", async () => {
+				const { engine } = await ackedTemplate(
+					(t) => t,
+					TEMPLATE_VERSION,
+					device,
+				);
+				expect(engine.writeParity.counts).toEqual({ differs: 1, match: 1 });
+			});
+
+			it("is compared by its columns when the ack's version is the pulled row's", async () => {
+				// The fixture's expense carries DAY as its updatedAt.
+				const { engine } = await ackedTemplate(
+					(t) => t,
+					TEMPLATE_VERSION,
+					device,
+					DAY,
+				);
+				expect(engine.writeParity.counts).toEqual({ differs: 1, match: 1 });
+			});
 		});
 
 		it("names the column that differs, and only it", async () => {

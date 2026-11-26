@@ -11,7 +11,12 @@ export type SendResult =
 	 * it is written into the entries chained after this one. For a recurring
 	 * confirm or skip it is the answer's `templateUpdatedAt` (see `templateAck`).
 	 */
-	| { status: "sent"; version?: string | null }
+	| {
+			status: "sent";
+			version?: string | null;
+			/** A confirm's booked expense, which `version` (the template's) does not name. */
+			expenseVersion?: string;
+	  }
 	/**
 	 * Nothing to send any more: the server already has the write, or the row
 	 * moved under a poster's plan. It leaves with no ack and no Sync issue.
@@ -130,6 +135,7 @@ export async function flushOutbox(
 		if (result.status === "sent") {
 			await outbox.markSent(entry.clientId, {
 				version: result.version,
+				expenseVersion: result.expenseVersion,
 				pull: options.pullsBegun?.(),
 			});
 			report.sent += 1;

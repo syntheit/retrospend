@@ -182,6 +182,13 @@ export interface AckedWrite {
 	readonly bookedAt: number;
 	/** The `updatedAt` of the row the server answered with; null for a delete, or when none was given. */
 	readonly version: string | null;
+	/**
+	 * The `updatedAt` of an expense the entry booked next to the row `version`
+	 * names (a recurring confirm books one, and its answer names the template's).
+	 * Absent when the server did not send it: the expense is then compared with
+	 * no version, so a later edit of it reads as a difference, never as a match.
+	 */
+	readonly expenseVersion?: string;
 }
 
 /**
@@ -274,8 +281,9 @@ export function compareChange(
 /**
  * Every row of one acked entry. The server's answer names one row's version
  * (`ackedTableOf`: a confirm or skip answers with the template's, though a
- * confirm also books an expense), so the version is held against that row
- * only; the other rows of the entry are held to their columns.
+ * confirm also books an expense), so that version is held against that row
+ * only. The booked expense carries its own (`expenseVersion`, contract 1.12.0);
+ * with none, from an older server, it is held to its columns alone.
  */
 export function compareEntry(
 	live: Reader,
@@ -286,7 +294,12 @@ export function compareEntry(
 	return changes.map((c) =>
 		compareChange(live, c, {
 			bookedAt: acked.bookedAt,
-			version: c.table === named ? acked.version : null,
+			version:
+				c.table === named
+					? acked.version
+					: c.table === "expenses"
+						? (acked.expenseVersion ?? null)
+						: null,
 		}),
 	);
 }

@@ -459,6 +459,7 @@ export function createDeviceEngine(
 				compareEntry(snap, e.changes, {
 					bookedAt: e.bookedAt,
 					version: e.ack?.version ?? null,
+					expenseVersion: e.ack?.expenseVersion,
 				}),
 			),
 			...left.flatMap(({ entry, code }) =>

@@ -139,36 +139,46 @@ async function compared(
 	now: Date,
 	changes: PendingChange[],
 	version: string | null,
+	expenseVersion?: string | null,
 ): Promise<WriteVerdict[]> {
 	const live = await pulled(userId, now);
 	return compareEntry(live.snapshot(), changes, {
 		bookedAt: now.getTime(),
 		version,
+		...(expenseVersion ? { expenseVersion } : {}),
 	});
 }
 
 const match = (id: string): WriteVerdict => ({ id, outcome: "match" });
 
-type Confirmed = { confirmed: { templateUpdatedAt: string | null } };
+type Confirmed = {
+	confirmed: {
+		templateUpdatedAt: string | null;
+		expenseUpdatedAt?: string | null;
+	};
+};
 type V1 = Awaited<ReturnType<typeof v1For>>;
 
-async function confirmOnServer(
+async function confirmAnswer(
 	v1: V1,
 	id: string,
 	body: object,
 	now = NOW,
-): Promise<string | null> {
+): Promise<Confirmed["confirmed"]> {
 	at(now);
 	try {
 		const done = await expectBody<Confirmed>(
 			await v1("POST", `/recurring/${id}/confirm`, body),
 			contract.recurring.confirm,
 		);
-		return done.confirmed.templateUpdatedAt;
+		return done.confirmed;
 	} finally {
 		vi.useRealTimers();
 	}
 }
+
+const confirmOnServer = async (...args: Parameters<typeof confirmAnswer>) =>
+	(await confirmAnswer(...args)).templateUpdatedAt;
 
 describe("one period, confirmed on both", () => {
 	beforeAll(() =>
@@ -202,8 +212,8 @@ describe("one period, confirmed on both", () => {
 				opts.prepare,
 			),
 		);
-		const version = await underTZ(opts.process, async () =>
-			confirmOnServer(
+		const answer = await underTZ(opts.process, async () =>
+			confirmAnswer(
 				await v1For(me, opts.zone),
 				id,
 				{ dueAt: DUE, expenseId: clientId, ...opts.body },
@@ -215,13 +225,25 @@ describe("one period, confirmed on both", () => {
 			id,
 			clientId,
 			changes,
-			verdicts: await compared(me, now, changes, version),
+			answer,
+			verdicts: await compared(
+				me,
+				now,
+				changes,
+				answer.templateUpdatedAt,
+				answer.expenseUpdatedAt,
+			),
 		};
 	}
 
 	it("a fixed amount: ARS 30,900.00 at blue, the template one period on, every compared field the same", async () => {
-		const { me, id, clientId, verdicts } = await confirmBoth({});
+		const { me, id, clientId, verdicts, answer } = await confirmBoth({});
 		expect(verdicts).toEqual([match(clientId), match(id)]);
+		// The answer names the booked expense's own updatedAt, as stored.
+		const stored = await fixtureDb.expense.findUniqueOrThrow({
+			where: { id: clientId },
+		});
+		expect(answer.expenseUpdatedAt).toBe(iso(stored.updatedAt));
 		expect(await booked(me)).toMatchObject([
 			{
 				date: DUE,
@@ -424,6 +446,37 @@ describe("one period, confirmed on both", () => {
 			await (await v1For(me))("PATCH", `/recurring/${id}`, { name: "Gym" });
 			expect(await compared(me, NOW, changes, null)).toEqual([
 				{ id, outcome: "differs", fields: ["categoryId"] },
+			]);
+		});
+
+		it("an expense edited on the web after the confirm is skipped as changed since, not a difference", async () => {
+			const { me, changes, id, clientId, answer } = await confirmBoth({});
+			await fixtureDb.expense.update({
+				where: { id: clientId },
+				data: { homeRate: "1050", homeAmount: "21000" },
+			});
+			expect(
+				await compared(
+					me,
+					NOW,
+					changes,
+					answer.templateUpdatedAt,
+					answer.expenseUpdatedAt,
+				),
+			).toEqual([
+				{ id: clientId, outcome: "skipped", code: "changed_since" },
+				match(id),
+			]);
+			// An older server names no expense version: the edit shows as a difference, never a match.
+			expect(
+				await compared(me, NOW, changes, answer.templateUpdatedAt),
+			).toEqual([
+				{
+					id: clientId,
+					outcome: "differs",
+					fields: ["homeRate", "homeAmount"],
+				},
+				match(id),
 			]);
 		});
 

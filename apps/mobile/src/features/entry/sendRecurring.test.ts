@@ -104,6 +104,28 @@ describe("sending a recurring confirm", () => {
 		);
 	});
 
+	it("names the booked expense's own version when the answer carries one; an older server's answer gives none", async () => {
+		const { api, recurring } = recurringApi();
+		recurring.confirm.mockResolvedValueOnce({
+			undo: "tok-c",
+			confirmed: { templateUpdatedAt: STAMP2, expenseUpdatedAt: STAMP },
+		} as never);
+		expect(await createEntrySender(apiTransport(api))(entry())).toEqual({
+			status: "sent",
+			version: STAMP2,
+			expenseVersion: STAMP,
+		});
+		// Income answers null, and a server before 1.12.0 leaves it out: no version either way.
+		recurring.confirm.mockResolvedValueOnce({
+			undo: "tok-c",
+			confirmed: { templateUpdatedAt: STAMP2, expenseUpdatedAt: null },
+		} as never);
+		expect(await createEntrySender(apiTransport(api))(entry())).toEqual({
+			status: "sent",
+			version: STAMP2,
+		});
+	});
+
 	it("sends the typed amount and the paid-on day, and nothing else the payload held", async () => {
 		const { api, recurring } = recurringApi();
 		await createEntrySender(apiTransport(api))(

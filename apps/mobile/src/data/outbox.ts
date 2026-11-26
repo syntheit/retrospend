@@ -98,6 +98,8 @@ export interface AckedEntry extends OutboxEntry {
 	ack: {
 		/** The `updatedAt` the answer named for the row; null for a delete. */
 		version: string | null;
+		/** The `updatedAt` of the expense a recurring confirm booked; absent from an older server. */
+		expenseVersion?: string;
 		/** The device engine's pulls begun at the ack, 0 for one read from disk. */
 		pull: number;
 	};
@@ -119,6 +121,8 @@ export interface Ack {
 	 * restart reads it as 0, as designed).
 	 */
 	pull?: number;
+	/** The booked expense's `updatedAt` from a recurring confirm's answer, when it named one. */
+	expenseVersion?: string;
 }
 
 export interface Outbox {
@@ -330,7 +334,12 @@ export function createOutbox(
 			const { sealed: _sealed, ...kept } = entry;
 			const record = {
 				...kept,
-				ack: { version: version ?? null },
+				ack: {
+					version: version ?? null,
+					...(answer.expenseVersion !== undefined
+						? { expenseVersion: answer.expenseVersion }
+						: {}),
+				},
 				ackedAt: now().toISOString(),
 			};
 			await store.set(
