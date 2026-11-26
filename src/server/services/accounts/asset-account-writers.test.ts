@@ -18,9 +18,14 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "../../../..");
 
+// Whitespace and line breaks may sit between the parts of a call.
 const CLIENT =
-	/\.assetAccount\.(update|updateMany|create|createMany|upsert|delete|deleteMany)\b/g;
-const RAW = /(?:UPDATE|INSERT INTO|DELETE FROM)\s+"asset_account"/g;
+	/\.assetAccount\s*\.\s*(update|updateMany|create|createMany|upsert|delete|deleteMany)\b/g;
+const RAW =
+	/(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+("public"\.)?"?asset_account\b/gi;
+// A nested write through the user relation (user.update({ data: { assetAccounts: { create } } })).
+const NESTED =
+	/\bassetAccounts\s*:\s*\{\s*(create|createMany|update|updateMany|upsert|connectOrCreate|delete|deleteMany)\b/g;
 
 const SKIP_DIR = new Set([
 	"node_modules",
@@ -39,20 +44,24 @@ function sources(dir: string, out: string[] = []): string[] {
 		if (SKIP_DIR.has(entry.name)) continue;
 		const full = join(dir, entry.name);
 		if (entry.isDirectory()) sources(full, out);
-		else if (/\.(ts|tsx|sql|go)$/.test(entry.name)) out.push(full);
+		else if (/\.(ts|tsx|js|mjs|sql|go)$/.test(entry.name)) out.push(full);
 	}
 	return out;
 }
 
+const nestedWrites: string[] = [];
+
 /** Statements per file that write asset_account. */
 function found() {
 	const writers: Record<string, number> = {};
+	nestedWrites.length = 0;
 	for (const dir of [
 		"src",
 		"scripts",
 		"packages",
 		"apps/mobile/src",
 		"sidecar",
+		"prisma",
 	]) {
 		let files: string[] = [];
 		try {
@@ -62,8 +71,13 @@ function found() {
 		}
 		for (const file of files) {
 			const rel = relative(ROOT, file);
-			if (isTestSupport(rel)) continue;
+			// prisma/migrations is owned by the trigger list (a migration may
+			// name the table once, and shipped ones never change): the
+			// writers here are what runs after migrating.
+			if (isTestSupport(rel) || rel.startsWith("prisma/migrations/")) continue;
 			const text = readFileSync(file, "utf8");
+			const nested = text.match(NESTED)?.length ?? 0;
+			if (nested > 0) nestedWrites.push(rel);
 			const n =
 				(text.match(CLIENT)?.length ?? 0) + (text.match(RAW)?.length ?? 0);
 			if (n > 0) writers[rel] = n;
@@ -75,6 +89,11 @@ function found() {
 /** file: [statements, class]. */
 const WRITERS: Record<string, readonly [number, string]> = {
 	// create, edit, close, reopen (3 updates) and the web delete: M6a
+	// Rollback text that restores the leg trigger's function: balance only.
+	"prisma/rollback/20261112100000_account_leg_half_even.sql": [
+		2,
+		"balance-only, trigger rollback",
+	],
 	"src/server/services/accounts/manage.ts": [5, "device (M6a), delete online"],
 	"src/server/services/accounts/checkpoint.ts": [1, "device (M6a)"],
 	"src/server/services/accounts/rate-type.mutation.ts": [2, "device (M6a)"],
@@ -105,5 +124,10 @@ describe("asset_account writers", () => {
 			Object.entries(WRITERS).map(([file, [n]]) => [file, n]),
 		);
 		expect(found()).toEqual(names);
+	});
+
+	it("none writes through a nested assetAccounts relation", () => {
+		found();
+		expect(nestedWrites).toEqual([]);
 	});
 });

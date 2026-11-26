@@ -108,7 +108,7 @@ describe("east of UTC: Tokyo is already Mar 11 when UTC is Mar 10", () => {
 		]);
 	});
 
-	it("an explicit zone moves create to that zone's day, and close and reopen have no zone to give", async () => {
+	it("an explicit zone moves create to that zone's day", async () => {
 		const { user } = await userIn(TOKYO);
 		const account = await createAccount(adminDb, user.id, fields, "UTC");
 		expect(await days(account.id)).toEqual([["2026-03-10", "1000"]]);
