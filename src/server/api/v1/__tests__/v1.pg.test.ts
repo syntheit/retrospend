@@ -227,6 +227,7 @@ describe("/api/v1 on Postgres", () => {
 			});
 			expect(body.auth.methods).toContain("deviceAuthorization");
 			expect(body.features.autoPost).toBe(autoPostEnabled());
+			expect(body.features.autoConfirm).toBe(true);
 		});
 	});
 
