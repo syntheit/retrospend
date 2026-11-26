@@ -1,3 +1,4 @@
+import { accountScope } from "@/data/scope";
 import type { KeyValueStore } from "@/data/store";
 
 // Whether this phone has Push switched on, and for whom. The background task
@@ -12,10 +13,11 @@ export interface PushEnabled {
 
 const KEY = "push.enabled";
 
-export function createEnabledStore(store: KeyValueStore) {
+/** `key` names another background task's record of the same shape (the recurring poster's). */
+export function createEnabledStore(store: KeyValueStore, key = KEY) {
 	return {
 		async get(): Promise<PushEnabled | null> {
-			const raw = await store.get(KEY);
+			const raw = await store.get(key);
 			if (!raw) return null;
 			try {
 				const v = JSON.parse(raw) as Partial<PushEnabled>;
@@ -26,12 +28,12 @@ export function createEnabledStore(store: KeyValueStore) {
 				return null;
 			}
 		},
-		set: (value: PushEnabled) => store.set(KEY, JSON.stringify(value)),
-		clear: () => store.delete(KEY),
+		set: (value: PushEnabled) => store.set(key, JSON.stringify(value)),
+		clear: () => store.delete(key),
 	};
 }
 
 /** The key all the per-account push state is filed under. */
 export function pushScope(value: PushEnabled): string {
-	return `${value.baseUrl}|${value.meId}`;
+	return accountScope(value.baseUrl, value.meId);
 }

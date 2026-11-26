@@ -3,14 +3,26 @@ import { fakeDeviceApi } from "../../test/deviceApi";
 import { act, renderHook, world } from "../../test/harness";
 import { useDevicePull, useDeviceReads } from "./useDeviceEngine";
 
+const mockRunPoster = jest.fn(async (_input: unknown) => ({ status: "off" }));
+const mockStartPosterTask = jest.fn(async (_who: unknown) => undefined);
+jest.mock("@/features/recurring/poster", () => ({
+	runPoster: (input: unknown) => mockRunPoster(input),
+}));
+jest.mock("@/features/recurring/posterTask", () => ({
+	startPosterTask: (who: unknown) => mockStartPosterTask(who),
+}));
+
 // The dev flag decides everything: without EXPO_PUBLIC_DEV_DEVICE_ENGINE=1 the
 // hooks do nothing and ask the server for nothing. With it, a pull runs when
 // someone signs in, again when the app returns after a minute, and never
-// offline.
+// offline. The recurring poster runs once after each pull settles, and the
+// Android task is armed for the signed-in account; neither exists without the flag.
 
 let handlers: ((state: AppStateStatus) => void)[];
 let removed: jest.Mock;
 beforeEach(() => {
+	mockRunPoster.mockClear();
+	mockStartPosterTask.mockClear();
 	handlers = [];
 	removed = jest.fn();
 	jest
@@ -41,6 +53,8 @@ describe("without the flag", () => {
 		expect(result.current).toBeNull();
 		expect(calls).toEqual([]);
 		expect(handlers).toEqual([]);
+		expect(mockRunPoster).not.toHaveBeenCalled();
+		expect(mockStartPosterTask).not.toHaveBeenCalled();
 	});
 });
 
@@ -62,6 +76,34 @@ describe("with the flag", () => {
 		expect(result.current).not.toBeNull();
 	});
 
+	it("runs the poster once the pull has settled, on the session's client and outbox, and arms the task", async () => {
+		const { client, calls } = fakeDeviceApi();
+		world.api = client;
+		await renderHook(() => useDevicePull());
+		await settled();
+		expect(calls.at(-1)).toBe("dailyRates");
+		expect(mockRunPoster).toHaveBeenCalledTimes(1);
+		expect(mockRunPoster).toHaveBeenCalledWith(
+			expect.objectContaining({ api: client, outbox: world.local.outbox }),
+		);
+		expect(mockStartPosterTask).toHaveBeenCalledWith({
+			baseUrl: "https://example.test",
+			meId: "me1",
+		});
+	});
+
+	it("runs the poster when the app returns to the foreground, after the pull it asks for", async () => {
+		jest.useFakeTimers({ now: new Date("2026-10-15T15:00:00.000Z") });
+		const { client } = fakeDeviceApi();
+		world.api = client;
+		await renderHook(() => useDevicePull());
+		await settled();
+		expect(mockRunPoster).toHaveBeenCalledTimes(1);
+		jest.setSystemTime(new Date("2026-10-15T15:02:00.000Z"));
+		await act(async () => handlers[0]?.("active"));
+		expect(mockRunPoster).toHaveBeenCalledTimes(2);
+	});
+
 	it("does nothing without a server or offline", async () => {
 		world.api = undefined;
 		await renderHook(() => useDevicePull());
@@ -71,6 +113,7 @@ describe("with the flag", () => {
 		await renderHook(() => useDevicePull());
 		await settled();
 		expect(calls).toEqual([]);
+		expect(mockRunPoster).not.toHaveBeenCalled();
 	});
 
 	it("pulls again on the foreground only after a minute, and stops listening on unmount", async () => {

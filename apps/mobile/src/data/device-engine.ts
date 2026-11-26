@@ -5,6 +5,8 @@ import type {
 	BulkBooked,
 	BulkOp,
 	DeviceApi,
+	PosterPlansInput,
+	PosterTemplatePlan,
 	Rebase,
 	ServerPreview,
 	TemplateSeen,
@@ -55,16 +57,57 @@ export const createDeviceEngine = (
 		warn: options.warn ?? warn,
 	});
 
-const engines = new WeakMap<
-	RetrospendClient,
-	{
-		userId: string;
-		outbox: Outbox | undefined;
-		engine: DeviceEngine;
-		pending: OutboxPending | null;
-		unregister: () => void;
+interface Held {
+	api: RetrospendClient;
+	userId: string;
+	outbox: Outbox | undefined;
+	engine: DeviceEngine;
+	pending: OutboxPending | null;
+	unregister: () => void;
+	/** The engine's file scope; null for a memory-only engine. */
+	scope: string | null;
+}
+
+const engines = new WeakMap<RetrospendClient, Held>();
+/** The engine that holds each scope's file in this process: at most one. */
+const byScope = new Map<string, Held>();
+
+/**
+ * The engine running now for this account and server, with the client and
+ * outbox it was made for, or null. The background task runs the poster on it
+ * instead of building a second engine over the same file.
+ */
+export function liveEngineOf(
+	origin: string,
+	userId: string,
+): {
+	api: RetrospendClient;
+	outbox: Outbox | undefined;
+	engine: DeviceEngine;
+} | null {
+	const held = byScope.get(engineScope(origin, userId));
+	return held && !held.engine.disposed
+		? { api: held.api, outbox: held.outbox, engine: held.engine }
+		: null;
+}
+
+/**
+ * Ends an engine its maker built for a short job (the background task): it is
+ * closed without wiping its file, and takes back only its own entry from the
+ * sweep and the scope table, never one an engine made after it has put there.
+ */
+export async function releaseEngine(api: RetrospendClient): Promise<void> {
+	const held = engines.get(api);
+	if (!held) return;
+	engines.delete(api);
+	try {
+		await held.engine.dispose({ wipe: false });
+	} finally {
+		held.unregister();
+		if (held.scope && byScope.get(held.scope) === held)
+			byScope.delete(held.scope);
 	}
->();
+}
 
 /** What a save, an edit and a delete need of the engine of their client. */
 export interface DeviceWrites {
@@ -87,6 +130,15 @@ export interface DeviceWrites {
 	): Promise<TemplateSeen | null>;
 	/** Reads the outbox lists again, after a change the engine should see. */
 	refresh(): Promise<void>;
+}
+
+/** What the recurring poster needs of the engine of its client. */
+export interface DevicePoster
+	extends Pick<DeviceWrites, "book" | "pullsBegun" | "refresh"> {
+	/** The plan of each template's due periods over the pulled rows (see `DeviceEngine.planPoster`); null when it cannot be made. */
+	planPoster(
+		input: Omit<PosterPlansInput, "now">,
+	): Promise<readonly PosterTemplatePlan[] | null>;
 }
 
 /** What a bulk categorize or delete needs of the engine of its client. */
@@ -122,6 +174,20 @@ export function bulkWritesFor(api: RetrospendClient): DeviceBulkWrites | null {
 			engine.settleBulk(key, booked, answer, ids),
 		undoneBulk: (key) => engine.undoneBulk(key),
 		bulkUnsettled: () => engine.bulkUnsettled(),
+	};
+}
+
+/** The poster side of the engine of `api`, or null when it has none (or it was disposed). */
+export function posterFor(api: RetrospendClient): DevicePoster | null {
+	const writes = writesFor(api);
+	const held = engines.get(api);
+	if (!writes || !held) return null;
+	const { engine } = held;
+	return {
+		book: writes.book,
+		pullsBegun: writes.pullsBegun,
+		refresh: writes.refresh,
+		planPoster: (input) => engine.planPoster(input),
 	};
 }
 
@@ -165,21 +231,51 @@ export function engineFor(
 		!held.engine.disposed
 	)
 		return held.engine;
-	held?.unregister();
-	void held?.engine.dispose({ wipe: true });
 	const scope = origin ? engineScope(origin, userId) : null;
+	// One engine holds a scope's file: an engine another client made for it (the
+	// background task's) is closed first, and this one opens the file only once
+	// that has finished. The client's own earlier engine is wiped, as before,
+	// and awaited the same way, so its wipe never lands on the file opened here.
+	const rival = scope ? byScope.get(scope) : undefined;
+	held?.unregister();
+	const previous = [held, rival].filter(
+		(h, i, all): h is Held =>
+			h !== undefined && !h.engine.disposed && all.indexOf(h) === i,
+	);
+	const gone = Promise.all(
+		previous.map((h) =>
+			h.engine.dispose({ wipe: h === held }).catch(() => undefined),
+		),
+	);
+	for (const h of previous) {
+		h.unregister();
+		if (h.scope && byScope.get(h.scope) === h) byScope.delete(h.scope);
+	}
 	// The engine reads the phone's unsent and acked writes through the outbox.
 	const pending = outbox ? createPendingSource(outbox) : null;
 	void pending?.refresh().catch(() => undefined);
 	const engine = createDeviceEngine(api, userId, Date.now, {
 		...(pending ? { pending } : {}),
 		storage: scope
-			? (hooks) => openEngineStorage(deps, scope, hooks)
+			? async (hooks) => {
+					await gone;
+					return openEngineStorage(deps, scope, hooks);
+				}
 			: undefined,
 	});
 	const unregister = scope
 		? registerLiveEngine(scope, () => engine.dispose({ wipe: true }))
 		: () => undefined;
-	engines.set(api, { userId, outbox, engine, pending, unregister });
+	const next: Held = {
+		api,
+		userId,
+		outbox,
+		engine,
+		pending,
+		unregister,
+		scope,
+	};
+	engines.set(api, next);
+	if (scope) byScope.set(scope, next);
 	return engine;
 }

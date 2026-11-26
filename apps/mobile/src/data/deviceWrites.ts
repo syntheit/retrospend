@@ -1,5 +1,9 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { DeviceBulkWrites, DeviceWrites } from "./device-engine";
+import type {
+	DeviceBulkWrites,
+	DevicePoster,
+	DeviceWrites,
+} from "./device-engine";
 import { deviceEngineModule } from "./deviceEngineModule";
 
 /**
@@ -36,6 +40,15 @@ export function deviceBulkWrites(
 ): DeviceBulkWrites | null {
 	try {
 		return deviceEngineModule()?.bulkWritesFor(api) ?? null;
+	} catch {
+		return null;
+	}
+}
+
+/** The poster side of `deviceWrites`: the same gate, the same fail-closed. */
+export function devicePoster(api: RetrospendClient): DevicePoster | null {
+	try {
+		return deviceEngineModule()?.posterFor(api) ?? null;
 	} catch {
 		return null;
 	}

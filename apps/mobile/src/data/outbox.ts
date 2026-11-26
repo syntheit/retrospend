@@ -126,6 +126,12 @@ export interface Ack {
 }
 
 export interface Outbox {
+	/**
+	 * The account this outbox belongs to (server and account id). Two outboxes
+	 * of one scope read and write the same entries, so the queue's one lock is
+	 * keyed by this, never by the object.
+	 */
+	readonly scope: string;
 	enqueue(entry: NewOutboxEntry): Promise<OutboxEntry>;
 	/** Entries still to send, oldest first. */
 	pending(): Promise<OutboxEntry[]>;
@@ -467,6 +473,7 @@ export function createOutbox(
 	}
 
 	return {
+		scope,
 		enqueue: (input) =>
 			serial(async () => {
 				const entry = fresh(input);
