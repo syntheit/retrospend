@@ -53,5 +53,19 @@ export function templateRepo(w: Writer) {
 		/** A missing template throws NotFoundError. */
 		update: templates.replace,
 		remove: templates.remove,
+		/**
+		 * The template, and what the server's foreign keys do with it: its
+		 * expenses keep their rows and lose the link, and a BILL envelope stops
+		 * following it. True when the template existed.
+		 */
+		removeLinked(id: string): boolean {
+			for (const e of w.list("expenses"))
+				if (e.recurringTemplateId === id)
+					w.put("expenses", { ...e, recurringTemplateId: null });
+			for (const e of w.list("envelopes"))
+				if (e.targetTemplateId === id)
+					w.put("envelopes", { ...e, targetTemplateId: null });
+			return templates.remove(id);
+		},
 	};
 }

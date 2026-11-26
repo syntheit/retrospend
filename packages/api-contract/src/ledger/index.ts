@@ -32,8 +32,7 @@ export const rateTextSchema = z
 		examples: ["1468.5"],
 	});
 
-/** A day with no time, in the caller's time zone. */
-export const daySchema = z.iso.date().meta({ id: "Day" });
+export { daySchema } from "../common/day";
 
 /** What a money write returns beside its result, to put it back. */
 export const undoField = {

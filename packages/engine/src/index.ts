@@ -125,6 +125,8 @@ export {
 	EXPENSE_DELETE_MUTATION,
 	EXPENSE_FIGURES,
 	EXPENSE_UPDATE_MUTATION,
+	RECURRING_CONFIRM_MUTATION,
+	RECURRING_SKIP_MUTATION,
 } from "./preview";
 export {
 	applyDailyTable,
@@ -134,6 +136,18 @@ export {
 	RateHistoryStore,
 	ratesAsOf,
 } from "./rates";
+export {
+	type ConfirmedRecurring,
+	type ConfirmRecurringInput,
+	confirmRecurring,
+	INCOME_NOT_ON_DEVICE,
+	type PosterPlanInput,
+	planPosterOver,
+	RECURRING_CONFIRM,
+	RECURRING_SKIP,
+	type SkipRecurringInput,
+	skipRecurring,
+} from "./recurring-local";
 export {
 	DEVICE_FIGURE_IDS,
 	type DeviceFiguresDeps,
@@ -186,6 +200,20 @@ export {
 	pullShares,
 	type StepReport,
 } from "./sync-pull";
+export {
+	type CreateTemplateInput,
+	createTemplate,
+	type DeleteTemplateInput,
+	deleteTemplate,
+	TEMPLATE_CREATE,
+	TEMPLATE_CREATE_MUTATION,
+	TEMPLATE_DELETE,
+	TEMPLATE_DELETE_MUTATION,
+	TEMPLATE_UPDATE,
+	TEMPLATE_UPDATE_MUTATION,
+	type UpdateTemplateInput,
+	updateTemplate,
+} from "./template-local";
 export type {
 	TemplateRow,
 	TemplateStrippedColumn,

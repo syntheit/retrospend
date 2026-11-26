@@ -7,7 +7,6 @@ import {
 } from "../common/money";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { undoTokenSchema } from "../common/preview";
-import { userText } from "../common/user-text";
 import { idParamsSchema, idSchema, timestampSchema } from "../core";
 import { activityRowSchema } from "../expenses/schemas";
 import { frequencySchema, planRestSchema, planResultSchema } from "../income";
@@ -20,6 +19,15 @@ import {
 	undoField,
 	undoInputSchema,
 } from "../ledger";
+
+import {
+	templateAmount,
+	templateCurrency,
+	templateDueDay,
+	templateName,
+	templatePaymentSource,
+	templateWebsiteUrl,
+} from "./template-fields";
 
 const TAG = ["Recurring"];
 
@@ -82,12 +90,12 @@ export const recurringSummarySchema = z
 	.meta({ id: "RecurringSummary" });
 
 const templateFields = {
-	name: userText("recurring.name", 191),
-	amount: amountTextSchema,
-	currency: currencyCodeSchema,
+	name: templateName,
+	amount: templateAmount,
+	currency: templateCurrency,
 	categoryId: idSchema.optional(),
 	frequency: frequencySchema,
-	nextDueDate: daySchema,
+	nextDueDate: templateDueDay,
 	anchorDay: z.number().int().min(1).max(31).optional().meta({
 		description:
 			"Day of month a monthly, quarterly or yearly schedule keeps (1 to 31). nextDueDate must be that day, or the last day of a shorter month. Default is the day of nextDueDate.",
@@ -99,8 +107,8 @@ const templateFields = {
 		description:
 			"`ask`: the amount varies and never posts on its own; a confirm names it. Default fixed.",
 	}),
-	websiteUrl: userText("recurring.websiteUrl", 512).optional(),
-	paymentSource: userText("recurring.paymentSource", 191).optional(),
+	websiteUrl: templateWebsiteUrl.optional(),
+	paymentSource: templatePaymentSource.optional(),
 	autoPay: z.boolean().optional().meta({ description: "Default true." }),
 };
 
@@ -135,8 +143,8 @@ export const updateRecurringSchema = z
 		frequency: templateFields.frequency,
 		nextDueDate: templateFields.nextDueDate,
 		amountMode: templateFields.amountMode,
-		websiteUrl: userText("recurring.websiteUrl", 512).nullable(),
-		paymentSource: userText("recurring.paymentSource", 191).nullable(),
+		websiteUrl: templateWebsiteUrl.nullable(),
+		paymentSource: templatePaymentSource.nullable(),
 		autoPay: z.boolean(),
 		paused: z.boolean(),
 		expectedUpdatedAt: recurringStampSchema,
