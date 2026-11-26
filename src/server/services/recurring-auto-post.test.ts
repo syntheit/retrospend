@@ -1,8 +1,14 @@
 /**
- * The RECURRING_AUTO_POST switch and the sweep-only `auto` input. The sweep
+ * The RECURRING_AUTO_POST switch and where the `auto` input may be set. The sweep
  * itself is tested on Postgres (recurring-auto-post.pg.test.ts).
  */
 import { readFileSync } from "node:fs";
+import {
+	confirmRecurringSchema,
+	createRecurringSchema,
+	skipRecurringSchema,
+	updateRecurringSchema,
+} from "@retrospend/api-contract";
 import {
 	afterAll,
 	beforeAll,
@@ -109,14 +115,24 @@ describe("startRecurringAutoPost", () => {
 });
 
 describe("the auto input", () => {
-	it("is in no transport's recurring schema, so only the sweep sets it", () => {
+	// A transport may set it (v1's confirm, for the phone's poster) because it
+	// only adds a refusal; the web's tRPC and every other v1 write keep it out.
+	it("is in the web's tRPC routers nowhere", () => {
 		for (const file of [
 			"src/server/api/routers/recurring.ts",
 			"src/server/api/routers/recurring-steps.ts",
-			"src/server/services/api-v1/recurring.ts",
-			"packages/api-contract/src/recurring/index.ts",
 		])
 			expect(readFileSync(file, "utf8"), file).not.toMatch(/\bauto\b(?!-)/);
+	});
+
+	it("is in v1's confirm schema and no other recurring schema", () => {
+		expect(Object.keys(confirmRecurringSchema.shape)).toContain("auto");
+		for (const schema of [
+			skipRecurringSchema,
+			createRecurringSchema,
+			updateRecurringSchema,
+		])
+			expect(Object.keys(schema.shape)).not.toContain("auto");
 	});
 });
 
