@@ -66,6 +66,7 @@ export type {
 	ServerFigures,
 	StorageHooks,
 } from "./ports";
+export type { PosterPlansInput, PosterTemplatePlan } from "./poster-plan";
 export type { ServerPreview } from "./preview-compare";
 export { type Rebase, type TemplateSeen, templateSeenOf } from "./rebase";
 export type { TemplateCreateBody, TemplateUpdateBody } from "./template-book";

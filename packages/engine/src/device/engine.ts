@@ -47,6 +47,11 @@ import {
 import { type PendingSource, readOverlaid, retiredBy } from "./pending";
 import type { DeviceApi, EngineStorage, StorageHooks } from "./ports";
 import {
+	type PosterPlansInput,
+	type PosterTemplatePlan,
+	planPosterIn,
+} from "./poster-plan";
+import {
 	comparePreview as runPreviewCompare,
 	type ServerPreview,
 } from "./preview-compare";
@@ -160,6 +165,15 @@ export interface DeviceEngine extends DeviceReads {
 		dueAt: Date,
 		expenseId: string,
 	): Promise<TemplateSeen | null>;
+	/**
+	 * The poster's plan: for each template not in `skip`, the due periods to
+	 * queue as confirms, over the store as the last pull left it. Null when the
+	 * store is not a whole copy, a pull began during the read, the engine is
+	 * disposed or the read failed: nothing is planned on a guess.
+	 */
+	planPoster(
+		input: Omit<PosterPlansInput, "now">,
+	): Promise<readonly PosterTemplatePlan[] | null>;
 	/**
 	 * Holds the device's preview of `op` against the server's dry run of it
 	 * (`pending_ahead` while an entry for the same row has not been shown back).
@@ -760,7 +774,9 @@ export function createDeviceEngine(
 		new Set([...bulkSent.values()].flatMap((sent) => sent.ids));
 
 	/** Reads the store as the last pull left it; null while it is not a whole copy. */
-	async function readStored<R>(read: (view: Reader) => R): Promise<R | null> {
+	async function readStored<R>(
+		read: (view: Reader) => R | Promise<R>,
+	): Promise<R | null> {
 		try {
 			await ready;
 			if (disposed || status !== "ready") return null;
@@ -786,6 +802,17 @@ export function createDeviceEngine(
 	): Promise<TemplateSeen | null> {
 		if (settledPull <= pull) return null;
 		return readStored((view) => templateSeenOf(view, id, dueAt, expenseId));
+	}
+
+	async function planPoster(
+		input: Omit<PosterPlansInput, "now">,
+	): Promise<readonly PosterTemplatePlan[] | null> {
+		const begun = pullsBegun;
+		const plans = await readStored((view) =>
+			planPosterIn(view, { ...input, now: new Date(now()) }),
+		);
+		// A pull that began during the read changed the rows under it.
+		return pullsBegun !== begun ? null : plans;
 	}
 
 	async function comparePreview(
@@ -869,6 +896,7 @@ export function createDeviceEngine(
 		storedRebase,
 		absentSince,
 		templateSince,
+		planPoster,
 		comparePreview,
 		bookBulk,
 		comparePreviewBulk,
