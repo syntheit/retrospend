@@ -21,15 +21,12 @@ const valid = {
 
 describe("the template field rules have one owner", () => {
 	it("v1's create and update bodies are built from the very same field schemas", () => {
-		for (const shape of [
-			createRecurringSchema.shape,
-			updateRecurringSchema.shape,
-		]) {
-			expect(shape.name.unwrap?.() ?? shape.name).toBe(templateName);
-			expect(shape.nextDueDate.unwrap?.() ?? shape.nextDueDate).toBe(
-				templateDueDay,
-			);
-		}
+		expect(updateRecurringSchema.shape.name.unwrap()).toBe(templateName);
+		expect(updateRecurringSchema.shape.amount.unwrap()).toBe(templateAmount);
+		expect(updateRecurringSchema.shape.nextDueDate.unwrap()).toBe(
+			templateDueDay,
+		);
+		expect(createRecurringSchema.shape.nextDueDate).toBe(templateDueDay);
 		expect(createRecurringSchema.shape.amount).toBe(templateAmount);
 		expect(createRecurringSchema.shape.currency).toBe(templateCurrency);
 		expect(createRecurringSchema.shape.name).toBe(templateName);
