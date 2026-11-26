@@ -1,7 +1,11 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
-import { EditStillSending, undoTemplateEdit } from "./deviceTemplate";
+import {
+	EditStillSending,
+	templateHasWrites,
+	undoTemplateEdit,
+} from "./deviceTemplate";
 
 // Undo of a template edit goes by what the outbox says happened to it, not by
 // what the sheet was told when it closed (a slow send makes that stale):
@@ -100,5 +104,15 @@ describe("undo of a template edit", () => {
 			baseVersion: AFTER,
 			payload: { paused: false, title: "Netflix" },
 		});
+	});
+});
+
+describe("whether a template has writes", () => {
+	it("fails closed: no outbox, or one that cannot be read, counts as a write waiting", async () => {
+		const outbox = createOutbox(createMemoryStore(), "scope");
+		expect(await templateHasWrites(outbox, "t1")).toBe(false);
+		expect(await templateHasWrites(null, "t1")).toBe(true);
+		jest.spyOn(outbox, "snapshot").mockRejectedValue(new Error("unreadable"));
+		expect(await templateHasWrites(outbox, "t1")).toBe(true);
 	});
 });

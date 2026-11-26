@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
+import { useSession } from "@/auth/session";
+import { deviceFlagOn } from "@/data/deviceWrites";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { Note } from "@/features/write/parts";
 import { WriteSheet } from "@/features/write/WriteForm";
 import { useDayText } from "./ConfirmSheet";
 import { templateHasWrites } from "./deviceTemplate";
 import type { RecurringItem } from "./source";
-import { useSettleDevice } from "./useSettle";
 
 /**
  * Delete a recurring template. The server's dry run of the exact delete comes
@@ -31,49 +32,54 @@ export function DeleteRecurringSheet({
 	const t = useTranslations("mobile.recurring.delete");
 	const tc = useTranslations("mobile.common");
 	const day = useDayText();
-	const device = useSettleDevice(item);
-	const outbox = device?.outbox;
-	// Fail closed: a list that cannot be read counts as a write waiting.
+	// Under the flag the phone's own outbox is read whether or not the engine
+	// runs yet, and one that cannot be read counts as a write waiting. Income is
+	// never queued, so it has nothing to wait for.
+	const { local } = useSession();
+	const guarded = item.direction === "out" && deviceFlagOn();
+	const outbox = local?.outbox ?? null;
 	const [syncFirst, setSyncFirst] = useState(false);
 	useEffect(() => {
 		setSyncFirst(false);
-		if (!outbox || !visible) return;
+		if (!guarded || !visible) return;
 		let live = true;
-		templateHasWrites(outbox, item.id).then(
+		void templateHasWrites(outbox, item.id).then(
 			(waiting) => live && setSyncFirst(waiting),
-			() => live && setSyncFirst(true),
 		);
 		return () => {
 			live = false;
 		};
-	}, [outbox, visible, item.id]);
+	}, [guarded, outbox, visible, item.id]);
 	return (
 		<WriteSheet
-			after={syncFirst ? <Note tone="attention">{t("syncFirst")}</Note> : null}
-			changes={({ preview, status }) => (
-				<PreviewChanges
-					lead={[
-						{
-							key: "future",
-							label: t("future"),
-							value: t("futureValue", { date: day(item.next) }),
-						},
-						...(item.autoPay
-							? [
-									{
-										key: "autoPay",
-										label: t("autoPay"),
-										value: t("autoPayValue"),
-									},
-								]
-							: []),
-						// What does not change is said too (R7).
-						{ key: "logged", label: t("logged"), value: t("loggedStays") },
-					]}
-					preview={preview}
-					status={status}
-				/>
-			)}
+			changes={({ preview, status }) =>
+				syncFirst ? (
+					<Note tone="attention">{t("syncFirst")}</Note>
+				) : (
+					<PreviewChanges
+						lead={[
+							{
+								key: "future",
+								label: t("future"),
+								value: t("futureValue", { date: day(item.next) }),
+							},
+							...(item.autoPay
+								? [
+										{
+											key: "autoPay",
+											label: t("autoPay"),
+											value: t("autoPayValue"),
+										},
+									]
+								: []),
+							// What does not change is said too (R7).
+							{ key: "logged", label: t("logged"), value: t("loggedStays") },
+						]}
+						preview={preview}
+						status={status}
+					/>
+				)
+			}
 			destructive={{
 				label: t(item.direction === "in" ? "submitIn" : "submit"),
 				busyLabel: tc("deleting"),
@@ -90,8 +96,10 @@ export function DeleteRecurringSheet({
 			visible={visible}
 			write={async (api, body, key) => {
 				// Checked again at the write: an entry may have been queued since the sheet opened.
-				if (outbox && (await templateHasWrites(outbox, body.id)))
+				if (guarded && (await templateHasWrites(outbox, body.id))) {
+					setSyncFirst(true);
 					throw new Error("Sync first");
+				}
 				return api.recurring.delete(body, { context: { idempotencyKey: key } });
 			}}
 		/>

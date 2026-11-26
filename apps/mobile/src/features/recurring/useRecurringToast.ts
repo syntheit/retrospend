@@ -37,7 +37,9 @@ export function useRecurringToast() {
 								} catch (error) {
 									toast.show({
 										message:
-											error instanceof UndoRefused ? error.message : tw("undoError"),
+											error instanceof UndoRefused
+												? error.message
+												: tw("undoError"),
 									});
 								}
 							},

@@ -24,7 +24,12 @@ import type { RecurringItem } from "./source";
 // "Sync first" while this phone holds a write to the template. With the flag
 // off, or for income, the write goes straight to API v1.
 const mockWrites = jest.fn();
-jest.mock("@/data/deviceWrites", () => ({ deviceWrites: () => mockWrites() }));
+// The flag follows the engine unless a test says it is set with no engine running.
+let mockFlagOn: boolean | null = null;
+jest.mock("@/data/deviceWrites", () => ({
+	deviceWrites: () => mockWrites(),
+	deviceFlagOn: () => mockFlagOn ?? mockWrites() !== null,
+}));
 jest.mock("@/ui/Sheet", () => {
 	const { Pressable } = require("react-native");
 	return {
@@ -141,6 +146,7 @@ function setup() {
 
 beforeEach(() => {
 	mockWrites.mockReset().mockReturnValue(null);
+	mockFlagOn = null;
 	forgetUndoTokens();
 	forgetSent();
 });
@@ -487,13 +493,34 @@ describe("Delete under the dev flag", () => {
 		expect(disabled(tree, "Delete recurring expense")).toBe(false);
 	});
 
-	it("checks again at the write: a change queued after the sheet opened stops the delete", async () => {
+	it("checks again at the write: a change queued after the sheet opened stops the delete and says Sync first", async () => {
 		const { recurring } = setup();
 		const tree = await openDelete();
 		await waiting("late");
 		await pressAsync(tree, "Delete recurring expense");
 		expect(recurring.delete).not.toHaveBeenCalled();
-		expect(words(tree)).toContain("Couldn't delete it. Try again.");
+		expect(words(tree)).toContain("Sync first");
+		expect(words(tree)).not.toContain("Couldn't delete it.");
+		expect(disabled(tree, "Delete recurring expense")).toBe(true);
+	});
+
+	it("says Sync first with no preview rows beside it", async () => {
+		setup();
+		await waiting("w1");
+		const tree = await openDelete();
+		expect(words(tree)).toContain("Sync first");
+		expect(words(tree)).not.toContain("Future occurrences");
+	});
+
+	it("reads the phone's own outbox when the flag is set but no engine runs yet", async () => {
+		const { recurring } = setup();
+		mockWrites.mockReturnValue(null);
+		mockFlagOn = true;
+		await waiting("w1");
+		const tree = await openDelete();
+		expect(words(tree)).toContain("Sync first");
+		expect(disabled(tree, "Delete recurring expense")).toBe(true);
+		expect(recurring.delete).not.toHaveBeenCalled();
 	});
 
 	it("flag off: no outbox is read and the delete goes ahead", async () => {

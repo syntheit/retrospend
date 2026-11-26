@@ -17,6 +17,19 @@ export function deviceWrites(api: RetrospendClient): DeviceWrites | null {
 	}
 }
 
+/**
+ * Whether the dev flag is set, even when no engine runs yet (app start, a
+ * disposed engine) or its module failed to load: a check that must not be
+ * skipped while the phone may hold device writes asks this, not `deviceWrites`.
+ */
+export function deviceFlagOn(): boolean {
+	try {
+		return deviceEngineModule() !== null;
+	} catch {
+		return true;
+	}
+}
+
 /** The bulk side of `deviceWrites`: the same gate, the same fail-closed. */
 export function deviceBulkWrites(
 	api: RetrospendClient,

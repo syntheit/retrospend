@@ -165,14 +165,20 @@ export async function editTemplateOnDevice(input: {
  * Whether a write to template `id` waits on this phone, is parked, or was sent
  * and no pull has shown back yet. Delete stays online (the server clears the
  * envelope targets and signs its own undo), so it refuses until that is
- * settled ("Sync first").
+ * settled ("Sync first"). Fails closed: no outbox, or one that cannot be
+ * read, counts as a write waiting.
  */
 export async function templateHasWrites(
-	outbox: Outbox,
+	outbox: Outbox | null,
 	id: string,
 ): Promise<boolean> {
-	const { open, acked } = await outbox.snapshot();
-	return targetsWithEntries([...open, ...acked], [id]).length > 0;
+	if (!outbox) return true;
+	try {
+		const { open, acked } = await outbox.snapshot();
+		return targetsWithEntries([...open, ...acked], [id]).length > 0;
+	} catch {
+		return true;
+	}
 }
 
 /** Takes a new template back: out of the outbox while it waits, or through the server's delete once it was sent. */
