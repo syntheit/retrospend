@@ -146,7 +146,10 @@ export interface Outbox {
 	dropRetired(clientId: string): Promise<void>;
 	/**
 	 * The server said not yet: the entry goes back to waiting, with no error
-	 * and nothing counted against it.
+	 * and nothing counted against it. That answer proves this send did not
+	 * land, so the send is not counted as begun either: an entry the queue
+	 * reads as "may be on the server" (a busy answer, an undo resend) is not
+	 * one the server refused.
 	 */
 	markLater(clientId: string): Promise<void>;
 	/** Keeps the sealed request of an entry before its request leaves (see `OutboxEntry.sealed`). */
@@ -503,7 +506,11 @@ export function createOutbox(
 		dropRetired: (clientId) => serial(() => dropRetired(clientId)),
 		markLater: (clientId) =>
 			serial(() =>
-				update(clientId, () => ({ state: "pending", lastError: null })),
+				update(clientId, (e) => ({
+					state: "pending",
+					lastError: null,
+					attempts: Math.max(0, e.attempts - 1),
+				})),
 			),
 		replace: (clientId, input) => serial(() => replace(clientId, input)),
 		snapshot: () =>

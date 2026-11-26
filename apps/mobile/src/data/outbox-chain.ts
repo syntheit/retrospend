@@ -1,3 +1,4 @@
+import { ackedTableOf } from "@retrospend/domain/recurring-post/acked-table";
 import type { PendingChange } from "@retrospend/engine/device";
 import { decodeRow, encodeRow } from "./engine-db/serialize";
 import type {
@@ -117,16 +118,6 @@ export function targetsWithEntries(
 export const isUnresolved = (base: BaseVersion): base is { after: string } =>
 	typeof base === "object" && base !== null;
 
-/**
- * The table of the row an entity's writes are about: the row whose version an
- * ack names (an expense's `updatedAt`, a confirm's `templateUpdatedAt`). An
- * entity not listed names no row, so no booked row is stamped for it.
- */
-const ENTITY_TABLE: Readonly<Record<string, PendingChange["table"]>> = {
-	expenses: "expenses",
-	recurring: "recurringTemplates",
-};
-
 const rowKey = (change: { table: string; id: string }) =>
 	`${change.table}:${change.id}`;
 
@@ -143,10 +134,12 @@ export function stampedBy(
 	acked: OutboxEntry,
 	version: string,
 ): Partial<OutboxEntry> {
-	const table = Object.hasOwn(ENTITY_TABLE, acked.entity)
-		? ENTITY_TABLE[acked.entity]
-		: undefined;
-	const named = table && rowKey({ table, id: acked.targetId });
+	// The one rule for which table an answer's version names is the domain's,
+	// shared with the engine's overlay.
+	const named = rowKey({
+		table: ackedTableOf(acked.device?.changes ?? []),
+		id: acked.targetId,
+	});
 	const wrote = acked.device?.changes.some((c) => rowKey(c) === named);
 	const device = dependent.device && {
 		...dependent.device,

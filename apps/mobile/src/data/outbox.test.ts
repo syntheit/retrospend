@@ -536,6 +536,28 @@ describe("recurring entries", () => {
 		expect(template?.after).toMatchObject({ id: "t1", autoPay: true });
 	});
 
+	it("a not-yet answer gives its send back, so the entry is not read as one that may be on the server", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("c1", "t1", T1, { origin: "poster" }));
+		await outbox.markSending("c1");
+		expect((await outbox.all())[0]?.attempts).toBe(1);
+		await outbox.markLater("c1");
+		expect((await outbox.all())[0]).toMatchObject({
+			state: "pending",
+			attempts: 0,
+		});
+	});
+
+	it("a not-yet answer keeps the count of an earlier send whose answer was lost", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("c1", "t1", T1));
+		await outbox.markSending("c1");
+		await outbox.markFailed("c1", "offline");
+		await outbox.markSending("c1");
+		await outbox.markLater("c1");
+		expect((await outbox.all())[0]?.attempts).toBe(1);
+	});
+
 	it("an unknown table throws and keeps nothing", async () => {
 		const store = createMemoryStore();
 		const outbox = createOutbox(store, "a");
@@ -636,12 +658,11 @@ describe("recurring entries", () => {
 		expect(expense?.before).toMatchObject({ version: null });
 	});
 
-	it("an entity that names no row stamps no booked row, but the base still moves", async () => {
+	it("an entry whose booking holds no row of its target stamps no booked row, but the base still moves", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
-		const entry = (id: string, base: string | { after: string }) => ({
-			...confirm(id, "t1", base, { device: confirmBooking(id, "t1") }),
-			entity: "unlisted",
-		});
+		// The booking names the template's row, the target is another row.
+		const entry = (id: string, base: string | { after: string }) =>
+			confirm(id, "other", base, { device: confirmBooking(id, "t1") });
 		await outbox.enqueue(entry("c1", T1));
 		await outbox.enqueue(entry("c2", { after: "c1" }));
 		await outbox.markSent("c1", { version: T2, pull: 1 });
