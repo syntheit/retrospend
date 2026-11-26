@@ -63,6 +63,28 @@ describe("template stamps and client ids on recurring writes", () => {
 		expect(recurringConfirmResultSchema.shape.templateUpdatedAt).toBeDefined();
 	});
 
+	it("a confirm may name the expense's own updatedAt: null for income, absent from an older server", () => {
+		const base = {
+			expenseId: "e1",
+			templateId: "t1",
+			direction: "out",
+			nextDueAt: null,
+			booked: null,
+			account: null,
+			kept: null,
+			plan: null,
+			templateUpdatedAt: "2026-12-01T12:00:00.000Z",
+		};
+		const parse = (extra: object) =>
+			recurringConfirmResultSchema.safeParse({ ...base, ...extra });
+		expect(
+			parse({ expenseUpdatedAt: "2026-12-01T12:00:00.000Z" }).success,
+		).toBe(true);
+		expect(parse({ expenseUpdatedAt: null }).success).toBe(true);
+		expect(parse({}).success).toBe(true);
+		expect(parse({ expenseUpdatedAt: "yesterday" }).success).toBe(false);
+	});
+
 	it("have a 409 problem code of their own", () => {
 		expect(PROBLEM_STATUS.recurring_changed).toBe(409);
 		expect(
@@ -94,7 +116,7 @@ describe("template stamps and client ids on recurring writes", () => {
 				>
 			>;
 		};
-		expect(doc.info.version).toBe("1.11.0");
+		expect(doc.info.version).toBe("1.12.0");
 		const body = (path: string) =>
 			Object.keys(
 				doc.paths[path]?.post?.requestBody?.content["application/json"].schema

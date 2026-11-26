@@ -288,7 +288,11 @@ export function createEntrySender(
 		const stop = () => timeout.abort();
 		options.signal?.addEventListener("abort", stop);
 		try {
-			const { undo: token, version } = await transport.dispatch(entry, {
+			const {
+				undo: token,
+				version,
+				expenseVersion,
+			} = await transport.dispatch(entry, {
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
 				sealed: {
@@ -307,6 +311,7 @@ export function createEntrySender(
 			return {
 				status: "sent",
 				...(version !== undefined ? { version } : {}),
+				...(expenseVersion !== undefined ? { expenseVersion } : {}),
 			};
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
@@ -354,6 +359,13 @@ export interface CallOptions {
 export interface Created {
 	undo: string;
 	version?: string | null;
+	/**
+	 * A recurring confirm also books an expense: the answer's own `updatedAt`
+	 * for it (contract 1.12.0), which `version` (the template's) does not name.
+	 * Absent from an older server, and then the expense is compared with no
+	 * version, as before.
+	 */
+	expenseVersion?: string;
 }
 
 export const NO_TOKEN = "";
@@ -492,9 +504,13 @@ async function settle(
 		},
 		options,
 	);
+	const { expenseUpdatedAt } = confirmed.confirmed;
 	return {
 		undo: confirmed.undo,
 		version: confirmed.confirmed.templateUpdatedAt,
+		...(typeof expenseUpdatedAt === "string"
+			? { expenseVersion: expenseUpdatedAt }
+			: {}),
 	};
 }
 

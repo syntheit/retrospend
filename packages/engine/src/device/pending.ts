@@ -65,6 +65,8 @@ export interface PendingEntry {
 	readonly ack?: {
 		/** The `updatedAt` the answer named for the row, null for a delete. */
 		readonly version: string | null;
+		/** A recurring confirm's booked expense, which `version` (the template's) does not name; absent from a server before contract 1.12.0. */
+		readonly expenseVersion?: string;
 		/**
 		 * `DeviceEngine.pullsBegun` when the ack arrived. A pull that began
 		 * after it has seen the write; one that was running then may not have.

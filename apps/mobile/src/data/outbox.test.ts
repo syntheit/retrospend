@@ -175,6 +175,15 @@ describe("acked list", () => {
 		expect(await restarted.all()).toEqual([]);
 	});
 
+	it("keeps the expense version a recurring confirm's answer named, next to the template's", async () => {
+		const store = createMemoryStore();
+		const first = createOutbox(store, "a");
+		await first.enqueue(create("e1", device("e1")));
+		await first.markSent("e1", { version: T1, expenseVersion: T2, pull: 1 });
+		const [entry] = await createOutbox(store, "a").acked();
+		expect(entry?.ack).toEqual({ version: T1, expenseVersion: T2, pull: 0 });
+	});
+
 	it("deletes an entry without a device booking at its ack", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
 		await outbox.enqueue(create("e1"));

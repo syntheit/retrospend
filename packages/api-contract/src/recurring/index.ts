@@ -222,6 +222,8 @@ export const recurringConfirmResultSchema = z
 		plan: planResultSchema.nullable(),
 		/** The template's updatedAt after this confirm, for the next write's expectedUpdatedAt. Null for recurring income. */
 		templateUpdatedAt: timestampSchema.nullable(),
+		/** The booked expense's updatedAt, as GET /expenses/{id} will show it until it is edited. Null for recurring income; absent from a server older than 1.12.0. */
+		expenseUpdatedAt: timestampSchema.nullish(),
 	})
 	.meta({ id: "RecurringConfirm" });
 

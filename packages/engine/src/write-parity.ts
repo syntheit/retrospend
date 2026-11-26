@@ -16,8 +16,14 @@
  * A booking the device cannot compare is a finding (`refused`).
  *
  * Not compared: projectId (not a column of the engine's expense row).
+ *
+ * A recurring write changes a template too (the due date, the anchor, a
+ * pause, an edit): `compareTemplate` holds the columns a write decides to the
+ * pulled template. It reads no rates, so only the version and the columns can
+ * make it skip or differ.
  */
 import { dec } from "@retrospend/domain/precise-decimal";
+import { ackedTableOf } from "@retrospend/domain/recurring-post/acked-table";
 import type { PendingChange } from "./device/pending";
 import { sameValue } from "./equal";
 import type { BookedExpense } from "./expense-create-conformance";
@@ -25,6 +31,7 @@ import type { ExpenseRow, TextFreeExpenseRow } from "./expenses";
 import { bookedOf } from "./local-expense-create";
 import { type Reader, SETTINGS_ID } from "./port";
 import { ratesAsOf } from "./rates";
+import type { TemplateRow, TextFreeTemplateRow } from "./templates";
 
 export type SkipCode =
 	| "no_rate"
@@ -41,8 +48,6 @@ export type SkipCode =
 	| "gone_already"
 	/** A bulk action: the device and the server both left the row alone (a transfer's fee, a spread parent). */
 	| "refused"
-	/** The write changed a table the compare does not read yet (a template); never a finding. */
-	| "not_compared"
 	/** A preview compare: the server has not seen the unsent entries the device preview started from. */
 	| "pending_ahead";
 
@@ -120,7 +125,8 @@ const skipped = (id: string, code: SkipCode): WriteVerdict => ({
 /**
  * What a device-booked row and the row the server booked can differ in: the
  * booked fields, plus excludeFromAnalytics (the edit's patch rules decide it
- * on both sides). `projectId` is not a column of the engine's expense row (a
+ * on both sides) and recurringTemplateId (a posted row must name the template
+ * it came from). `projectId` is not a column of the engine's expense row (a
  * personal expense has no project and the sync does not carry it), so there is
  * nothing on the device to compare it with.
  */
@@ -134,7 +140,40 @@ export function differingWriteFields(
 	);
 	if (device.excludeFromAnalytics !== server.excludeFromAnalytics)
 		fields.push("excludeFromAnalytics");
+	if (
+		(device.recurringTemplateId ?? null) !==
+		(server.recurringTemplateId ?? null)
+	)
+		fields.push("recurringTemplateId");
 	return fields;
+}
+
+/** The template columns a recurring write decides; text and the joined category are not on the device row. */
+export const TEMPLATE_COMPARED = [
+	"nextDueDate",
+	"anchorDay",
+	"isActive",
+	"autoPay",
+	"amount",
+	"currency",
+	"frequency",
+	"categoryId",
+	"amountMode",
+] as const satisfies readonly (keyof TextFreeTemplateRow)[];
+
+export type ComparedTemplate = Pick<
+	TemplateRow,
+	(typeof TEMPLATE_COMPARED)[number]
+>;
+
+/** The names of the template columns that differ: the amount by value, the due date by instant. */
+export function differingTemplateFields(
+	device: ComparedTemplate,
+	server: ComparedTemplate,
+): string[] {
+	return TEMPLATE_COMPARED.filter(
+		(k) => !sameColumnValue(k, device[k], server[k]),
+	);
 }
 
 /** What the compare needs of an acked entry: when it was booked and the version the server answered with. */
@@ -143,6 +182,13 @@ export interface AckedWrite {
 	readonly bookedAt: number;
 	/** The `updatedAt` of the row the server answered with; null for a delete, or when none was given. */
 	readonly version: string | null;
+	/**
+	 * The `updatedAt` of an expense the entry booked next to the row `version`
+	 * names (a recurring confirm books one, and its answer names the template's).
+	 * Absent when the server did not send it: the expense is then compared with
+	 * no version, so a later edit of it reads as a difference, never as a match.
+	 */
+	readonly expenseVersion?: string;
 }
 
 /**
@@ -196,9 +242,32 @@ export function compareWrite(
 }
 
 /**
- * `compareWrite` for any row an entry changed. A template is not compared yet:
- * it is skipped, so it can neither match by accident nor count as a finding.
+ * `compareWrite` for a template: the same deleted, gone and version rules, then
+ * the template's own columns.
  */
+export function compareTemplate(
+	live: Reader,
+	change: Extract<PendingChange, { table: "recurringTemplates" }>,
+	acked: AckedWrite,
+): WriteVerdict {
+	const { id, before, after } = change;
+	const pulled = live.get("recurringTemplates", id);
+	if (after === null) {
+		if (!pulled) return { id, outcome: "match" };
+		return pulled.version !== (before?.version ?? null)
+			? skipped(id, "changed_since")
+			: { id, outcome: "differs", fields: ["deleted"] };
+	}
+	if (!pulled) return skipped(id, "gone_already");
+	if (acked.version !== null && pulled.version !== acked.version)
+		return skipped(id, "changed_since");
+	const fields = differingTemplateFields(after, pulled);
+	return fields.length === 0
+		? { id, outcome: "match" }
+		: { id, outcome: "differs", fields };
+}
+
+/** `compareWrite` or `compareTemplate` for any row an entry changed. */
 export function compareChange(
 	live: Reader,
 	change: PendingChange,
@@ -206,5 +275,31 @@ export function compareChange(
 ): WriteVerdict {
 	return change.table === "expenses"
 		? compareWrite(live, change, acked)
-		: skipped(change.id, "not_compared");
+		: compareTemplate(live, change, acked);
+}
+
+/**
+ * Every row of one acked entry. The server's answer names one row's version
+ * (`ackedTableOf`: a confirm or skip answers with the template's, though a
+ * confirm also books an expense), so that version is held against that row
+ * only. The booked expense carries its own (`expenseVersion`, contract 1.12.0);
+ * with none, from an older server, it is held to its columns alone.
+ */
+export function compareEntry(
+	live: Reader,
+	changes: readonly PendingChange[],
+	acked: AckedWrite,
+): WriteVerdict[] {
+	const named = ackedTableOf(changes);
+	return changes.map((c) =>
+		compareChange(live, c, {
+			bookedAt: acked.bookedAt,
+			version:
+				c.table === named
+					? acked.version
+					: c.table === "expenses"
+						? (acked.expenseVersion ?? null)
+						: null,
+		}),
+	);
 }

@@ -50,6 +50,8 @@ export interface ConfirmedExpense {
 	readonly nextDueAt: Date;
 	/** The template's updatedAt after this confirm, for the next write's stamp. */
 	readonly templateUpdatedAt: Date;
+	/** The booked expense's own updatedAt, so a client can tell a later edit of that row from the confirm. */
+	readonly expenseUpdatedAt: Date;
 	/** The due date this confirm settled, for the undo to put back. */
 	readonly dueAt: Date;
 	/** The template's anchor before this confirm (null on a legacy template), for the undo. */
@@ -110,7 +112,7 @@ export const confirmRecurringExpense: MoneyMutation<
 		);
 		const row = await tx.expense.create({
 			data: { ...plan.entry, title, id: input.expenseId },
-			select: { id: true },
+			select: { id: true, updatedAt: true },
 		});
 		const stamp = await tx.recurringTemplate.findFirstOrThrow({
 			where: { id: plan.templateId, userId: actor.userId },
@@ -122,6 +124,7 @@ export const confirmRecurringExpense: MoneyMutation<
 				templateId: plan.templateId,
 				nextDueAt: plan.nextDueDate,
 				templateUpdatedAt: stamp.updatedAt,
+				expenseUpdatedAt: row.updatedAt,
 				dueAt: plan.dueAt,
 				anchorDay: plan.previousAnchorDay,
 			},

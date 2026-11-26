@@ -8,6 +8,7 @@
  * here with an expiry in 2100.
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import type { TemplateEdit } from "@retrospend/domain/recurring-post/template";
 import { makeSignature } from "better-auth/crypto";
 import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
@@ -173,3 +174,30 @@ export async function v1For(userId: string, requestZone?: string) {
 }
 
 export type V1 = Awaited<ReturnType<typeof v1For>>;
+
+/** The sweep's due-template read, kept to one user's rows so a pass touches nothing else in a shared database. */
+export function sweepOnly(userId: string) {
+	return {
+		$queryRaw: (async (...args: Parameters<typeof adminDb.$queryRaw>) => {
+			const rows = (await adminDb.$queryRaw(...args)) as { userId: string }[];
+			return rows.filter((r) => r.userId === userId);
+		}) as typeof adminDb.$queryRaw,
+	};
+}
+
+/**
+ * A new template or an edit as a v1 body: the domain's names, v1's spelling of
+ * the amount mode ("ask" or "fixed") and a pause as `paused`, the inverse of
+ * isActive.
+ */
+export function v1TemplateBody({
+	isActive,
+	amountMode,
+	...rest
+}: TemplateEdit & { id?: string }) {
+	return {
+		...rest,
+		...(amountMode && { amountMode: amountMode === "ASK" ? "ask" : "fixed" }),
+		...(isActive !== undefined && { paused: !isActive }),
+	};
+}
