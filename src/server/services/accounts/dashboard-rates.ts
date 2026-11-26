@@ -20,6 +20,7 @@ import {
 	dec,
 } from "@retrospend/domain/precise-decimal";
 import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
+import type { AssetType } from "~prisma";
 
 /** An account's latest snapshot while history is rebuilt, as recorded. */
 export interface HeldSnapshot extends SnapshotMeta {
