@@ -65,9 +65,9 @@ describe("DeviceEngine.planPoster", () => {
 		expect(plans?.map((p) => p.templateId)).toEqual(["t2"]);
 	});
 
-	// The domain plans an income template (poster.test.ts); the phone's poster
-	// does not send one until v1's income confirm takes a client id and a stamp.
-	it("leaves out an income template, which the phone cannot send yet", async () => {
+	// The domain plans an income template as the server's sweep posts it
+	// (poster.test.ts), and the phone sends it with `auto`.
+	it("plans an income template as it plans an expense one", async () => {
 		const { api } = fakeDeviceApi({
 			rates,
 			expenses: [page([])],
@@ -77,7 +77,8 @@ describe("DeviceEngine.planPoster", () => {
 		const e = createDeviceEngine(api, "u1", () => NOW, { warn: vi.fn() });
 		await e.pull();
 		const plans = await e.planPoster(plan(true));
-		expect(plans?.map((p) => p.templateId)).toEqual(["t1"]);
+		expect(plans?.map((p) => p.templateId)).toEqual(["t1", "t3"]);
+		expect(plans?.[1]?.run.entries).toHaveLength(1);
 	});
 
 	it("answers null before the first pull and after dispose, never a plan on a guess", async () => {

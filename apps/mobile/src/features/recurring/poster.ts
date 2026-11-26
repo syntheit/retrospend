@@ -137,6 +137,8 @@ async function queueTemplate(
 				templateId: entry.templateId,
 				dueAt: entry.dueAt.toISOString(),
 				expenseId: entryBase.clientId,
+				// The server books the entry as its sweep does, income too.
+				auto: true,
 			},
 		});
 		if (!booked) return { queued, stoppedByPull: false };

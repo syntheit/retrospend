@@ -134,6 +134,7 @@ describe("a poster run", () => {
 			id: "t1",
 			dueAt: "2026-12-01T03:00:00.000Z",
 			expectedUpdatedAt: STAMP,
+			auto: true,
 		});
 		// Sent and acked: the acked list keeps the device's booking until a pull.
 		const { open: left, acked } = await outbox.snapshot();
@@ -305,15 +306,48 @@ describe("what stops the poster", () => {
 		expect(await readProtected(client)).toBe(true);
 	});
 
-	it("never plans an income template", async () => {
+	it("posts an income template as an auto confirm with the stamp, booked row only on the device", async () => {
 		const { client, outbox, confirm } = await setup({
 			templates: [template("t1", { direction: "IN" })],
 		});
-		expect(await runPoster({ api: client, outbox })).toMatchObject({
+		expect(await runPoster({ api: client, outbox })).toEqual({
 			status: "ran",
-			queued: 0,
+			queued: 1,
+			stoppedByPull: false,
 		});
-		expect(confirm).not.toHaveBeenCalled();
+		expect(confirm.mock.calls[0]?.[0]).toEqual({
+			id: "t1",
+			dueAt: "2026-12-01T03:00:00.000Z",
+			expenseId: expect.stringMatching(/^c\d+$/),
+			expectedUpdatedAt: STAMP,
+			auto: true,
+		});
+		const { acked } = await outbox.snapshot();
+		const changes = acked[0]?.device?.changes ?? [];
+		expect(changes.map((c) => c.table)).toEqual([
+			"expenses",
+			"recurringTemplates",
+		]);
+		expect(
+			(changes[0]?.after as { direction: string; homeAmount: unknown })
+				.direction,
+		).toBe("IN");
+	});
+
+	it("a person's income confirm, without auto, is never booked by the device", async () => {
+		const { engine } = await setup({
+			templates: [template("t1", { direction: "IN" })],
+		});
+		expect(
+			await engine.book({
+				kind: "confirm",
+				body: {
+					templateId: "t1",
+					dueAt: "2026-12-01T03:00:00.000Z",
+					expenseId: "p1",
+				},
+			}),
+		).toBeNull();
 	});
 
 	it("plans nothing for a template that is paused, not due, or asks for an amount", async () => {

@@ -75,6 +75,12 @@ export interface ConfirmBody extends SettleBody {
 	amount?: string;
 	/** YYYY-MM-DD: the day it was really paid. */
 	paidOn?: string;
+	/**
+	 * The poster's confirm: an auto post, which the template must still allow
+	 * (auto-pay on, a fixed amount). The only confirm the device books for an
+	 * income template, row only as the server's sweep posts it.
+	 */
+	auto?: true;
 }
 
 export type WriteOp =

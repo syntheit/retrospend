@@ -139,6 +139,7 @@ describe("templateSeenOf", () => {
 			version: "v1",
 			currency: "USD",
 			amountMode: "FIXED",
+			autoPay: true,
 		});
 	});
 
@@ -157,6 +158,7 @@ describe("templateSeenOf", () => {
 			version: "v1",
 			currency: "USD",
 			amountMode: "FIXED",
+			autoPay: true,
 		});
 	});
 

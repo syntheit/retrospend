@@ -128,10 +128,42 @@ describe("DeviceEngine.book of a recurring confirm or skip", () => {
 		expect(await paused.engine.book(skip)).toBeNull();
 	});
 
-	it("is null for recurring income, which stays online", async () => {
+	// A person's income confirm and skip stay online; the poster's confirm
+	// (`auto`) is the one income booking, row only as the server's sweep posts it.
+	it("is null for a person's recurring income, which stays online", async () => {
 		const { engine } = await setup(template("t1", { direction: "IN" }));
 		expect(await engine.book(confirm())).toBeNull();
 		expect(await engine.book(skip)).toBeNull();
+	});
+
+	it("books the poster's income confirm: the row and the template, no account leg", async () => {
+		const { engine } = await setup(template("t1", { direction: "IN" }));
+		const booked = await engine.book(confirm({ auto: true }));
+		expect(booked?.changes.map((c) => c.table)).toEqual([
+			"expenses",
+			"recurringTemplates",
+		]);
+		expect((booked?.changes[0] as ExpenseChange).after).toMatchObject({
+			direction: "IN",
+			inType: "INCOME",
+			homeAmount: "30900.00",
+		});
+		// Even with auto, a skip of income is a person's and stays online.
+		expect(
+			await engine.book({
+				kind: "skip",
+				body: { templateId: "t1", dueAt: DUE, auto: true } as never,
+			}),
+		).toBeNull();
+	});
+
+	it("an auto confirm is refused for a template that does not pay automatically, expense or income", async () => {
+		for (const direction of ["OUT", "IN"] as const) {
+			const { engine } = await setup(
+				template("t1", { direction, autoPay: false }),
+			);
+			expect(await engine.book(confirm({ auto: true })), direction).toBeNull();
+		}
 	});
 });
 
