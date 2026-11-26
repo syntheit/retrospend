@@ -345,7 +345,9 @@ describe("/api/v1/transfers undo of a delete keeps the envelope", () => {
 			timeZone: "UTC",
 		});
 		const dining = (
-			await adminDb.envelope.findFirstOrThrow({ where: { name: "Dining" } })
+			await adminDb.envelope.findFirstOrThrow({
+				where: { name: "Dining", book: { createdById: userId } },
+			})
 		).id;
 
 		const moved = await expectBody<Write>(
