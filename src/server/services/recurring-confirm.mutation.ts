@@ -18,6 +18,7 @@ import {
 } from "@retrospend/domain/recurring-post/refusals";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
+import { GLANCE_SPENT } from "./figures/spend-pace";
 import { recurringEntryData } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
 import { paidOnInstant } from "./recurring-paid-on";
@@ -49,7 +50,8 @@ export interface ConfirmedExpense {
 	readonly anchorDay: number | null;
 }
 
-const FIGURES = ["spent"];
+// The confirm books an expense, so it moves what expense.create does (EXPENSE_FIGURES).
+const FIGURES = ["spent", GLANCE_SPENT];
 
 export const confirmRecurringExpense: MoneyMutation<
 	ConfirmRecurringExpenseInput,
