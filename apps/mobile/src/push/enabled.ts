@@ -1,3 +1,4 @@
+import { accountScope } from "@/data/scope";
 import type { KeyValueStore } from "@/data/store";
 
 // Whether this phone has Push switched on, and for whom. The background task
@@ -34,5 +35,5 @@ export function createEnabledStore(store: KeyValueStore, key = KEY) {
 
 /** The key all the per-account push state is filed under. */
 export function pushScope(value: PushEnabled): string {
-	return `${value.baseUrl}|${value.meId}`;
+	return accountScope(value.baseUrl, value.meId);
 }

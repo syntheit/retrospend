@@ -27,6 +27,7 @@ import {
 import { useEngineSweep } from "@/data/engine-db/useEngineSweep";
 import { newClientId } from "@/data/ids";
 import { createOutbox, type Outbox } from "@/data/outbox";
+import { accountScope } from "@/data/scope";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { getErrorLog } from "@/features/feedback/runtime";
 import { invalidateReads } from "@/features/read/readLedger";
@@ -121,7 +122,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	useEngineSweep(baseUrl, state.status, meId);
 	const local = useMemo<Local | null>(() => {
 		if (!baseUrl || !meId) return null;
-		const scope = `${baseUrl}|${meId}`;
+		const scope = accountScope(baseUrl, meId);
 		return {
 			cache: createReadCache(store, scope, undefined, CACHE_BINDING),
 			outbox: createOutbox(store, scope),
@@ -148,7 +149,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			local
 				? local.cache.clear()
 				: meId
-					? createReadCache(store, `${baseUrl}|${meId}`).clear()
+					? createReadCache(store, accountScope(baseUrl, meId)).clear()
 					: undefined,
 			authApi?.clearLocal(),
 		]);

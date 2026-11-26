@@ -8,6 +8,7 @@ import { createReadCache } from "@/data/cache";
 import { deviceFlagOn } from "@/data/deviceWrites";
 import { newClientId } from "@/data/ids";
 import { createOutbox } from "@/data/outbox";
+import { accountScope } from "@/data/scope";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { createEnabledStore } from "@/push/enabled";
 import { type PosterOutcome, type PosterWho, runPosterTask } from "./poster";
@@ -25,6 +26,10 @@ export const POSTER_TASK = "retrospend.recurring.post";
 const store = createSqliteStore();
 const whoStore = createEnabledStore(store, "poster.enabled");
 
+/** The account's outbox as the task opens it: the same scope as the app's. */
+export const outboxFor = (who: PosterWho) =>
+	createOutbox(store, accountScope(who.baseUrl, who.meId));
+
 function postFor(who: PosterWho): Promise<PosterOutcome> {
 	return postForAccount(who, {
 		makeClient: () => {
@@ -38,7 +43,7 @@ function postFor(who: PosterWho): Promise<PosterOutcome> {
 				},
 			});
 		},
-		makeOutbox: () => createOutbox(store, `${who.baseUrl}|${who.meId}`),
+		makeOutbox: () => outboxFor(who),
 	});
 }
 

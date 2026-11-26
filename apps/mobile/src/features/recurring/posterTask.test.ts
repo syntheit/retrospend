@@ -32,7 +32,7 @@ jest.mock("@/data/sqlite-store", () => ({
 	createSqliteStore: () => mockStore,
 }));
 
-import { createEnabledStore } from "@/push/enabled";
+import { createEnabledStore, pushScope } from "@/push/enabled";
 
 // Loaded once: the task is defined when the module loads, before any test clears the mocks.
 const android = require("./posterTask.android");
@@ -54,6 +54,10 @@ describe("on Android", () => {
 
 	it("defines the task when the module loads", () => {
 		expect(defined).toEqual([[android.POSTER_TASK, expect.any(Function)]]);
+	});
+
+	it("opens the account's outbox under the scope push and the session use", () => {
+		expect(android.outboxFor(who).scope).toBe(pushScope(who));
 	});
 
 	it("registers every 15 minutes under the flag, and records who it posts for", async () => {
