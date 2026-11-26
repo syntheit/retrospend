@@ -53,6 +53,25 @@ export async function recordBudgetSide(
 	};
 }
 
+/**
+ * The envelope a transfer's budget side was recorded into (FROM_WEALTH) or out
+ * of (TO_WEALTH), read before a delete cascades the row away so the undo can
+ * record the same side. Null envelope = To assign; null result = no side.
+ */
+export async function recordedBudgetEnvelope(
+	tx: Prisma.TransactionClient,
+	transferId: string,
+): Promise<{
+	direction: BudgetMovement["direction"];
+	envelopeId: string | null;
+} | null> {
+	const side = await tx.wealthTransfer.findFirst({
+		where: { transferId },
+		select: { direction: true, envelopeId: true },
+	});
+	return side;
+}
+
 /** The undo of a Move in takes its budget side with it; returns how many it removed. */
 export function removeBudgetSide(
 	tx: Prisma.TransactionClient,
