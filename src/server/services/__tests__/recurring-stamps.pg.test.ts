@@ -85,7 +85,11 @@ describe("confirm with a template stamp", () => {
 		const v1 = await v1For(me);
 		at(NOW);
 		const done = await expectBody<{
-			confirmed: { templateUpdatedAt: string | null };
+			confirmed: {
+				expenseId: string;
+				templateUpdatedAt: string | null;
+				expenseUpdatedAt?: string | null;
+			};
 		}>(
 			await v1("POST", `/recurring/${id}/confirm`, {
 				dueAt: DUE,
@@ -103,6 +107,11 @@ describe("confirm with a template stamp", () => {
 		// The answer is the stored stamp, which the write moved.
 		expect(done.confirmed.templateUpdatedAt).toBe(after.updatedAt);
 		expect(after.updatedAt).not.toBe(STAMP);
+		// It also names the booked expense's own updatedAt, as stored (contract 1.12.0).
+		const stored = await fixtureDb.expense.findUniqueOrThrow({
+			where: { id: done.confirmed.expenseId },
+		});
+		expect(done.confirmed.expenseUpdatedAt).toBe(iso(stored.updatedAt));
 	});
 
 	it("reads the stamp as an instant: a zone offset or a missing millisecond is the same stamp", async () => {
