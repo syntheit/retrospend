@@ -13,7 +13,7 @@ import {
 import { ratesAsOf } from "../rates";
 import { DEVICE_FIGURE_IDS, readDeviceFigures } from "../registry";
 import { type PullCursors, type PullReport, pullAll } from "../sync-pull";
-import { compareChange, type WriteVerdict } from "../write-parity";
+import { compareEntry, type WriteVerdict } from "../write-parity";
 import {
 	type BookedWrite,
 	bookIn,
@@ -456,12 +456,10 @@ export function createDeviceEngine(
 		const snap = store.snapshot();
 		const verdicts: WriteVerdict[] = [
 			...retired.flatMap((e) =>
-				e.changes.map((c) =>
-					compareChange(snap, c, {
-						bookedAt: e.bookedAt,
-						version: e.ack?.version ?? null,
-					}),
-				),
+				compareEntry(snap, e.changes, {
+					bookedAt: e.bookedAt,
+					version: e.ack?.version ?? null,
+				}),
 			),
 			...left.flatMap(({ entry, code }) =>
 				entry.changes.map(

@@ -7,10 +7,10 @@ import { fixtureRow } from "../fixtures";
 import { LocalDb } from "../local-db";
 import { seededStore } from "../local-expense-create";
 import { readDeviceFigures } from "../registry";
-import { templateWithoutText } from "../templates";
+import { type TemplateRow, templateWithoutText } from "../templates";
 import type { UndoToken } from "../undo";
 import { createDeviceEngine, type DeviceEngine } from "./engine";
-import { cursor, expense, fakeDeviceApi } from "./fake-api";
+import { cursor, expense, fakeDeviceApi, template } from "./fake-api";
 import type { PendingChange, PendingEntry, PendingSource } from "./pending";
 import type { FigureBasis } from "./ports";
 
@@ -529,17 +529,94 @@ describe("retiring and comparing on a pull", () => {
 		expect(warn).toHaveBeenCalledWith("writes checked", expect.any(String));
 	});
 
-	it("skips a template change as not compared, never a match or a finding", async () => {
-		const t1 = fixtureRow("recurringTemplates", "t1");
-		const { engine, pending } = await acked(edited(), () => ({
-			table: "recurringTemplates",
-			id: "t1",
-			before: templateWithoutText(t1),
-			after: templateWithoutText({ ...t1, autoPay: true }),
-		}));
-		await engine.pull();
-		expect(engine.writeParity.counts).toEqual({ "skipped:not_compared": 1 });
-		expect(pending.retired).toEqual(["c1"]);
+	describe("a template change", () => {
+		// The pulled template is the fake api's USD 20 monthly Rent, due 2027-01-01T03:00Z.
+		const JAN_1 = new Date("2027-01-01T03:00:00.000Z");
+
+		async function ackedTemplate(
+			after: (t: TemplateRow) => TemplateRow,
+			version: string | null = null,
+			// Rows the same entry changed before the template, as a confirm's posted expense.
+			before: (e1: Row) => PendingChange[] = () => [],
+		) {
+			const pending = new FakePending();
+			const { api } = fakeDeviceApi({
+				rates,
+				expenses: [page([booked("e1")])],
+				templates: [
+					page([template("t1", { nextDueDate: JAN_1.toISOString() })]),
+				],
+			});
+			const engine = createDeviceEngine(api, "u1", Date.now, {
+				warn,
+				pending,
+			});
+			await engine.pull();
+			const pulled = await engine.readWithPending((view) =>
+				view.get("recurringTemplates", "t1"),
+			);
+			if (!pulled) throw new Error("no template");
+			const e1 = await pulledRow(engine);
+			const stepped = {
+				...pulled,
+				nextDueDate: new Date("2026-12-01T03:00:00Z"),
+			};
+			pending.list = [
+				entry(
+					"c1",
+					[
+						...before(e1),
+						{
+							table: "recurringTemplates",
+							id: "t1",
+							before: templateWithoutText(stepped),
+							after: templateWithoutText(after(pulled)),
+						},
+					],
+					{ ack: { version, pull: engine.pullsBegun } },
+				),
+			];
+			await engine.pull();
+			return { engine, pending };
+		}
+
+		it("is a match when every compared column is the pulled one", async () => {
+			const { engine, pending } = await ackedTemplate((t) => t);
+			expect(engine.writeParity.counts).toEqual({ match: 1 });
+			expect(pending.retired).toEqual(["c1"]);
+		});
+
+		it("holds the ack's version to the template only: a confirm's expense carries its own", async () => {
+			// The answer names the template's version; the pulled expense has another.
+			const { engine } = await ackedTemplate(
+				(t) => t,
+				"2026-11-18T10:00:00.000Z",
+				(e1) => [change("e1", e1, e1)],
+			);
+			expect(engine.writeParity.counts).toEqual({ match: 2 });
+		});
+
+		it("names the column that differs, and only it", async () => {
+			const { engine } = await ackedTemplate((t) => ({
+				...t,
+				autoPay: false,
+			}));
+			expect(engine.writeParity.counts).toEqual({ differs: 1 });
+			const [, detail] = warn.mock.calls.at(-1) ?? [];
+			expect(JSON.parse(detail ?? "").findings).toEqual([
+				{ id: "t1", outcome: "differs", fields: ["autoPay"] },
+			]);
+		});
+
+		it("skips when a later write moved the template past the version the ack named", async () => {
+			const { engine } = await ackedTemplate(
+				(t) => t,
+				"2026-11-01T00:00:00.000Z",
+			);
+			expect(engine.writeParity.counts).toEqual({
+				"skipped:changed_since": 1,
+			});
+		});
 	});
 
 	it("names a differing field by id and name, with no amount, title or note in the log", async () => {
