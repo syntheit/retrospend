@@ -78,6 +78,18 @@ const at = (instant: Date) =>
 	vi.useFakeTimers({ toFake: ["Date"], now: instant });
 afterEach(() => vi.useRealTimers());
 
+/**
+ * The rate table, stamped long before any booking here: the compare skips a
+ * write whose rates were rewritten within five minutes of it (`rates_moved`),
+ * and these were written moments ago on the real clock.
+ */
+async function settledRates(rows: Parameters<typeof setRates>[0]) {
+	await setRates(rows);
+	await adminDb.exchangeRate.updateMany({
+		data: { updatedAt: new Date("2026-01-01T00:00:00.000Z") },
+	});
+}
+
 /** A fresh device's store after a pull of the server as it stands at `now`, through the real v1 sync routes. */
 async function pulled(userId: string, now: Date): Promise<MemoryStore> {
 	at(now);
@@ -155,7 +167,7 @@ async function confirmOnServer(
 
 describe("one period, confirmed on both", () => {
 	beforeAll(() =>
-		setRates([
+		settledRates([
 			["2026-11-29", "ARS", "blue", "1540"],
 			["2026-11-30", "ARS", "blue", "1545"],
 			["2026-12-01", "ARS", "official", "1050"],
@@ -378,7 +390,7 @@ describe("one period, confirmed on both", () => {
 });
 
 describe("a JPY home at 150", () => {
-	beforeAll(() => setRates([["2026-11-30", "JPY", "official", "150"]]));
+	beforeAll(() => settledRates([["2026-11-30", "JPY", "official", "150"]]));
 
 	it("USD 8.35 books JPY 1,252 on both (half to even), and a device row rounded half up is a finding", async () => {
 		const { user } = await createTestUser();
@@ -470,7 +482,8 @@ describe("the poster's run", () => {
 		const v1 = await v1For(userId);
 		const answers: (string | null)[] = [];
 		let expected = stamp;
-		for (const e of entries) {
+		for (const [i, e] of entries.entries()) {
+			// A second apart, so each confirm leaves its own template stamp.
 			const next = await confirmOnServer(
 				v1,
 				id,
@@ -479,7 +492,7 @@ describe("the poster's run", () => {
 					expenseId: e.clientId,
 					expectedUpdatedAt: expected,
 				},
-				now,
+				new Date(now.getTime() + i * 1000),
 			);
 			answers.push(next);
 			if (next) expected = next;
@@ -514,7 +527,7 @@ describe("the poster's run", () => {
 	describe("three periods due at their own rates", () => {
 		const midNov = new Date("2026-11-15T12:00:00.000Z");
 		beforeAll(() =>
-			setRates([
+			settledRates([
 				["2026-09-01", "ARS", "blue", "1500"],
 				["2026-10-01", "ARS", "blue", "1520"],
 				["2026-11-01", "ARS", "blue", "1545"],
@@ -564,7 +577,7 @@ describe("the poster's run", () => {
 
 	describe("the cap", () => {
 		const read = new Date("2026-10-10T12:00:00.000Z");
-		beforeAll(() => setRates([["2026-01-01", "ARS", "blue", "1545"]]));
+		beforeAll(() => settledRates([["2026-01-01", "ARS", "blue", "1545"]]));
 
 		it("31 entries, then 9 after a pull: ARS 957,900.00 then 278,100.00, each compared", async () => {
 			const me = await arsUser();
@@ -606,7 +619,7 @@ describe("the poster's run", () => {
 });
 
 describe("a template created, edited and paused", () => {
-	beforeAll(() => setRates([["2026-11-30", "ARS", "blue", "1545"]]));
+	beforeAll(() => settledRates([["2026-11-30", "ARS", "blue", "1545"]]));
 
 	async function createBoth(zone: string) {
 		const me = await arsUser(zone);

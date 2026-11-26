@@ -120,7 +120,10 @@ function serverAdapter(): RecurringAdapter {
 			homeRate: text(e.homeRate) ?? "",
 			homeAmount: text(e.homeAmount) ?? "",
 			pricingSource: e.pricingSource ?? "",
-			recurringTemplateId: e.recurringTemplateId,
+			// The vector names its templates "t1", "t2"; the rows carry the real ids.
+			recurringTemplateId:
+				[...ids].find(([, real]) => real === e.recurringTemplateId)?.[0] ??
+				e.recurringTemplateId,
 		}));
 
 	async function run(step: Parameters<RecurringAdapter["step"]>[0]) {
