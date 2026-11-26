@@ -4,9 +4,9 @@ import { dayKey, startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
+	confirmRecurringInput,
 	createRecurringInput,
 	templateIdSchema,
-	templateStampInput,
 	updateRecurringInput,
 } from "~/lib/schemas/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -288,19 +288,7 @@ export const recurringRouter = createTRPCRouter({
 	 * so this is the only place the money is written.
 	 */
 	confirmAndCreate: protectedProcedure
-		.input(
-			z.object({
-				id: templateIdSchema,
-				// The due date the user is confirming. When sent, a repeat of the
-				// same confirm (double click, second tab) is rejected instead of
-				// booking the next period.
-				dueDate: z.date().optional(),
-				// The real amount, required for a template whose amount varies (ASK).
-				amount: z.number().positive().optional(),
-				paidOn: z.iso.date().optional(),
-				expectedUpdatedAt: templateStampInput,
-			}),
-		)
+		.input(confirmRecurringInput)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
 			const amount = input.amount?.toString(); // as typed, no float math

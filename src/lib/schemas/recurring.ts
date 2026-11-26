@@ -46,3 +46,16 @@ export const updateRecurringInput = z.object({
 	autoPay: z.boolean().optional(),
 	isActive: z.boolean().optional(),
 });
+
+/** Confirming a due template (recurring.confirmAndCreate). */
+export const confirmRecurringInput = z.object({
+	id: templateIdSchema,
+	// The due date the user is confirming. When sent, a repeat of the same
+	// confirm (double click, second tab) is rejected instead of booking the
+	// next period.
+	dueDate: z.date().optional(),
+	// The real amount, required for a template whose amount varies (ASK).
+	amount: z.number().positive().optional(),
+	paidOn: z.iso.date().optional(),
+	expectedUpdatedAt: templateStampInput,
+});
