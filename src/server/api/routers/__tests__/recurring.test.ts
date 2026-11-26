@@ -103,6 +103,11 @@ beforeEach(() => {
 		findFirst: vi.fn(async () =>
 			state.template ? { ...state.template } : null,
 		),
+		// The stamp a confirm or skip answers is read back after its write.
+		findFirstOrThrow: vi.fn(async () => {
+			if (!state.template) throw new Error("template missing");
+			return { ...state.template };
+		}),
 		updateMany: vi.fn(
 			async (args: {
 				where: { id: string; nextDueDate: Date };
