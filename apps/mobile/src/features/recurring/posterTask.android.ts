@@ -5,18 +5,13 @@ import { AppState } from "react-native";
 import { ME_CACHE } from "@/auth/restore";
 import { createTokenStore } from "@/auth/token-store";
 import { createReadCache } from "@/data/cache";
-import { deviceEngineModule } from "@/data/deviceEngineModule";
 import { deviceFlagOn } from "@/data/deviceWrites";
 import { newClientId } from "@/data/ids";
 import { createOutbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { createEnabledStore } from "@/push/enabled";
-import {
-	type PosterOutcome,
-	type PosterWho,
-	runPoster,
-	runPosterTask,
-} from "./poster";
+import { type PosterOutcome, type PosterWho, runPosterTask } from "./poster";
+import { postForAccount } from "./posterAccount";
 
 // Android without Google services: the same WorkManager path as the push poll
 // (expo-background-task, AndroidX; no Play services) wakes the app about every
@@ -30,33 +25,21 @@ export const POSTER_TASK = "retrospend.recurring.post";
 const store = createSqliteStore();
 const whoStore = createEnabledStore(store, "poster.enabled");
 
-async function postFor(who: PosterWho): Promise<PosterOutcome> {
-	const module = deviceEngineModule();
-	if (!module) return { status: "off" };
-	const tokens = createTokenStore(who.baseUrl);
-	const api = createRetrospendClient({
-		baseUrl: who.baseUrl,
-		newIdempotencyKey: newClientId,
-		authHeaders: async (): Promise<Record<string, string>> => {
-			const token = await tokens.get();
-			return token ? { authorization: `Bearer ${token}` } : {};
+function postFor(who: PosterWho): Promise<PosterOutcome> {
+	return postForAccount(who, {
+		makeClient: () => {
+			const tokens = createTokenStore(who.baseUrl);
+			return createRetrospendClient({
+				baseUrl: who.baseUrl,
+				newIdempotencyKey: newClientId,
+				authHeaders: async (): Promise<Record<string, string>> => {
+					const token = await tokens.get();
+					return token ? { authorization: `Bearer ${token}` } : {};
+				},
+			});
 		},
+		makeOutbox: () => createOutbox(store, `${who.baseUrl}|${who.meId}`),
 	});
-	const outbox = createOutbox(store, `${who.baseUrl}|${who.meId}`);
-	const engine = module.engineFor(
-		api,
-		who.meId,
-		who.baseUrl,
-		undefined,
-		outbox,
-	);
-	try {
-		// Plan over rows the server has just confirmed, not a stale disk copy.
-		await engine.pullIfStale();
-		return await runPoster({ api, outbox });
-	} finally {
-		await engine.dispose({ wipe: false }).catch(() => undefined);
-	}
 }
 
 TaskManager.defineTask(POSTER_TASK, async () => {
