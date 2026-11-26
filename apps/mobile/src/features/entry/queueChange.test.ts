@@ -47,6 +47,7 @@ function writesOf(
 		pullsBegun: () => 5,
 		storedRebase: async () => null,
 		absentSince: jest.fn(async () => false),
+		templateSince: async () => null,
 		refresh: async () => undefined,
 		...over,
 	} as DeviceWrites & { absentSince: jest.Mock };

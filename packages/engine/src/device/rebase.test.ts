@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
+import type { ExpenseRow } from "../expenses";
+import { seededStore } from "../local-expense-create";
+import { recurringVectors } from "../recurring-vectors";
+import type { TemplateRow } from "../templates";
 import { createDeviceEngine } from "./engine";
 import { cursor, expense, fakeDeviceApi } from "./fake-api";
+import { readOverlaid } from "./pending";
+import { templateSeenOf } from "./rebase";
 
 // Try again on a parked edit reads the row as the last pull left it. ARS home
 // in Buenos Aires (UTC-3), so a row dated 02:00Z is the evening before there.
@@ -79,5 +85,100 @@ describe("absentSince", () => {
 		await engine.pull();
 		await engine.pull();
 		expect(await engine.absentSince("c1", 0)).toBe(false);
+	});
+});
+
+describe("templateSeenOf", () => {
+	const { seed } = recurringVectors[0] as (typeof recurringVectors)[number];
+	const DEC_1 = new Date("2026-12-01T03:00:00Z");
+	const JAN_1 = new Date("2027-01-01T03:00:00Z");
+	const template = (over: Partial<TemplateRow> = {}) =>
+		({
+			id: "t1",
+			name: "Rent",
+			amount: "20",
+			currency: "USD",
+			frequency: "MONTHLY",
+			nextDueDate: DEC_1,
+			anchorDay: 1,
+			direction: "OUT",
+			isActive: true,
+			autoPay: true,
+			amountMode: "FIXED",
+			categoryId: null,
+			category: null,
+			websiteUrl: null,
+			paymentSource: null,
+			version: "v1",
+			...over,
+		}) as TemplateRow;
+	const seen = async (rows: {
+		template?: TemplateRow;
+		expenses?: object[];
+	}) => {
+		const store = await seededStore(seed);
+		await store.transaction((tx) => {
+			if (rows.template) tx.put("recurringTemplates", rows.template);
+			for (const e of rows.expenses ?? []) tx.put("expenses", e as ExpenseRow);
+		});
+		return readOverlaid(store, [], 0, (view) =>
+			templateSeenOf(view, "t1", DEC_1),
+		);
+	};
+
+	it("is not found for a template the store does not have", async () => {
+		expect(await seen({})).toEqual({ found: false });
+	});
+
+	it("a template still due on the period is not passed, paused or posted", async () => {
+		expect(await seen({ template: template() })).toEqual({
+			found: true,
+			paused: false,
+			passed: false,
+			posted: false,
+		});
+	});
+
+	it("a next due date past the period is passed, and the expense dated that instant is posted", async () => {
+		const posted = { id: "e1", date: DEC_1, recurringTemplateId: "t1" };
+		expect(
+			await seen({
+				template: template({ nextDueDate: JAN_1 }),
+				expenses: [posted],
+			}),
+		).toEqual({ found: true, paused: false, passed: true, posted: true });
+	});
+
+	it("an expense of another template, or of another day, is not the period's post", async () => {
+		const other = { id: "e2", date: DEC_1, recurringTemplateId: "t2" };
+		const paidEarly = {
+			id: "e3",
+			date: new Date("2026-11-29T03:00:00Z"),
+			recurringTemplateId: "t1",
+		};
+		expect(
+			await seen({
+				template: template({ nextDueDate: JAN_1 }),
+				expenses: [other, paidEarly],
+			}),
+		).toMatchObject({ posted: false });
+	});
+
+	it("a paused template is paused", async () => {
+		expect(
+			await seen({ template: template({ isActive: false }) }),
+		).toMatchObject({ paused: true });
+	});
+});
+
+describe("templateSince", () => {
+	it("answers only once a pull that began after the mark has finished", async () => {
+		const { api } = fakeDeviceApi({ expenses: [page([custom]), page([])] });
+		const engine = createDeviceEngine(api, "u1", Date.now, { warn });
+		const due = new Date("2026-12-01T03:00:00Z");
+		await engine.pull();
+		// The answer came while pull 1 was the latest begun: it resolves nothing.
+		expect(await engine.templateSince("t1", engine.pullsBegun, due)).toBeNull();
+		expect(await engine.templateSince("t1", 0, due)).toEqual({ found: false });
 	});
 });

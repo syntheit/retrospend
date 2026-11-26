@@ -120,6 +120,7 @@ function writesOf(h: Harness): DeviceWrites {
 		absentSince: jest.fn(async (id: string, since: number) =>
 			h.absentSince(id, since),
 		),
+		templateSince: async () => null,
 		refresh: async () => undefined,
 	} as DeviceWrites;
 }

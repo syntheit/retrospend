@@ -90,6 +90,7 @@ async function phone(rows: Record<string, unknown>[]) {
 		pullsBegun: () => engine.pullsBegun,
 		storedRebase: (id) => engine.storedRebase(id),
 		absentSince: (id, pull) => engine.absentSince(id, pull),
+		templateSince: (id, pull, dueAt) => engine.templateSince(id, pull, dueAt),
 		refresh: () => pending.refresh(),
 	};
 	mockWrites.mockReturnValue(writes);

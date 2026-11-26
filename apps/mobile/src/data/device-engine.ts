@@ -7,6 +7,7 @@ import type {
 	DeviceApi,
 	Rebase,
 	ServerPreview,
+	TemplateSeen,
 	WriteOp,
 } from "@retrospend/engine/device";
 import {
@@ -77,6 +78,12 @@ export interface DeviceWrites {
 	storedRebase(id: string): Promise<Rebase | null>;
 	/** A pull that began after pull `pull` finished without this expense (see DeviceEngine). */
 	absentSince(id: string, pull: number): Promise<boolean>;
+	/** The recurring template as a pull that began after pull `pull` left it; null while none has finished. */
+	templateSince(
+		id: string,
+		pull: number,
+		dueAt: Date,
+	): Promise<TemplateSeen | null>;
 	/** Reads the outbox lists again, after a change the engine should see. */
 	refresh(): Promise<void>;
 }
@@ -130,6 +137,7 @@ export function writesFor(api: RetrospendClient): DeviceWrites | null {
 		pullsBegun: () => engine.pullsBegun,
 		storedRebase: (id) => engine.storedRebase(id),
 		absentSince: (id, pull) => engine.absentSince(id, pull),
+		templateSince: (id, pull, dueAt) => engine.templateSince(id, pull, dueAt),
 		refresh: () => pending?.refresh() ?? Promise.resolve(),
 	};
 }

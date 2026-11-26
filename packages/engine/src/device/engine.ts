@@ -44,7 +44,12 @@ import {
 	comparePreview as runPreviewCompare,
 	type ServerPreview,
 } from "./preview-compare";
-import { type Rebase, rebaseOf } from "./rebase";
+import {
+	type Rebase,
+	rebaseOf,
+	type TemplateSeen,
+	templateSeenOf,
+} from "./rebase";
 
 // The device engine: a copy of the account's rows in memory, filled by the
 // pull driver through a DeviceApi, and the figures read from those rows. It
@@ -137,6 +142,17 @@ export interface DeviceEngine extends DeviceReads {
 	 * resolves nothing. False when it cannot tell.
 	 */
 	absentSince(id: string, pull: number): Promise<boolean>;
+	/**
+	 * The recurring template as a pull that began after pull number `pull` and
+	 * has finished left it (see `TemplateSeen`), for a parked confirm or skip
+	 * of it. Null when no such pull has finished, or the store cannot be read:
+	 * a pull that began before the answer resolves nothing.
+	 */
+	templateSince(
+		id: string,
+		pull: number,
+		dueAt: Date,
+	): Promise<TemplateSeen | null>;
 	/**
 	 * Holds the device's preview of `op` against the server's dry run of it
 	 * (`pending_ahead` while an entry for the same row has not been shown back).
@@ -761,6 +777,15 @@ export function createDeviceEngine(
 		return (await readStored((view) => !view.get("expenses", id))) === true;
 	}
 
+	async function templateSince(
+		id: string,
+		pull: number,
+		dueAt: Date,
+	): Promise<TemplateSeen | null> {
+		if (settledPull <= pull) return null;
+		return readStored((view) => templateSeenOf(view, id, dueAt));
+	}
+
 	async function comparePreview(
 		op: WriteOp,
 		server: ServerPreview,
@@ -841,6 +866,7 @@ export function createDeviceEngine(
 		book,
 		storedRebase,
 		absentSince,
+		templateSince,
 		comparePreview,
 		bookBulk,
 		comparePreviewBulk,

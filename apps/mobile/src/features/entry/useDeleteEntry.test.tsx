@@ -28,6 +28,7 @@ function writesBase(base: string | null): DeviceWrites {
 		pullsBegun: () => 1,
 		storedRebase: async () => null,
 		absentSince: async () => false,
+		templateSince: async () => null,
 		refresh: async () => undefined,
 	};
 }

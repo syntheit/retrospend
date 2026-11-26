@@ -21,6 +21,34 @@ const text = (v: { toString(): string } | null | undefined) =>
 	v === null || v === undefined ? null : dec(v).toFixed();
 
 /**
+ * A recurring template as a pull left it, read for a parked write of it: not
+ * there, or there with whether it is paused, whether its next due date is past
+ * the period the write named (`dueAt`: that period was posted, skipped or
+ * moved), and whether an expense of the template is dated exactly `dueAt`.
+ */
+export type TemplateSeen =
+	| { found: false }
+	| { found: true; paused: boolean; passed: boolean; posted: boolean };
+
+export function templateSeenOf(
+	r: Reader,
+	id: string,
+	dueAt: Date,
+): TemplateSeen {
+	const row = r.get("recurringTemplates", id);
+	if (!row) return { found: false };
+	const due = dueAt.getTime();
+	return {
+		found: true,
+		paused: !row.isActive,
+		passed: row.nextDueDate.getTime() > due,
+		posted: r
+			.list("expenses")
+			.some((e) => e.recurringTemplateId === id && e.date.getTime() === due),
+	};
+}
+
+/**
  * Null when the row is not in the store, has no version or no booked rate
  * (a row the device booked itself), or the domain refuses a body for it (a
  * spread parent, a typed rate from another home): never guessed.

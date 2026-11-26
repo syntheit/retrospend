@@ -93,6 +93,7 @@ const writes = (
 		pullsBegun: () => 1,
 		storedRebase: async () => ({ body: pulled, version: PULLED_AT }),
 		absentSince: async () => false,
+		templateSince: async () => null,
 		refresh: async () => undefined,
 		...over,
 	}) as DeviceWrites & { book: jest.Mock };
