@@ -80,7 +80,7 @@ describe("snapshotPlan", () => {
 			meta: {
 				currency: "USD",
 				type: "INVESTMENT",
-				exchangeRateType: undefined,
+				exchangeRateType: null,
 			},
 			recordedAt,
 		});
