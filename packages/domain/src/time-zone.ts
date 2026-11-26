@@ -174,6 +174,18 @@ export function parseDateOnlyIn(value: string, timeZone?: string): Date {
 }
 
 /**
+ * The date to store on an expense row (an income, a transfer's fee) for a
+ * move dated `day` (a UTC midnight). The ledger keys legs, transfers and
+ * checkpoints by that UTC-midnight day, but Activity and the envelope budget
+ * read expense rows in the viewer's zone, as rows from the expense form are
+ * stored: at the zone's own midnight. Without this, west of UTC an income
+ * shows a day early and the 1st falls in the previous month.
+ */
+export function rowDateOf(day: Date, timeZone?: string): Date {
+	return parseDateOnlyIn(day.toISOString().slice(0, 10), timeZone);
+}
+
+/**
  * The first instant of the calendar day `parts` in `timeZone` (out-of-range
  * parts roll over like Date.UTC). Where DST skips local midnight (Santiago,
  * Havana, Beirut) that is the first valid time of the day, 01:00, never the

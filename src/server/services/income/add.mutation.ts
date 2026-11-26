@@ -28,6 +28,8 @@ import {
 	FIGURE_NOT_PLANNED_YET,
 } from "@retrospend/domain/envelope/verdict";
 import { nextDueDay } from "@retrospend/domain/recurring";
+import { rowDateOf } from "@retrospend/domain/time-zone";
+import { typedAmount } from "@retrospend/domain/transfers/plan";
 import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
@@ -36,7 +38,7 @@ import { ensureIncomeCategories } from "~/server/services/money-in.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { withUserZone } from "~/server/services/user-time-zone";
 import type { Prisma, RecurringFrequency } from "~prisma";
-import { moveDay, rowDateOf } from "../accounts/dates";
+import { moveDay } from "../accounts/dates";
 import {
 	type AccountChange,
 	type AccountRow,
@@ -46,8 +48,12 @@ import {
 	writeLeg,
 } from "../accounts/ledger";
 import { type RestoreToken, readRowRestore } from "../entry/restore-token";
-import { bookRate, loadRateContext, type RateChoice } from "../rate-types";
-import { typedAmount } from "../transfers/plan";
+import {
+	asBadRequest,
+	bookRate,
+	loadRateContext,
+	type RateChoice,
+} from "../rate-types";
 import { applyPlanFor, PLAN_NOT_REQUESTED, type PlanResult } from "./plan-seam";
 
 type Tx = Prisma.TransactionClient;
@@ -305,7 +311,7 @@ export async function addIncomeIn(
 ): Promise<IncomeValue> {
 	const input = await withUserZone(tx, userId, given);
 	const date = moveDay(input.date, new Date(), input.timeZone);
-	const amount = typedAmount(input.amount, input.currency);
+	const amount = asBadRequest(() => typedAmount(input.amount, input.currency));
 	if (!amount.gt(0)) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",

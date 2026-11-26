@@ -4,9 +4,9 @@
  * Credit card (in), Personal loan (out), USD cash and Wise (USD, out).
  */
 
-import { dec } from "@retrospend/domain/envelope/units";
 import { describe, expect, it } from "vitest";
-import type { AssetType } from "~prisma";
+import type { AssetType } from "../accounts/places";
+import { dec } from "../envelope/units";
 import {
 	budgetEffect,
 	derivedRate,

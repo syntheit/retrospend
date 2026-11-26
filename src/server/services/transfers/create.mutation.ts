@@ -7,24 +7,24 @@
  * there, so net worth never jumps.
  */
 import { randomUUID } from "node:crypto";
-import { bookHome } from "@retrospend/domain/accounts/book-home";
+import type {
+	BudgetEffect,
+	derivedRate,
+	TransferKind,
+} from "@retrospend/domain/transfers/plan";
 import {
-	byFraction,
-	homePerUnit,
-	homeValue,
-	type RatePick,
-	ratePerUnit,
-} from "@retrospend/domain/accounts/valuation";
-import { dec, toMinor } from "@retrospend/domain/envelope/units";
-import { roundMoneyDec, roundRateDec } from "@retrospend/domain/money-dec";
-import type { Decimal } from "@retrospend/domain/precise-decimal";
-import { TRPCError } from "@trpc/server";
+	type CountedMove,
+	sideCurrency,
+	type TransferLegRow,
+	type TransferSide,
+	transferRows,
+} from "@retrospend/domain/transfers/rows";
 import type { Money } from "~/server/figures/registry";
 import { createExpenseIn } from "~/server/services/expense.service";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { withUserZone } from "~/server/services/user-time-zone";
-import type { Prisma, TransferKind } from "~prisma";
-import { moveDay, rowDateOf } from "../accounts/dates";
+import type { Prisma } from "~prisma";
+import { moveDay } from "../accounts/dates";
 import {
 	type AccountChange,
 	type AccountRow,
@@ -34,15 +34,8 @@ import {
 	ratePickFor,
 	writeLeg,
 } from "../accounts/ledger";
+import { asBadRequest } from "../rate-types";
 import { type BudgetSideResult, recordBudgetSide } from "./budget-side";
-import {
-	type BudgetEffect,
-	budgetEffect,
-	derivedRate,
-	planTransfer,
-	type TransferPlanInput,
-	typedAmount,
-} from "./plan";
 
 type Tx = Prisma.TransactionClient;
 
@@ -106,149 +99,26 @@ export interface TransferValue {
 	readonly feeExpenseId: string | null;
 }
 
-interface Side {
+interface Side extends TransferSide {
 	readonly account: AccountRow | null;
-	readonly currency: string;
 }
 
+/** Locks and reads an account side, or checks the currency of Not tracked. */
 async function sideOf(
 	tx: Tx,
 	userId: string,
 	accountId: string | null,
 	currency: string | null | undefined,
 ): Promise<Side> {
-	if (accountId) {
-		const account = await lockOpenAccount(tx, userId, accountId);
-		return { account, currency: account.currency };
-	}
-	if (!currency || !/^[A-Z0-9]{3,10}$/.test(currency)) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message:
-				"Pick an account or the currency of the money that is not tracked",
-		});
-	}
-	return { account: null, currency };
+	const account = accountId
+		? await lockOpenAccount(tx, userId, accountId)
+		: null;
+	const side = { account, currency };
+	asBadRequest(() => sideCurrency(side));
+	return side;
 }
 
-/** What arrives at the reference rate (the default pick of both currencies), rounded to the destination's minor unit. */
-function atReference(
-	pick: RatePick,
-	amount: Decimal,
-	from: string,
-	to: string,
-	date: Date,
-): Decimal {
-	const arrives = homeValue(
-		pick,
-		{ currency: from, rateType: null, storedRate: null },
-		dec(amount),
-		to,
-		date,
-	);
-	if (!arrives) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: `No exchange rate for ${from} to ${to}. Type what arrived.`,
-		});
-	}
-	return roundMoneyDec(arrives, to);
-}
-
-const placeFacts = (side: Side) =>
-	side.account && {
-		id: side.account.id,
-		type: side.account.type,
-		currency: side.account.currency,
-		inBudget: side.account.inBudget,
-		countedUnits: dec(side.account.countedUnits.toString()),
-	};
-
-function reference(
-	pick: RatePick,
-	input: TransferPlanInput,
-	booked: { fromHome: Decimal; toHome: Decimal },
-	date: Date,
-) {
-	const home = input.homeCurrency;
-	const homeIsFrom = input.fromCurrency === home;
-	if (
-		input.fromCurrency === input.toCurrency ||
-		(!homeIsFrom && input.toCurrency !== home)
-	) {
-		return { vsReference: null, referenceRateType: null, referenceRate: null };
-	}
-	const foreign = homeIsFrom ? input.toCurrency : input.fromCurrency;
-	const units = homeIsFrom ? input.toAmount : input.fromAmount.neg();
-	const fraction = homePerUnit(
-		pick,
-		{ currency: foreign, rateType: null, storedRate: null },
-		home,
-		date,
-	);
-	if (!fraction)
-		return { vsReference: null, referenceRateType: null, referenceRate: null };
-	const typedHome = homeIsFrom ? booked.fromHome : booked.toHome;
-	const ref = pick(foreign === "USD" ? home : foreign, date, null);
-	return {
-		vsReference: {
-			minor: toMinor(typedHome.add(byFraction(units, fraction)), home),
-			currency: home,
-		},
-		referenceRateType: ref?.type ?? null,
-		referenceRate: {
-			base: foreign,
-			quote: home,
-			value: roundRateDec(ratePerUnit(fraction), 6).toFixed(6),
-		},
-	};
-}
-
-async function writeFee(
-	tx: Tx,
-	userId: string,
-	input: CreateTransferInput,
-	ctx: {
-		transferId: string;
-		from: Side;
-		date: Date;
-		home: string;
-		pick: RatePick;
-	},
-): Promise<{
-	expenseId: string;
-	change: AccountChange | null;
-	home: Decimal | null;
-} | null> {
-	if (!input.fee) return null;
-	const side = input.fee.accountId
-		? await sideOf(tx, userId, input.fee.accountId, null)
-		: ctx.from;
-	const amount = typedAmount(input.fee.amount, side.currency);
-	if (!amount.gt(0)) return null;
-	const expense = await createExpenseIn(tx, userId, {
-		id: randomUUID(),
-		title: "Fee",
-		amount: amount.toString(),
-		currency: side.currency,
-		// An expense row, read in the viewer's zone (rowDateOf).
-		date: rowDateOf(ctx.date, input.timeZone),
-		description: "Fee for a transfer",
-	});
-	const home = bookHome(ctx.pick, side, amount.neg(), ctx.home, ctx.date);
-	const change = await writeLeg(tx, userId, {
-		...side,
-		amount: amount.neg(),
-		date: ctx.date,
-		source: "FEE",
-		transferId: ctx.transferId,
-		expenseId: expense.id,
-		home,
-	});
-	return { expenseId: expense.id, change, home: home?.amount ?? null };
-}
-
-/** Everything a move needs before it writes: its places, amounts, plan and booked legs. */
+/** What a move needs from the database before its rows are computed: its places and rates. */
 async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 	const date = moveDay(input.date, new Date(), input.timeZone);
 	await lockAccounts(tx, [
@@ -264,97 +134,33 @@ async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 		input.fromCurrency,
 	);
 	const to = await sideOf(tx, userId, input.toAccountId, input.toCurrency);
-	const pick = await ratePickFor(tx, [home, from.currency, to.currency]);
-	const fromAmount = typedAmount(input.fromAmount, from.currency);
-	const toAmount =
-		from.currency === to.currency
-			? fromAmount
-			: input.toAmount
-				? typedAmount(input.toAmount, to.currency)
-				: atReference(pick, fromAmount, from.currency, to.currency, date);
-	const planInput: TransferPlanInput = {
-		from: placeFacts(from),
-		to: placeFacts(to),
-		fromCurrency: from.currency,
-		toCurrency: to.currency,
-		fromAmount,
-		toAmount,
-		requestedKind: input.kind,
-		homeCurrency: home,
-	};
-	const fromHome = bookHome(pick, from, fromAmount.neg(), home, date);
-	const toHome = bookHome(pick, to, toAmount, home, date);
-	const booked = fromHome &&
-		toHome && { fromHome: fromHome.amount, toHome: toHome.amount };
-	return {
-		date,
+	const feeAccount = input.fee?.accountId
+		? await lockOpenAccount(tx, userId, input.fee.accountId)
+		: null;
+	const pick = await ratePickFor(tx, [
 		home,
-		from,
-		to,
-		pick,
-		planInput,
-		plan: planTransfer(planInput),
-		legs: [
-			[from, fromAmount.neg(), fromHome],
-			[to, toAmount, toHome],
-		] as const,
-		booked,
-		homes: {
-			fromHome: fromHome?.amount ?? null,
-			toHome: toHome?.amount ?? null,
-		},
-		ref: booked
-			? reference(pick, planInput, booked, date)
-			: { vsReference: null, referenceRateType: null, referenceRate: null },
-	};
+		sideCurrency(from),
+		sideCurrency(to),
+	]);
+	return { date, home, from, to, feeAccount, pick };
 }
 
-type Move = Awaited<ReturnType<typeof resolveMove>>;
+type Written = {
+	readonly accounts: ReadonlyMap<string, AccountRow>;
+	readonly userId: string;
+};
 
-/** Writes the Transfer, its two legs and the counted units it moves (D4). */
-async function writeMove(
-	tx: Tx,
-	userId: string,
-	move: Move,
-	input: CreateTransferInput,
-): Promise<{ transferId: string; changes: AccountChange[] }> {
-	const { planInput, plan, date } = move;
-	const transferId = input.id ?? randomUUID();
-	await tx.transfer.create({
-		data: {
-			id: transferId,
-			userId,
-			kind: plan.kind,
-			date,
-			fromAccountId: move.from.account?.id ?? null,
-			fromAmount: planInput.fromAmount.toString(),
-			fromCurrency: planInput.fromCurrency,
-			toAccountId: move.to.account?.id ?? null,
-			toAmount: planInput.toAmount.toString(),
-			toCurrency: planInput.toCurrency,
-			referenceRateType: move.ref.referenceRateType,
-			countedFromUnits: plan.countedFromUnits.toString(),
-			countedToUnits: plan.countedToUnits.toString(),
-			note: input.note ?? null,
-		},
+const legOf = (tx: Tx, w: Written, leg: TransferLegRow) =>
+	writeLeg(tx, w.userId, {
+		account: leg.accountId ? (w.accounts.get(leg.accountId) ?? null) : null,
+		currency: leg.currency,
+		amount: leg.amount,
+		date: leg.date,
+		source: leg.source,
+		transferId: leg.transferId,
+		...(leg.expenseId ? { expenseId: leg.expenseId } : {}),
+		home: leg.home,
 	});
-	// Counted units move first: the legs' trigger then caps them at what each
-	// account holds once the money has moved.
-	await moveCounted(tx, move.from, move.to, plan);
-	const changes: AccountChange[] = [];
-	for (const [side, amount, home] of move.legs) {
-		const change = await writeLeg(tx, userId, {
-			...side,
-			amount,
-			date,
-			source: "TRANSFER",
-			transferId,
-			home,
-		});
-		if (change) changes.push(change);
-	}
-	return { transferId, changes };
-}
 
 export async function createTransferIn(
 	tx: Tx,
@@ -364,41 +170,77 @@ export async function createTransferIn(
 	// Resolved once here: the fee row reads the same zone as the move's day.
 	const input = await withUserZone(tx, userId, given);
 	const move = await resolveMove(tx, userId, input);
-	const { transferId, changes } = await writeMove(tx, userId, move, input);
-	const fee = await writeFee(tx, userId, input, { ...move, transferId });
-	if (fee) {
+	const transferId = input.id ?? randomUUID();
+	const rows = asBadRequest(() =>
+		transferRows({
+			from: move.from,
+			to: move.to,
+			fromAmount: input.fromAmount,
+			toAmount: input.toAmount,
+			kind: input.kind,
+			pick: move.pick,
+			homeCurrency: move.home,
+			date: move.date,
+			timeZone: input.timeZone,
+			note: input.note,
+			fee: input.fee && {
+				amount: input.fee.amount,
+				account: move.feeAccount,
+			},
+			ids: { transfer: transferId, feeExpense: randomUUID() },
+		}),
+	);
+	const w: Written = {
+		userId,
+		accounts: new Map(
+			[move.from.account, move.to.account, move.feeAccount].flatMap((a) =>
+				a ? [[a.id, a] as const] : [],
+			),
+		),
+	};
+	await tx.transfer.create({ data: { userId, ...rows.transfer } });
+	// Counted units move first: the legs' trigger then caps them at what each
+	// account holds once the money has moved.
+	await moveCounted(tx, rows.countedMoves);
+	const changes: AccountChange[] = [];
+	for (const leg of rows.legs) {
+		const change = await legOf(tx, w, leg);
+		if (change) changes.push(change);
+	}
+	if (rows.fee) {
+		const expense = await createExpenseIn(tx, userId, rows.fee.expense);
+		const change = await legOf(tx, w, {
+			...rows.fee.leg,
+			expenseId: expense.id,
+		});
 		await tx.transfer.update({
 			where: { id: transferId },
-			data: { feeExpenseId: fee.expenseId },
+			data: { feeExpenseId: expense.id },
 		});
-		if (fee.change) mergeChange(changes, fee.change);
+		if (change) mergeChange(changes, change);
 	}
-	const effect = budgetEffect(move.planInput, move.plan, move.homes);
+	const effect = rows.budget;
 	const leaves = effect.effect === "leaves";
 	const side = await budgetSideOf(tx, userId, effect, {
 		transferId,
 		date: move.date,
 		envelopeId: (leaves ? input.envelopeId : input.putIn) ?? null,
-		accountId: (leaves ? move.to : move.from).account?.id ?? null,
+		accountId: rows.budgetAccountId,
 	});
-	const netWorth = move.booked?.fromHome
-		.add(move.booked.toHome)
-		.add(fee?.home ?? dec(0));
+	const { transfer } = rows;
 	return {
 		transferId,
-		kind: move.plan.kind,
-		fromAmount: move.planInput.fromAmount.toString(),
-		fromCurrency: move.planInput.fromCurrency,
-		toAmount: move.planInput.toAmount.toString(),
-		toCurrency: move.planInput.toCurrency,
-		rate: derivedRate(move.planInput),
-		...move.ref,
+		kind: transfer.kind,
+		fromAmount: transfer.fromAmount,
+		fromCurrency: transfer.fromCurrency,
+		toAmount: transfer.toAmount,
+		toCurrency: transfer.toCurrency,
+		rate: rows.rate,
+		...rows.reference,
 		accounts: changes,
-		netWorthEffect: netWorth
-			? { minor: toMinor(netWorth, move.home), currency: move.home }
-			: null,
+		netWorthEffect: rows.netWorthEffect,
 		budget: { ...effect, side },
-		feeExpenseId: fee?.expenseId ?? null,
+		feeExpenseId: rows.fee?.expense.id ?? null,
 	};
 }
 
@@ -410,23 +252,16 @@ function mergeChange(changes: AccountChange[], change: AccountChange) {
 	else changes.push(change);
 }
 
-/** D4: counted units leave the source first and follow the money to a place outside the budget. */
-async function moveCounted(
-	tx: Tx,
-	from: Side,
-	to: Side,
-	plan: { countedFromUnits: Decimal; countedToUnits: Decimal },
-) {
-	if (from.account && plan.countedFromUnits.gt(0)) {
+/** D4: counted units leave the source and follow the money (the rows say how many). */
+async function moveCounted(tx: Tx, moves: readonly CountedMove[]) {
+	for (const { accountId, delta } of moves) {
 		await tx.assetAccount.update({
-			where: { id: from.account.id },
-			data: { countedUnits: { decrement: plan.countedFromUnits.toString() } },
-		});
-	}
-	if (to.account && plan.countedToUnits.gt(0)) {
-		await tx.assetAccount.update({
-			where: { id: to.account.id },
-			data: { countedUnits: { increment: plan.countedToUnits.toString() } },
+			where: { id: accountId },
+			data: {
+				countedUnits: delta.isNegative()
+					? { decrement: delta.neg().toString() }
+					: { increment: delta.toString() },
+			},
 		});
 	}
 }

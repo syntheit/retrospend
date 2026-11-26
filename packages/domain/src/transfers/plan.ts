@@ -13,13 +13,24 @@
  *   outside the budget.
  */
 
-import { placeInBudget } from "@retrospend/domain/accounts/places";
-import { dec, toMinor } from "@retrospend/domain/envelope/units";
-import { currencyDecimals } from "@retrospend/domain/money";
-import { roundRateDec } from "@retrospend/domain/money-dec";
-import type { Decimal } from "@retrospend/domain/precise-decimal";
-import { TRPCError } from "@trpc/server";
-import type { AssetType, TransferKind } from "~prisma";
+import {
+	type AssetType,
+	cappedCounted,
+	placeInBudget,
+} from "../accounts/places";
+import { dec, toMinor } from "../envelope/units";
+import { currencyDecimals } from "../money";
+import { roundRateDec } from "../money-dec";
+import type { Decimal } from "../precise-decimal";
+import { TransferRefusal } from "./refusals";
+
+/** Mirrors the TransferKind enum of the database (prisma/schema.prisma). */
+export type TransferKind =
+	| "TRANSFER"
+	| "EXCHANGE"
+	| "CARD_PAYMENT"
+	| "WITHDRAWAL"
+	| "DEBT_PAYMENT";
 
 export interface PlaceFacts {
 	readonly id: string;
@@ -68,8 +79,7 @@ export interface TransferPlan {
 	readonly freshUnits: Decimal;
 }
 
-const bad = (message: string) =>
-	new TRPCError({ code: "BAD_REQUEST", message });
+const bad = (message: string) => new TransferRefusal(message);
 
 const isCard = (p: PlaceFacts | null) => p?.type === "LIABILITY_CREDIT_CARD";
 const isLoan = (p: PlaceFacts | null) =>
@@ -127,7 +137,13 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
 	const toIn = inBudgetOf(input, "to");
 	const counted =
 		input.from && !fromIn
-			? units8(minDec(input.from.countedUnits, input.fromAmount))
+			? units8(
+					cappedCounted(
+						input.from.type,
+						input.from.countedUnits,
+						input.fromAmount,
+					),
+				)
 			: dec(0);
 	const countedTo =
 		counted.gt(0) && input.to && !toIn
@@ -141,7 +157,6 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
 	};
 }
 
-const minDec = (a: Decimal, b: Decimal) => (a.lt(b) ? a : b);
 /** Units are kept at the 8 decimals the columns hold, half to even. */
 const units8 = (d: Decimal) => roundRateDec(d, 8);
 
