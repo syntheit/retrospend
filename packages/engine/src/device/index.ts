@@ -6,6 +6,7 @@ export type {
 	WriteBody,
 	WriteOp,
 } from "./book";
+export type { TemplateCreateBody, TemplateUpdateBody } from "./template-book";
 export type { BulkAnswer, BulkBooked, BulkOp } from "./bulk";
 export {
 	type CheckPlan,
