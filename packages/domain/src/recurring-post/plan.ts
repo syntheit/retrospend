@@ -131,8 +131,9 @@ export async function planConfirm(
 	book: BookContext,
 ): Promise<ConfirmPlan> {
 	checkTemplate(template, input, PAYMENT_ALREADY_CONFIRMED, !!input.auto);
-	// Either direction reads the start of the next day here, as it always has;
-	// an income template's own skip reads its UTC day (planSkip).
+	// Either direction reads the start of the next day here, as the sweep and
+	// the web's confirm always have. Income's skip reads its UTC day (planSkip),
+	// and so does the v1 income confirm, which is not this function.
 	if (!isDue(template.nextDueDate, input.now, input.zone, "start_of_next_day"))
 		throw refuse("not_due", PAYMENT_ALREADY_CONFIRMED);
 	const entry = await recurringEntryRow(
@@ -167,8 +168,9 @@ export function planSkip(
 	input: SkipInput,
 ): SkipPlan {
 	checkTemplate(template, input, ITEM_ALREADY_SETTLED, false);
-	// Income is due by its UTC day, an expense by its instant. Confirm reads an
-	// income template by its instant too; the two are not unified here.
+	// An income skip is due by its UTC day, an expense skip by its instant.
+	// planConfirm reads either direction by the start of the next day; the two
+	// are not unified here.
 	const rule = template.direction === "IN" ? "utc_day" : "start_of_next_day";
 	if (!isDue(template.nextDueDate, input.now, input.zone, rule))
 		throw refuse("not_due", ITEM_ALREADY_SETTLED);

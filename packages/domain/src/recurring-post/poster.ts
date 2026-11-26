@@ -8,6 +8,10 @@
  * posting after the web turned auto-pay off or switched to ASK. A poster entry
  * therefore always carries one: `PosterEntry.expectedStamp` is not optional, and
  * `posterEntry` is the one place that builds it.
+ *
+ * An income template plans like an expense one, through the same `planConfirm`
+ * the server's sweep runs: a row only (direction IN, inType INCOME), no account
+ * leg, due by the start of the next day in the saved zone.
  */
 import { MissingRateError } from "../money";
 import type { BookContext } from "../rate-booking";
@@ -90,13 +94,11 @@ export interface PosterRunInput {
  * - `auto_post_off`: the server's setting says nothing posts on its own.
  * - `no_stamp`: the template has no version to name yet (made on this device,
  *   not yet acknowledged), so no entry could carry the guard.
- * - `income`: the device posts expense templates only; recurring income is
- *   sent directly until M4 gives it a poster.
  * - `protected`, `protection_unreadable`: protection is on, or could not be
  *   read (which fails closed but is reported apart, for the caller to log).
  * - the rest are runCatchUp's: `caught_up`, `refused` (see `refusal`), `cap`.
  */
-export type PosterStop = CatchUpStop | "auto_post_off" | "no_stamp" | "income";
+export type PosterStop = CatchUpStop | "auto_post_off" | "no_stamp";
 
 export interface PosterRun {
 	readonly entries: readonly PosterEntry[];
@@ -114,7 +116,6 @@ export async function planPosterRun(input: PosterRunInput): Promise<PosterRun> {
 	if (!input.autoPost) return none("auto_post_off");
 	const stamp = input.template?.stamp;
 	if (!input.template) return none("refused", "not_found");
-	if (input.template.direction === "IN") return none("income");
 	if (!stamp) return none("no_stamp");
 	const stop = protectionStop(await readProtection(input.isProtected));
 	if (stop) return none(stop);
