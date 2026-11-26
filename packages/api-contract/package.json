@@ -12,6 +12,7 @@
 		"./errors": "./src/common/errors.ts",
 		"./feedback-client": "./src/feedback/client.ts",
 		"./sync": "./src/sync/wire.ts",
+		"./template-fields": "./src/recurring/template-fields.ts",
 		"./keys": "./src/keys/index.ts",
 		"./openapi": "./src/openapi.ts",
 		"./protection-allowed": "./src/protection/v1-allowed.ts",
