@@ -24,6 +24,7 @@ import { WealthService } from "~/server/services/wealth.service";
 import { deleteFile } from "~/server/storage";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { writeCheckpoint } from "./checkpoint";
+import { moveDay } from "./dates";
 import { homeCurrencyOf, lockOpenAccount } from "./ledger";
 import { switchRateType } from "./rate-type.mutation";
 
@@ -60,7 +61,9 @@ async function accountRate(
 }
 
 const column = (value: number | null | undefined, scale: number) =>
-	value === null || value === undefined ? value : columnText(value, scale);
+	value === null || value === undefined
+		? value
+		: columnText(value, scale);
 
 const otherFields = (input: AccountFields) => ({
 	name: input.name,
@@ -73,9 +76,13 @@ const otherFields = (input: AccountFields) => ({
 	...(input.inBudget !== undefined ? { inBudget: input.inBudget } : {}),
 });
 
-/** A balance typed by hand is dated by the user's day, like every leg. */
+/**
+ * A balance typed by hand (create, edit) is dated by the user's day, like
+ * every leg: moveDay, the zone rule of snapshotDay. Close and reopen date
+ * their snapshot by the UTC day instead.
+ */
 const checkpointDay = (timeZone: string) =>
-	snapshotDay({ rule: "zone", now: new Date(), timeZone });
+	moveDay(null, new Date(), timeZone);
 
 export async function createAccountIn(
 	tx: Prisma.TransactionClient,
@@ -268,10 +275,7 @@ async function reopenRate(
 		return rate;
 	} catch {
 		// No table rate: the account's own stored rate, if any
-		if (
-			asset.exchangeRate !== null &&
-			hasRate(asset.currency, asset.exchangeRate)
-		)
+		if (asset.exchangeRate !== null && hasRate(asset.currency, asset.exchangeRate))
 			return asset.exchangeRate;
 		throw new MissingRateError(asset.currency);
 	}
