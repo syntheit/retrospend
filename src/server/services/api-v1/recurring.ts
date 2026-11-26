@@ -131,9 +131,12 @@ function createInput(
 		template: {
 			...input,
 			// A field left out stays undefined: the domain's newTemplateRow owns the defaults.
-			direction: input.direction && (input.direction === "in" ? "IN" : "OUT"),
+			direction:
+				input.direction &&
+				(input.direction === "in" ? ("IN" as const) : ("OUT" as const)),
 			amountMode:
-				input.amountMode && (input.amountMode === "ask" ? "ASK" : "FIXED"),
+				input.amountMode &&
+				(input.amountMode === "ask" ? ("ASK" as const) : ("FIXED" as const)),
 		},
 	};
 }
