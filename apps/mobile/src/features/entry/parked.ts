@@ -1,3 +1,4 @@
+import type { RetrospendClient } from "@retrospend/api-client";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
@@ -7,7 +8,7 @@ import { type ParkedEntry, parkedFrom } from "./parked-entry";
 import { resolveParked } from "./parked-resolve";
 import type { PreviewDto } from "./preview";
 import { exclusive, flushEntries } from "./queue";
-import { commitRebase, planRebase } from "./rebase";
+import { commitRebase, planRebase, type RebasePlan } from "./rebase";
 import { forgetNotFound, isEntryEntity, SEND_TIMEOUT_MS } from "./send";
 
 // Writes the server refused wait in the outbox, parked and never dropped.
@@ -16,11 +17,46 @@ import { forgetNotFound, isEntryEntity, SEND_TIMEOUT_MS } from "./send";
 
 /** What Try again would do, shown before it is sent. */
 export interface RebaseOffer {
-	kind: "update" | "delete";
+	kind: "update" | "delete" | "confirm" | "skip";
 	/** The server's dry run of the re-based write. */
 	diff: PreviewDto;
 	/** Saves it over the newer version and sends it; true when the server took it. */
 	save: () => Promise<boolean>;
+}
+
+/** The server's dry run of the re-based write, against the pulled version. */
+function dryRunOf(
+	api: RetrospendClient,
+	plan: RebasePlan,
+	options: { signal: AbortSignal },
+): Promise<PreviewDto> {
+	const { op } = plan;
+	const expectedUpdatedAt = plan.version;
+	if (op.kind === "confirm" || op.kind === "skip") {
+		const { templateId: id, dueAt } = op.body;
+		const body = { id, dueAt, expectedUpdatedAt };
+		return op.kind === "skip"
+			? api.recurring.previewSkip(body, options)
+			: api.recurring.previewConfirm(
+					{
+						...body,
+						...(op.body.amount !== undefined ? { amount: op.body.amount } : {}),
+						...(op.body.paidOn !== undefined ? { paidOn: op.body.paidOn } : {}),
+					},
+					options,
+				);
+	}
+	if (op.kind === "delete")
+		return api.expenses.previewDelete(
+			{ id: op.id, expectedUpdatedAt },
+			options,
+		);
+	return api.expenses.previewUpdate(
+		{ ...plan.payload, expectedUpdatedAt } as Parameters<
+			typeof api.expenses.previewUpdate
+		>[0],
+		options,
+	);
 }
 
 export function useParkedEntries() {
@@ -85,23 +121,10 @@ export function useParkedEntries() {
 			const timeout = new AbortController();
 			const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 			const options = { signal: timeout.signal };
-			const expectedUpdatedAt = plan.version;
 			try {
-				const diff =
-					plan.op.kind === "delete"
-						? await api.expenses.previewDelete(
-								{ id: plan.op.id, expectedUpdatedAt },
-								options,
-							)
-						: await api.expenses.previewUpdate(
-								{
-									...plan.payload,
-									expectedUpdatedAt,
-								} as Parameters<typeof api.expenses.previewUpdate>[0],
-								options,
-							);
+				const diff = await dryRunOf(api, plan, options);
 				return {
-					kind: plan.op.kind === "delete" ? "delete" : "update",
+					kind: plan.op.kind === "create" ? "update" : plan.op.kind,
 					diff,
 					save: async () => {
 						const next = await commitRebase({

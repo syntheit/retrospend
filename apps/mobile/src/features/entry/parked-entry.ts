@@ -1,7 +1,13 @@
 import { toMinor } from "@retrospend/domain/money-minor";
 import type { OutboxEntry, OutboxKind } from "@/data/outbox";
 import { PARKED_CHAIN_LOST } from "@/data/outbox-chain";
-import { KEY_REUSED, PARKED_NO_STAMP, PARKED_STAMP } from "./send";
+import {
+	KEY_REUSED,
+	PARKED_NO_STAMP,
+	PARKED_NOT_FOUND,
+	PARKED_STAMP,
+	RECURRING_CHANGED,
+} from "./send";
 
 export interface ParkedEntry {
 	clientId: string;
@@ -36,6 +42,18 @@ function bookedAmount(entry: OutboxEntry): ParkedEntry["amount"] {
 		: null;
 }
 
+/** What a confirm books, from the device's booking of it (a fixed amount is not in the payload). */
+function bookedConfirmAmount(entry: OutboxEntry): ParkedEntry["amount"] {
+	if (entry.kind !== "confirm") return null;
+	const row = entry.device?.changes.find((c) => c.table === "expenses")?.after;
+	return row &&
+		"amount" in row &&
+		(typeof row.amount === "string" || typeof row.amount === "number") &&
+		row.currency
+		? safeMinor(String(row.amount), row.currency)
+		: null;
+}
+
 function safeMinor(amount: string, currency: string): ParkedEntry["amount"] {
 	try {
 		return { minor: toMinor(amount, currency), currency };
@@ -51,7 +69,7 @@ export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 	const amount =
 		typeof body.amount === "string" && currency
 			? safeMinor(body.amount, currency)
-			: bookedAmount(entry);
+			: (bookedAmount(entry) ?? bookedConfirmAmount(entry));
 	const title = body.title ?? body.description;
 	return {
 		clientId: entry.clientId,
@@ -71,10 +89,20 @@ export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 const REBASED = [PARKED_STAMP, PARKED_CHAIN_LOST, PARKED_NO_STAMP, KEY_REUSED];
 
 /**
+ * The same for a recurring confirm or skip. A template that was not found may
+ * be back (an Undo put it back with the same id, which moved its stamp), so
+ * sending the old stamp again would only be refused: it re-bases on the first
+ * tap.
+ */
+const REBASED_TEMPLATE = [...REBASED, RECURRING_CHANGED, PARKED_NOT_FOUND];
+
+/**
  * Whether Try again saves it over the row a pull brought, after a preview: an
  * edit or delete that met a newer row, lost the entry it was chained to, had
  * no stamp, or met a key the server holds for another request (resending it
  * as it is would answer the same, with the same key and stamp).
  */
 export const rebases = (entry: ParkedEntry): boolean =>
-	entry.kind !== "create" && REBASED.includes(entry.reason);
+	entry.kind === "confirm" || entry.kind === "skip"
+		? REBASED_TEMPLATE.includes(entry.reason)
+		: entry.kind !== "create" && REBASED.includes(entry.reason);

@@ -15,13 +15,19 @@ import { announceEntryChange } from "./events";
 import { type RebaseOffer, useParkedEntries } from "./parked";
 import { type ParkedEntry, rebases } from "./parked-entry";
 import { changeLines } from "./preview";
-import { PARKED_STAMP } from "./send";
+import {
+	PARKED_STAMP,
+	RECURRING_ALREADY_POSTED,
+	RECURRING_CHANGED,
+} from "./send";
 
 /** What the row says: another device changed or deleted it, an earlier change never synced, or the server refused it. */
 const lineOf = (entry: ParkedEntry) =>
 	entry.gone
 		? "sync.deleted"
-		: entry.reason === PARKED_STAMP
+		: entry.reason === PARKED_STAMP ||
+				entry.reason === RECURRING_CHANGED ||
+				entry.reason === RECURRING_ALREADY_POSTED
 			? "sync.changed"
 			: entry.reason === PARKED_CHAIN_LOST
 				? "sync.lost"
@@ -37,6 +43,7 @@ const lineOf = (entry: ParkedEntry) =>
 export function SyncIssues({ padded }: { padded?: boolean }) {
 	const t = useTranslations("mobile.composer");
 	const td = useTranslations("mobile.composer.delete");
+	const tr = useTranslations("mobile.recurring");
 	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const { format } = useFormatMoney();
@@ -74,12 +81,24 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 			if (offer) {
 				const isDelete = offer.kind === "delete";
 				showAlert(
-					isDelete ? td("title") : t("sync.rebaseTitle"),
+					isDelete
+						? td("title")
+						: offer.kind === "confirm"
+							? t("sync.rebaseConfirm")
+							: offer.kind === "skip"
+								? t("sync.rebaseSkip")
+								: t("sync.rebaseTitle"),
 					previewLine(offer),
 					[
 						{ text: tc("cancel"), style: "cancel" },
 						{
-							text: isDelete ? td("anyway") : t("save"),
+							text: isDelete
+								? td("anyway")
+								: offer.kind === "confirm"
+									? tr("confirm.submit")
+									: offer.kind === "skip"
+										? tr("skip.submit")
+										: t("save"),
 							style: isDelete ? "destructive" : "default",
 							onPress: async () => {
 								const sent = await offer.save();
