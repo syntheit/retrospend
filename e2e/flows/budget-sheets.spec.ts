@@ -1108,8 +1108,11 @@ test.describe("Set up your budget", () => {
 				.getByRole("button", { name: "Undo" })
 				.click(),
 		);
-		await expect(sheet).toBeHidden();
+		// "Undone" shows as the undo resolves and closes after sonner's 4 s; on a
+		// slow runner the sheet can take longer than that to close, so the
+		// toast is checked first.
 		await expect(toast(page, "Undone")).toBeVisible();
+		await expect(sheet).toBeHidden();
 		await expect(
 			page
 				.getByRole("main")
