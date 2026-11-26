@@ -1,5 +1,6 @@
 /**
- * The e2e `test`, with one addition for sealed runs (E2E_SEALED=1): any `/api` JSON response that holds a string starting with U+0001
+ * The e2e `test`, with the dev badge hidden (hideDevIndicator) and one
+ * addition for sealed runs (E2E_SEALED=1): any `/api` JSON response that holds a string starting with U+0001
  * fails the test. A sealed value must never leave the server (design section
  * 7.1), and the server's own response guard runs only under NODE_ENV=test,
  * not in `next dev`, so the browser side checks every response here.
@@ -443,6 +444,26 @@ function guardPlaywright(
 	return playwright;
 }
 
+/**
+ * The e2e app runs under `next dev`, whose devtools badge (nextjs-portal,
+ * bottom-right) is not the app: under load it expands over the toasts in the
+ * same corner and takes their clicks until an Undo toast closes. Hidden in
+ * every context, as the visual runs hide it (visual/screenshot.css). The page
+ * CSP has no inline styles, so this sets the element's style through the
+ * CSSOM, which style-src does not govern.
+ */
+function hideDevIndicator(): void {
+	const hide = () => {
+		for (const el of document.querySelectorAll("nextjs-portal"))
+			(el as HTMLElement).style.setProperty("display", "none", "important");
+	};
+	new MutationObserver(hide).observe(document, {
+		childList: true,
+		subtree: true,
+	});
+	hide();
+}
+
 export const test = base.extend<{ sealedGuard: void }>({
 	playwright: [
 		async ({ playwright }, use) => {
@@ -457,6 +478,7 @@ export const test = base.extend<{ sealedGuard: void }>({
 		{ scope: "worker" },
 	],
 	context: async ({ context }, use) => {
+		await context.addInitScript(hideDevIndicator);
 		if (!E2E_SEALED) return use(context);
 		await watch(context);
 		await use(context);
