@@ -5,6 +5,8 @@ import { engineScope } from "@/data/engine-db/names";
 import { sweepEngineDbs } from "@/data/engine-db/sweep";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
+import { transportFor } from "@/data/transport";
+import { flushEntries } from "@/features/entry/queue";
 import { cipherFake } from "../../../test/cipherFake";
 import { fakeDeviceApi } from "../../../test/deviceApi";
 import { removeDir, tempDir } from "../../../test/nodeSqlite";
@@ -57,17 +59,20 @@ const RATES = {
 	],
 };
 
-function client(gate?: Promise<void>) {
+function client(gate?: Promise<void>, offline = false) {
 	const fake = fakeDeviceApi({
 		rates: RATES,
 		expenses: [page([])],
 		transfers: [page([])],
 		templates: [page([template("t1")])],
 	});
-	const confirm = jest.fn(async () => ({
-		undo: "tok",
-		confirmed: { templateUpdatedAt: "2026-12-01T03:06:00.000Z" },
-	}));
+	const confirm = jest.fn(async (_input?: unknown, _options?: unknown) => {
+		if (offline) throw new Error("Network request failed");
+		return {
+			undo: "tok",
+			confirmed: { templateUpdatedAt: "2026-12-01T03:06:00.000Z" },
+		};
+	});
 	const api = Object.assign(fake.client, {
 		recurring: { confirm },
 		protection: {
@@ -109,7 +114,9 @@ beforeEach(() => {
 		};
 	};
 });
-afterEach(() => {
+afterEach(async () => {
+	// No engine outlives its test: the next one finds none running.
+	await sweepEngineDbs(null, phone.deps);
 	delete process.env.EXPO_PUBLIC_DEV_DEVICE_ENGINE;
 	jest.useRealTimers();
 	jest.restoreAllMocks();
@@ -242,5 +249,50 @@ describe("the app signing in again over its own engine", () => {
 		);
 		expect(keys).toHaveLength(1);
 		expect(events.filter((e) => e === "open")).toHaveLength(2);
+	});
+});
+
+describe("the app opening between a period's queueing and its flush", () => {
+	it("leaves one entry for the period, and the app's flush sends it once under the same id", async () => {
+		const shared = createMemoryStore();
+		const scope = `${ORIGIN}|u1`;
+		const appOutbox = createOutbox(shared, scope);
+		const app = client();
+		// The task has no network, so its entry waits for the app's flush.
+		const task = client(undefined, true);
+		const taskOutbox = createOutbox(shared, scope);
+		let appEngineOf: ReturnType<typeof engineFor> | null = null;
+
+		const enqueue = taskOutbox.enqueue.bind(taskOutbox);
+		taskOutbox.enqueue = async (entry) => {
+			const queued = await enqueue(entry);
+			// Booked and queued; not yet flushed: the app comes up over the file.
+			appEngineOf = engineFor(app.api, "u1", ORIGIN, phone.deps, appOutbox);
+			return queued;
+		};
+		await postForAccount(WHO, {
+			makeClient: () => task.api,
+			makeOutbox: () => taskOutbox,
+			openDeps: phone.deps,
+		});
+		const waiting = await appOutbox.all();
+		expect(waiting).toHaveLength(1);
+		expect(waiting[0]).toMatchObject({ origin: "poster", targetId: "t1" });
+		expect(app.confirm).not.toHaveBeenCalled();
+		const id = waiting[0]?.clientId;
+
+		const engine = appEngineOf as ReturnType<typeof engineFor> | null;
+		await engine?.pull();
+		await flushEntries(appOutbox, app.api, transportFor(app.api));
+		expect(app.confirm).toHaveBeenCalledTimes(1);
+		const [sent, options] = app.confirm.mock.calls[0] ?? [];
+		expect(sent).toMatchObject({ id: "t1", expenseId: id });
+		expect(
+			(options as { context: { idempotencyKey: string } }).context
+				.idempotencyKey,
+		).toBe(id);
+		expect(await appOutbox.all()).toEqual([]);
+		// The task's one try failed, so nothing reached the server twice.
+		expect(task.confirm).toHaveBeenCalledTimes(1);
 	});
 });
