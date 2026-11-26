@@ -863,6 +863,58 @@ describe("the poster's run", () => {
 			await expectRowOnly(me, account.id);
 		});
 
+		it("a device-posted entry sent through v1 with auto is the row the sweep books: every compared field the same, ARS 1,545,000.00, no leg", async () => {
+			const [device, swept] = [await arsUser(), await arsUser()];
+			const account = await cash(device);
+			const [id, sweptId] = [
+				await incomeTemplate(device),
+				await incomeTemplate(swept),
+			];
+			const clientId = randomUUID();
+			const { changes } = await onDevice(
+				device,
+				NOW,
+				RECURRING_CONFIRM,
+				confirmRecurring({
+					templateId: id,
+					now: NOW,
+					clientId,
+					dueAt: DUE_IN,
+					auto: true,
+				}),
+			);
+			const answer = await confirmAnswer(await v1For(device), id, {
+				dueAt: iso(DUE_IN),
+				expenseId: clientId,
+				expectedUpdatedAt: iso(STAMPED),
+				auto: true,
+			});
+			expect(
+				await compared(
+					device,
+					NOW,
+					changes,
+					answer.templateUpdatedAt,
+					answer.expenseUpdatedAt,
+				),
+			).toEqual([match(clientId), match(id)]);
+			at(NOW);
+			await sweepRecurringAutoPost(NOW, sweepOnly(swept));
+			vi.useRealTimers();
+			const strip = <T extends { recurringTemplateId: string | null }>(
+				rows: T[],
+			) => rows.map(({ recurringTemplateId: _t, ...rest }) => rest);
+			expect(strip(await booked(device))).toEqual(strip(await booked(swept)));
+			expect(await booked(device)).toMatchObject([
+				{ ...incomeRow, date: iso(DUE_IN), recurringTemplateId: id },
+			]);
+			expect(await templateState(id)).toMatchObject({
+				nextDueDate: NEXT_IN,
+				anchorDay: (await templateState(sweptId)).anchorDay,
+			});
+			await expectRowOnly(device, account.id);
+		});
+
 		// Each case is a zone and an instant. A confirm is due from the start of
 		// the zone's day that holds the due instant, a skip from the zone's UTC
 		// day, and the poster and the sweep wait for the instant itself.
@@ -1002,10 +1054,9 @@ describe("the poster's run", () => {
 			expect((await templateState(id)).nextDueDate).toBe(iso(DUE_IN));
 		});
 
-		// Why the phone's poster leaves an income template out until PR B: v1's
-		// confirm for income takes neither a client id nor a stamp, which every
-		// poster entry carries.
-		it("v1's confirm of an income template refuses the client id and the stamp a poster entry carries", async () => {
+		// A person's income confirm keeps v1's income mutation, which takes neither
+		// a client id nor a stamp: only a confirm with `auto` (the poster's) does.
+		it("v1's confirm of an income template without auto refuses the client id and the stamp a poster entry carries", async () => {
 			const me = await arsUser();
 			const id = await incomeTemplate(me);
 			at(DUE_IN);
