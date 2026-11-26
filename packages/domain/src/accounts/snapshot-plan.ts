@@ -15,8 +15,10 @@ import type { AssetType } from "./places";
 /**
  * Which calendar day a snapshot is dated, named by the path that writes it.
  * The paths differ today and each keeps its rule (owner question, slice
- * device-wealth): close and reopen use the UTC day, create and a checkpoint
- * the person's zone. There is no default.
+ * device-wealth): close and reopen use the UTC day; create, edit, update
+ * balance and its revert use the person's zone, through moveDay
+ * (src/server/services/accounts/dates.ts), which takes its no-date day from
+ * the zone rule here. There is no default.
  */
 export type SnapshotDayRule =
 	| { readonly rule: "utc"; readonly now: Date }
@@ -36,10 +38,11 @@ export function snapshotDay(given: SnapshotDayRule): Date {
 	return new Date(`${dayKey(given.now, given.timeZone)}T00:00:00.000Z`);
 }
 
+/** What an account was when a snapshot of it was taken; the one definition, read and written. */
 export interface SnapshotMeta {
 	readonly currency: string;
 	readonly type: AssetType;
-	readonly exchangeRateType: string | null | undefined;
+	readonly exchangeRateType: string | null;
 }
 
 export interface SnapshotPlanInput {
@@ -78,7 +81,7 @@ export function snapshotPlan(input: SnapshotPlanInput): SnapshotPlan {
 			balanceInUSD: roundUSDDec(input.usd).toFixed(2),
 			currency: input.meta.currency,
 			type: input.meta.type,
-			exchangeRateType: input.meta.exchangeRateType ?? null,
+			exchangeRateType: input.meta.exchangeRateType,
 			recordedAt: input.recordedAt,
 		},
 		history: { balance },

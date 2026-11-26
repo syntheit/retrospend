@@ -1,4 +1,5 @@
 import {
+	type SnapshotMeta,
 	type SnapshotPlan,
 	snapshotPlan,
 } from "@retrospend/domain/accounts/snapshot-plan";
@@ -30,13 +31,11 @@ import {
 	endOfSnapshotDay,
 	type HeldSnapshot,
 	heldSnapshot,
-	type SnapshotMeta,
 	type SnapshotRow,
 	usdWithoutRate,
 	valueToday,
 } from "./accounts/dashboard-rates";
 
-export type { SnapshotMeta };
 /**
  * WealthService - Encapsulates business logic for wealth/asset management
  *
