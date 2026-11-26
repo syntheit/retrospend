@@ -11,11 +11,8 @@
  */
 
 import { balanceEffect } from "@retrospend/domain/accounts/places";
-import {
-	homeValue,
-	type RatePick,
-} from "@retrospend/domain/accounts/valuation";
-import { Dec, dec } from "@retrospend/domain/envelope/units";
+import type { RatePick } from "@retrospend/domain/accounts/valuation";
+import { dec } from "@retrospend/domain/envelope/units";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
@@ -123,41 +120,6 @@ export async function ratePickFor(
 ): Promise<RatePick> {
 	return findExchangeRatesForDates(tx, currencies);
 }
-
-/** The fields that value an account (its currency, rate type and stored rate). */
-export interface Valuable {
-	readonly currency: string;
-	readonly exchangeRateType: string | null;
-	readonly exchangeRate: { toString(): string } | number | null;
-}
-
-/** What `amount` of a place is worth at home on `date`: an account at its own rate type, Not tracked at the default pick. */
-export function bookHome(
-	pick: RatePick,
-	place: { currency: string; account: Valuable | null },
-	amount: Decimal,
-	homeCurrency: string,
-	date: Date,
-): { amount: Decimal; currency: string } | null {
-	const valued = place.account
-		? {
-				currency: place.account.currency,
-				rateType: place.account.exchangeRateType,
-				storedRate: place.account.exchangeRate,
-			}
-		: { currency: place.currency, rateType: null, storedRate: null };
-	const value = homeValue(pick, valued, amount, homeCurrency, endOfDayOf(date));
-	// 8 decimals; an exact tie rounds half to even.
-	return (
-		value && {
-			amount: value.toDecimalPlaces(8, Dec.ROUND_HALF_EVEN),
-			currency: homeCurrency,
-		}
-	);
-}
-
-const endOfDayOf = (date: Date) =>
-	new Date(`${date.toISOString().slice(0, 10)}T23:59:59.999Z`);
 
 /**
  * Writes one leg; the account_leg trigger (M4) moves its account's stored

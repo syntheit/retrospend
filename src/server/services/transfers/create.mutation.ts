@@ -7,6 +7,7 @@
  * there, so net worth never jumps.
  */
 import { randomUUID } from "node:crypto";
+import { bookHome } from "@retrospend/domain/accounts/book-home";
 import {
 	byFraction,
 	homePerUnit,
@@ -27,7 +28,6 @@ import { moveDay, rowDateOf } from "../accounts/dates";
 import {
 	type AccountChange,
 	type AccountRow,
-	bookHome,
 	homeCurrencyOf,
 	lockAccounts,
 	lockOpenAccount,
