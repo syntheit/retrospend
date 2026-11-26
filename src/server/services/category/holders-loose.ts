@@ -13,7 +13,14 @@ import {
 import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
 import type { Prisma } from "~prisma";
 import { findPersonalBook } from "../envelope/inputs";
-import { type HolderAdapter, type Stamped, staleUndo, swapAll } from "./holder";
+import {
+	groupByStamp,
+	type HolderAdapter,
+	heldCount,
+	type Stamped,
+	staleUndo,
+	swapStamped,
+} from "./holder";
 
 /**
  * Income rules that match the category. One in a book the caller does not
@@ -27,29 +34,28 @@ export const incomeRuleHolder: HolderAdapter<Stamped> = {
 			select: { id: true, bookId: true },
 		});
 		if (rules.length === 0)
-			return { held: { ids: [], stamp: "" }, moved: 0, dropped: 0 };
+			return { held: { stamps: [] }, moved: 0, dropped: 0 };
 		const book = await findPersonalBook(c.tx, c.userId);
 		if (!c.targetId || rules.some((r) => r.bookId !== book?.id))
 			throw new CategoryMergeRefusal("category_income_rule");
 		const ids = rules.map((r) => r.id);
-		await c.tx.incomeRule.updateMany({
-			where: { id: { in: ids } },
-			data: { matchValue: c.targetId, updatedAt: c.stamp },
-		});
-		return {
-			held: { ids, stamp: c.stamp.toISOString() },
-			moved: ids.length,
-			dropped: 0,
-		};
+		const held = groupByStamp(
+			await c.tx.incomeRule.updateManyAndReturn({
+				where: { id: { in: ids } },
+				data: { matchValue: c.targetId, updatedAt: c.stamp },
+				select: { id: true, updatedAt: true },
+			}),
+		);
+		return { held, moved: heldCount(held), dropped: 0 };
 	},
 	restore: (c, held) =>
-		swapAll(held.ids, (chunk) =>
+		swapStamped(held, (chunk, stamp) =>
 			c.tx.incomeRule.updateMany({
 				where: {
 					id: { in: chunk },
 					matchKind: "CATEGORY",
 					matchValue: c.targetId,
-					updatedAt: new Date(held.stamp),
+					updatedAt: stamp,
 				},
 				data: { matchValue: c.sourceId, updatedAt: c.stamp },
 			}),
@@ -57,8 +63,12 @@ export const incomeRuleHolder: HolderAdapter<Stamped> = {
 };
 
 export interface DraftHeld {
-	readonly drafts: readonly { id: string; changed: DraftChange }[];
-	readonly stamp: string;
+	/** Each draft with the stamp it stored, which the undo's compare names. */
+	readonly drafts: readonly {
+		id: string;
+		changed: DraftChange;
+		stamp: string;
+	}[];
 }
 
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
@@ -77,18 +87,23 @@ export const draftHolder: HolderAdapter<DraftHeld> = {
 		for (const d of drafts) {
 			const moved = moveDraftCategory(d, c.sourceId, c.targetId);
 			if (!moved) continue;
-			await c.tx.budgetDraft.update({
+			const stored = await c.tx.budgetDraft.update({
 				where: { id: d.id },
 				data: {
 					expectedIn: asJson(moved.next.expectedIn),
 					pretend: asJson(moved.next.pretend),
 					updatedAt: c.stamp,
 				},
+				select: { updatedAt: true },
 			});
-			held.push({ id: d.id, changed: moved.changed });
+			held.push({
+				id: d.id,
+				changed: moved.changed,
+				stamp: stored.updatedAt.toISOString(),
+			});
 		}
 		return {
-			held: { drafts: held, stamp: c.stamp.toISOString() },
+			held: { drafts: held },
 			moved: held.length,
 			dropped: 0,
 		};
@@ -102,7 +117,7 @@ export const draftHolder: HolderAdapter<DraftHeld> = {
 			if (!draft) throw staleUndo();
 			const back = restoreDraftCategory(draft, d.changed, c.sourceId);
 			const { count } = await c.tx.budgetDraft.updateMany({
-				where: { id: d.id, updatedAt: new Date(held.stamp) },
+				where: { id: d.id, updatedAt: new Date(d.stamp) },
 				data: {
 					expectedIn: asJson(back.expectedIn),
 					pretend: asJson(back.pretend),

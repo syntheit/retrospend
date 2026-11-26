@@ -10,16 +10,12 @@ import { sharedTransactionHolder } from "./holders-rows";
 
 function ctxFailing(error: Error) {
 	const executeRaw = vi.fn().mockResolvedValue(0);
-	const updateMany = vi.fn().mockRejectedValue(error);
-	// The first read finds the row; none carries the move's stamp afterwards.
-	const findMany = vi
-		.fn()
-		.mockResolvedValueOnce([{ id: "t1" }])
-		.mockResolvedValue([]);
+	const updateManyAndReturn = vi.fn().mockRejectedValue(error);
+	const findMany = vi.fn().mockResolvedValue([{ id: "t1" }]);
 	const ctx = {
 		tx: {
 			$executeRaw: executeRaw,
-			sharedTransaction: { updateMany, findMany },
+			sharedTransaction: { updateManyAndReturn, findMany },
 		},
 		userId: "u",
 		sourceId: "src",

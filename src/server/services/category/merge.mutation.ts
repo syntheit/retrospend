@@ -68,7 +68,7 @@ export interface CategoryMerged {
 }
 
 interface Stash {
-	readonly v: 1;
+	readonly v: 2;
 	readonly category: {
 		readonly id: string;
 		readonly name: string;
@@ -149,7 +149,7 @@ export const mergeCategories: MoneyMutation<MergeInput, CategoryMerged> = {
 		forgetMonthViews(tx);
 		await tx.category.delete({ where: { id: source.id, userId } });
 		const stash = await putUndoStash(tx, userId, {
-			v: 1,
+			v: 2,
 			category: {
 				id: source.id,
 				name: source.name,
@@ -195,7 +195,7 @@ export const restoreCategory: MoneyMutation<
 	run: async (tx, input, actor) => {
 		const userId = actor.userId;
 		const body = await takeUndoStash<Stash>(tx, userId, input.stash);
-		if (body.v !== 1 || !body.category) throw invalidUndo();
+		if (body.v !== 2 || !body.category) throw invalidUndo();
 		const target = body.targetId
 			? await tx.category.findFirst({
 					where: { id: body.targetId, userId },
