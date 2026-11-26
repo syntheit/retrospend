@@ -119,7 +119,8 @@ describe("sending a recurring confirm", () => {
 		);
 		recurring.confirm.mockClear();
 		await createEntrySender(apiTransport(api))(entry());
-		expect(recurring.confirm.mock.calls[0]?.[0]).not.toHaveProperty("auto");
+		const [plain] = recurring.confirm.mock.calls[0] as unknown as [object];
+		expect(plain).not.toHaveProperty("auto");
 	});
 
 	it("names the booked expense's own version when the answer carries one; an older server's answer gives none", async () => {
