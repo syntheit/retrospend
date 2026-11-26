@@ -115,7 +115,9 @@
 			"changed": "Changed on another device",
 			"deleted": "Deleted on another device",
 			"lost": "An earlier change to this didn't sync.",
-			"rebaseTitle": "Save your change again?"
+			"rebaseTitle": "Save your change again?",
+			"rebaseConfirm": "Confirm again?",
+			"rebaseSkip": "Skip again?"
 		},
 		"transferMode": "Transfer",
 		"addTransfer": "Add transfer",
@@ -2908,6 +2910,12 @@
 			"delete": "Delete"
 		},
 		"count": "{count, plural, one {# recurring expense} other {# recurring expenses}}",
+		"device": {
+			"parked": "Couldn't send {title}. It stays on this phone.",
+			"busy": "{title} is still sending. Try again in a moment.",
+			"blocked": "Fix {title} under Couldn't sync first.",
+			"unreadable": "Couldn't read {title}. Try again in a moment."
+		},
 		"autoPayOn": "Records automatically",
 		"autoPayOff": "Confirm each time",
 		"autoPayFilter": "Record automatically",

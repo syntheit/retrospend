@@ -115,7 +115,9 @@
 			"changed": "Modifié sur un autre appareil",
 			"deleted": "Supprimé sur un autre appareil",
 			"lost": "Une modification précédente n'a pas été synchronisée.",
-			"rebaseTitle": "Enregistrer ta modification à nouveau ?"
+			"rebaseTitle": "Enregistrer ta modification à nouveau ?",
+			"rebaseConfirm": "Confirmer à nouveau ?",
+			"rebaseSkip": "Ignorer à nouveau ?"
 		},
 		"transferMode": "Virement",
 		"addTransfer": "Ajouter un virement",
@@ -2908,6 +2910,12 @@
 			"delete": "Supprimer"
 		},
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
+		"device": {
+			"parked": "Impossible d'envoyer {title}. Il reste sur ce téléphone.",
+			"busy": "{title} est encore en cours d'envoi. Réessaie dans un instant.",
+			"blocked": "Règle d'abord {title} sous « Synchronisation impossible ».",
+			"unreadable": "Impossible de lire {title}. Réessaie dans un instant."
+		},
 		"autoPayOn": "S'enregistre automatiquement",
 		"autoPayOff": "Confirmer à chaque fois",
 		"autoPayFilter": "Enregistrer automatiquement",

@@ -115,7 +115,9 @@
 			"changed": "Alterado em outro dispositivo",
 			"deleted": "Excluído em outro dispositivo",
 			"lost": "Uma alteração anterior neste item não foi sincronizada.",
-			"rebaseTitle": "Salvar sua alteração de novo?"
+			"rebaseTitle": "Salvar sua alteração de novo?",
+			"rebaseConfirm": "Confirmar de novo?",
+			"rebaseSkip": "Pular de novo?"
 		},
 		"transferMode": "Transferência",
 		"addTransfer": "Adicionar transferência",
@@ -2908,6 +2910,12 @@
 			"delete": "Excluir"
 		},
 		"count": "{count, plural, one {# despesa recorrente} other {# despesas recorrentes}}",
+		"device": {
+			"parked": "Não foi possível enviar {title}. Fica neste celular.",
+			"busy": "{title} ainda está sendo enviado. Tente de novo em instantes.",
+			"blocked": "Resolva {title} primeiro em “Não foi possível sincronizar”.",
+			"unreadable": "Não foi possível ler {title}. Tente de novo em instantes."
+		},
 		"autoPayOn": "Registra automaticamente",
 		"autoPayOff": "Confirmar a cada vez",
 		"autoPayFilter": "Registrar automaticamente",

@@ -115,7 +115,9 @@
 			"changed": "Auf einem anderen Gerät geändert",
 			"deleted": "Auf einem anderen Gerät gelöscht",
 			"lost": "Eine frühere Änderung daran wurde nicht synchronisiert.",
-			"rebaseTitle": "Deine Änderung erneut speichern?"
+			"rebaseTitle": "Deine Änderung erneut speichern?",
+			"rebaseConfirm": "Erneut bestätigen?",
+			"rebaseSkip": "Erneut überspringen?"
 		},
 		"transferMode": "Umbuchung",
 		"addTransfer": "Umbuchung hinzufügen",
@@ -2908,6 +2910,12 @@
 			"delete": "Löschen"
 		},
 		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
+		"device": {
+			"parked": "{title} ließ sich nicht senden. Es bleibt auf diesem Telefon.",
+			"busy": "{title} wird noch gesendet. Versuche es gleich noch einmal.",
+			"blocked": "Kläre {title} zuerst unter „Synchronisierung fehlgeschlagen“.",
+			"unreadable": "{title} konnte nicht gelesen werden. Versuche es gleich noch einmal."
+		},
 		"autoPayOn": "Wird automatisch erfasst",
 		"autoPayOff": "Jedes Mal bestätigen",
 		"autoPayFilter": "Automatisch erfassen",
