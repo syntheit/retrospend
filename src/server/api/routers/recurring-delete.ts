@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { templateIdSchema } from "~/lib/schemas/recurring";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { restoreTokenSchema } from "~/server/services/entry/input";
 import {
@@ -8,7 +9,7 @@ import {
 	restoreTemplate,
 } from "~/server/services/recurring-delete-web.service";
 
-const deleteInput = z.object({ id: z.cuid() });
+const deleteInput = z.object({ id: templateIdSchema });
 
 /**
  * Delete a template and take it back (R30), merged into the `recurring`

@@ -6,10 +6,7 @@
  * puts the template back on its due date.
  */
 import { nextRecurringDate } from "@retrospend/domain/recurring";
-import {
-	assertAdvanced,
-	planConfirm,
-} from "@retrospend/domain/recurring-post/plan";
+import { planConfirm } from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { EXPENSE_FIGURES } from "./entry/expense.mutation";
@@ -20,6 +17,7 @@ import {
 	bookContextOf,
 	loadRateContext,
 } from "./rate-types";
+import { advanceTemplate } from "./recurring-advance";
 
 export interface ConfirmRecurringExpenseInput {
 	readonly templateId: string;
@@ -30,6 +28,14 @@ export interface ConfirmRecurringExpenseInput {
 	/** The day it was really paid (yyyy-MM-dd); the due date when omitted. */
 	readonly paidOn?: string | null;
 	readonly timeZone?: string;
+	/**
+	 * The template's updatedAt the caller read. A template changed since is
+	 * refused as `changed` (after the due date check), so a device's queued
+	 * confirm does not post from a template another client edited.
+	 */
+	readonly expectedUpdatedAt?: Date | null;
+	/** A client-made id for the entry; a taken one is a unique violation (id_taken). */
+	readonly expenseId?: string;
 	/**
 	 * Set only by the auto-post sweep (recurring-auto-post.ts), never by a
 	 * transport: the template must still pay automatically with a fixed
@@ -42,6 +48,8 @@ export interface ConfirmedExpense {
 	readonly expenseId: string;
 	readonly templateId: string;
 	readonly nextDueAt: Date;
+	/** The template's updatedAt after this confirm, for the next write's stamp. */
+	readonly templateUpdatedAt: Date;
 	/** The due date this confirm settled, for the undo to put back. */
 	readonly dueAt: Date;
 	/** The template's anchor before this confirm (null on a legacy template), for the undo. */
@@ -81,6 +89,7 @@ export const confirmRecurringExpense: MoneyMutation<
 					zone,
 					stepZone,
 					dueAt: input.dueDate,
+					expectedStamp: input.expectedUpdatedAt?.toISOString(),
 					confirmedAmount: input.amount,
 					paidOn: input.paidOn,
 					auto: input.auto,
@@ -92,24 +101,27 @@ export const confirmRecurringExpense: MoneyMutation<
 		const title = recurringTitle(template?.name ?? "");
 		// The advance only succeeds while nextDueDate is still the one read,
 		// so two confirms racing each other create a single expense.
-		const advanced = await tx.recurringTemplate.updateMany({
-			where: {
-				id: plan.templateId,
-				userId: actor.userId,
-				nextDueDate: plan.dueAt,
-			},
-			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
-		});
-		assertAdvanced(advanced.count, "confirm");
+		await advanceTemplate(
+			tx,
+			actor.userId,
+			plan,
+			input.expectedUpdatedAt,
+			"confirm",
+		);
 		const row = await tx.expense.create({
-			data: { ...plan.entry, title },
+			data: { ...plan.entry, title, id: input.expenseId },
 			select: { id: true },
+		});
+		const stamp = await tx.recurringTemplate.findFirstOrThrow({
+			where: { id: plan.templateId, userId: actor.userId },
+			select: { updatedAt: true },
 		});
 		return {
 			value: {
 				expenseId: row.id,
 				templateId: plan.templateId,
 				nextDueAt: plan.nextDueDate,
+				templateUpdatedAt: stamp.updatedAt,
 				dueAt: plan.dueAt,
 				anchorDay: plan.previousAnchorDay,
 			},

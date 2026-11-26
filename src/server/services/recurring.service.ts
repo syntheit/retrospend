@@ -4,6 +4,11 @@
  * day at the start of that day in the user's saved zone. Confirming a due
  * template is a money write: see recurring-confirm.mutation.ts.
  */
+import {
+	RECURRING_CHANGED,
+	RECURRING_NOT_FOUND,
+	RecurringRefusal,
+} from "@retrospend/domain/recurring-post/refusals";
 import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
@@ -18,6 +23,8 @@ import type {
 type Db = PrismaClient | Prisma.TransactionClient;
 
 export interface NewTemplate {
+	/** A client-made id; a taken one is a unique violation (id_taken), not a second template. */
+	readonly id?: string;
 	readonly name: string;
 	readonly amount: string;
 	readonly currency: string;
@@ -50,6 +57,8 @@ export interface TemplateChanges {
 	readonly paymentSource?: string | null;
 	readonly autoPay?: boolean;
 	readonly isActive?: boolean;
+	/** The updatedAt the caller read; the write runs only while the template still has it. */
+	readonly expectedUpdatedAt?: Date;
 }
 
 async function refuseForeignCategory(
@@ -130,6 +139,7 @@ export async function createTemplate(
 	await refuseForeignCategory(db, userId, input.categoryId, direction);
 	return db.recurringTemplate.create({
 		data: {
+			id: input.id,
 			userId,
 			name: input.name,
 			amount: input.amount,
@@ -173,30 +183,53 @@ export async function updateTemplate(
 		changes.categoryId,
 		existing.direction,
 	);
-	await db.recurringTemplate.update({
-		where: { id },
-		data: {
-			name: changes.name,
-			amount: changes.amount,
-			currency: changes.currency,
-			categoryId: changes.categoryId,
-			amountMode: changes.amountMode,
-			frequency: changes.frequency,
-			// A due date the user sets is the new anchor for monthly steps.
-			...(changes.nextDueDate && {
-				nextDueDate: dueInstant(
-					changes.nextDueDate,
-					existing.direction,
-					await userTimeZone(db, userId),
-				),
-				anchorDay: anchorOf(changes.nextDueDate),
-			}),
-			websiteUrl: changes.websiteUrl,
-			paymentSource: changes.paymentSource,
-			autoPay: changes.autoPay,
-			isActive: changes.isActive,
-		},
-	});
+	// With a stamp the write is a compare-and-set on updatedAt: two edits that
+	// read the same version cannot both land. It is an `update` (not an
+	// `updateMany`) so a sealed name is bound to this row's id.
+	try {
+		await db.recurringTemplate.update({
+			where: {
+				id,
+				...(changes.expectedUpdatedAt && {
+					updatedAt: changes.expectedUpdatedAt,
+				}),
+			},
+			data: {
+				name: changes.name,
+				amount: changes.amount,
+				currency: changes.currency,
+				categoryId: changes.categoryId,
+				amountMode: changes.amountMode,
+				frequency: changes.frequency,
+				// A due date the user sets is the new anchor for monthly steps.
+				...(changes.nextDueDate && {
+					nextDueDate: dueInstant(
+						changes.nextDueDate,
+						existing.direction,
+						await userTimeZone(db, userId),
+					),
+					anchorDay: anchorOf(changes.nextDueDate),
+				}),
+				websiteUrl: changes.websiteUrl,
+				paymentSource: changes.paymentSource,
+				autoPay: changes.autoPay,
+				isActive: changes.isActive,
+			},
+		});
+	} catch (error) {
+		if (
+			!changes.expectedUpdatedAt ||
+			(error as { code?: string }).code !== "P2025"
+		)
+			throw error;
+		// No row matched: the template is gone, or it no longer has the stamp.
+		const stillThere = await db.recurringTemplate.count({
+			where: { id, userId },
+		});
+		throw stillThere
+			? new RecurringRefusal("changed", RECURRING_CHANGED)
+			: new RecurringRefusal("not_found", RECURRING_NOT_FOUND);
+	}
 }
 
 export async function deleteTemplate(db: Db, userId: string, id: string) {

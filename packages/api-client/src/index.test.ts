@@ -32,6 +32,24 @@ describe("createRetrospendClient", () => {
 		expect(calls[0]?.headers.get("x-api-key")).toBe("rsk_test");
 	});
 
+	it("sends a recurring confirm's client id and template stamp in the body", async () => {
+		const { calls, fetch } = fakeFetch(200, {});
+		const client = createRetrospendClient({
+			baseUrl: "https://example.test",
+			fetch,
+		});
+		const stamp = "2026-11-18T10:00:00.000Z";
+		const expenseId = "0b1f6d6e-3c1a-4f1e-9a57-5c1f4d3a2b10";
+		await client.recurring
+			.confirm({ id: "t1", expenseId, expectedUpdatedAt: stamp })
+			.catch(() => undefined);
+		const sent = (await calls[0]?.json()) as Record<string, string>;
+		expect(new URL(calls[0]?.url ?? "").pathname).toBe(
+			"/api/v1/recurring/t1/confirm",
+		);
+		expect(sent).toMatchObject({ expenseId, expectedUpdatedAt: stamp });
+	});
+
 	it("sends expectedUpdatedAt on a delete in the query and on a replace in the body", async () => {
 		const { calls, fetch } = fakeFetch(200, {});
 		const client = createRetrospendClient({

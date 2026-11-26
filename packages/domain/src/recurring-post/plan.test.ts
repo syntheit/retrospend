@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import {
 	CATCH_UP_CAP,
 	type ConfirmInput,
+	lostAdvance,
 	planConfirm,
 	planSkip,
 	runCatchUp,
@@ -283,6 +284,35 @@ describe("planConfirm", () => {
 				message: "Recurring expense changed",
 			});
 			expect(store.expenses).toEqual([]);
+		});
+
+		it("an edit between the read and the write is changed on confirm, and nothing is booked or moved", async () => {
+			const store = baseStore();
+			const seen = store.template.stamp;
+			// Another client edits the amount after this call planned: the due date is unchanged.
+			store.beforeWrite = () => store.edit({ amount: "25" });
+			await expect(
+				store.confirm(NOW, { dueAt: DUE, expectedStamp: seen }),
+			).rejects.toMatchObject({ kind: "changed" });
+			expect(store.expenses).toEqual([]);
+			expect(store.template.nextDueDate).toEqual(DUE);
+		});
+
+		it("an edit between the read and the write is changed on skip, and nothing moves", () => {
+			const store = baseStore();
+			const seen = store.template.stamp;
+			store.beforeWrite = () => store.edit({ amount: "25" });
+			expect(() =>
+				store.skip(NOW, { dueAt: DUE, expectedStamp: seen }),
+			).toThrowError(expect.objectContaining({ kind: "changed" }));
+			expect(store.template.nextDueDate).toEqual(DUE);
+		});
+
+		it("with no stamp, the same edit between the read and the write does not stop the post", async () => {
+			const store = baseStore();
+			store.beforeWrite = () => store.edit({ amount: "25" });
+			await store.confirm(NOW, { dueAt: DUE });
+			expect(store.expenses).toHaveLength(1);
 		});
 
 		it("the current stamp books, and a call with no stamp is not compared", async () => {
@@ -708,5 +738,36 @@ describe("runCatchUp", () => {
 			expect(again.results).toHaveLength(3);
 			expect(store.template.nextDueDate).toEqual(DUE);
 		});
+	});
+});
+
+describe("lostAdvance", () => {
+	const due = ba("2026-12-01");
+	const row = (nextDueDate: Date, stamp: string) => ({ nextDueDate, stamp });
+	const kind = (r: RecurringRefusal) => r.kind;
+
+	it("a template that is gone is not found", () => {
+		expect(kind(lostAdvance("confirm", null, due, "s1"))).toBe("not_found");
+	});
+
+	it("a moved due date is already posted, even when the stamp moved too", () => {
+		expect(
+			kind(lostAdvance("skip", row(ba("2027-01-01"), "s2"), due, "s1")),
+		).toBe("already_posted");
+	});
+
+	it("the same due date with a moved stamp is changed", () => {
+		expect(kind(lostAdvance("confirm", row(due, "s2"), due, "s1"))).toBe(
+			"changed",
+		);
+	});
+
+	it("with no stamp, or the stamp it has, a lost race is already posted", () => {
+		expect(kind(lostAdvance("confirm", row(due, "s1"), due, undefined))).toBe(
+			"already_posted",
+		);
+		expect(kind(lostAdvance("skip", row(due, "s1"), due, "s1"))).toBe(
+			"already_posted",
+		);
 	});
 });

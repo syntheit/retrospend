@@ -29,6 +29,7 @@ const TITLES: Record<ProblemCode, string> = {
 	expense_changed: "Expense changed",
 	recurring_already_posted: "Already confirmed or skipped",
 	recurring_not_due: "Not due yet",
+	recurring_changed: "Recurring expense changed",
 	protection_keys_missing: "Protection keys are missing",
 	payload_too_large: "Upload too large",
 	idempotency_in_progress: "Request in progress",

@@ -7,24 +7,26 @@
  */
 
 import { nextDueAfter } from "@retrospend/domain/recurring";
-import {
-	assertAdvanced,
-	planSkip,
-} from "@retrospend/domain/recurring-post/plan";
+import { planSkip } from "@retrospend/domain/recurring-post/plan";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { postTemplateOf } from "./money-in.service";
 import type { MoneyMutation } from "./preview/types";
+import { advanceTemplate } from "./recurring-advance";
 
 export interface SkipRecurringInput {
 	readonly templateId: string;
 	/** The due date being skipped; a repeat of the same skip is refused. */
 	readonly dueDate?: Date | null;
 	readonly timeZone?: string;
+	/** The template's updatedAt the caller read; a template changed since is refused as `changed`. */
+	readonly expectedUpdatedAt?: Date | null;
 }
 
 export interface SkippedRecurring {
 	readonly templateId: string;
+	/** The template's updatedAt after this skip, for the next write's stamp. */
+	readonly templateUpdatedAt: Date;
 	/** The due date that was skipped, for the undo to put back. */
 	readonly dueAt: Date;
 	readonly nextDueAt: Date;
@@ -48,19 +50,23 @@ export const skipRecurring: MoneyMutation<
 			zone: await userTimeZone(tx, actor.userId, input.timeZone),
 			stepZone: await userTimeZone(tx, actor.userId),
 			dueAt: input.dueDate,
+			expectedStamp: input.expectedUpdatedAt?.toISOString(),
 		});
-		const advanced = await tx.recurringTemplate.updateMany({
-			where: {
-				id: plan.templateId,
-				userId: actor.userId,
-				nextDueDate: plan.dueAt,
-			},
-			data: { nextDueDate: plan.nextDueDate, anchorDay: plan.anchorDay },
+		await advanceTemplate(
+			tx,
+			actor.userId,
+			plan,
+			input.expectedUpdatedAt,
+			"skip",
+		);
+		const stamp = await tx.recurringTemplate.findFirstOrThrow({
+			where: { id: plan.templateId, userId: actor.userId },
+			select: { updatedAt: true },
 		});
-		assertAdvanced(advanced.count, "skip");
 		return {
 			value: {
 				templateId: plan.templateId,
+				templateUpdatedAt: stamp.updatedAt,
 				dueAt: plan.dueAt,
 				nextDueAt: plan.nextDueDate,
 			},
