@@ -15,6 +15,18 @@ export interface ServerInfo {
 	push: { transports: string[] };
 }
 
+/**
+ * Whether the server's recurring auto-post is on (features.autoPost, which the
+ * server takes from autoPostEnabled()). Fails closed: a server that does not
+ * say, or sent something else, counts as off, so the app posts nothing on a
+ * guess.
+ */
+export function serverAutoPost(info: {
+	features: Record<string, boolean | undefined>;
+}): boolean {
+	return info.features.autoPost === true;
+}
+
 export type ProbeResult =
 	| { ok: true; baseUrl: string; insecure: boolean; info: ServerInfo }
 	| { ok: false; reason: "invalidUrl" | "unreachable" | "notRetrospend" }
