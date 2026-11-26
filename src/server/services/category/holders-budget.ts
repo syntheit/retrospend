@@ -13,7 +13,14 @@ import {
 	type Reroute,
 } from "@retrospend/domain/category-merge/plan";
 import type { BudgetType } from "~prisma";
-import { type HolderAdapter, type Stamped, staleUndo, swapAll } from "./holder";
+import {
+	groupByStamp,
+	type HolderAdapter,
+	heldCount,
+	type Stamped,
+	staleUndo,
+	swapStamped,
+} from "./holder";
 
 export interface BudgetHeld extends Stamped {
 	readonly dropped: readonly {
@@ -52,14 +59,16 @@ export const budgetHolder: HolderAdapter<BudgetHeld> = {
 		await c.tx.budget.deleteMany({
 			where: { userId: c.userId, id: { in: plan.drop } },
 		});
-		await c.tx.budget.updateMany({
-			where: { userId: c.userId, id: { in: plan.move } },
-			data: { categoryId: c.targetId, updatedAt: c.stamp },
-		});
+		const stored = groupByStamp(
+			await c.tx.budget.updateManyAndReturn({
+				where: { userId: c.userId, id: { in: plan.move } },
+				data: { categoryId: c.targetId, updatedAt: c.stamp },
+				select: { id: true, updatedAt: true },
+			}),
+		);
 		return {
 			held: {
-				ids: plan.move,
-				stamp: c.stamp.toISOString(),
+				...stored,
 				dropped: dropped.map((b) => ({
 					id: b.id,
 					amount: b.amount.toString(),
@@ -72,18 +81,18 @@ export const budgetHolder: HolderAdapter<BudgetHeld> = {
 					createdAt: b.createdAt.toISOString(),
 				})),
 			},
-			moved: plan.move.length,
+			moved: heldCount(stored),
 			dropped: dropped.length,
 		};
 	},
 	async restore(c, held) {
-		await swapAll(held.ids, (chunk) =>
+		await swapStamped(held, (chunk, stamp) =>
 			c.tx.budget.updateMany({
 				where: {
 					userId: c.userId,
 					id: { in: chunk },
 					categoryId: c.targetId,
-					updatedAt: new Date(held.stamp),
+					updatedAt: stamp,
 				},
 				data: { categoryId: c.sourceId, updatedAt: c.stamp },
 			}),

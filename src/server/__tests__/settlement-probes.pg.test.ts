@@ -1030,6 +1030,8 @@ describe("logAudit rethrow callers", () => {
 				createdByType: "user",
 				createdById: ben.user.id,
 				projectId,
+				// Backdated at create: an update never stores an older stamp.
+				updatedAt: old,
 				splitParticipants: {
 					create: [
 						{
@@ -1043,7 +1045,6 @@ describe("logAudit rethrow callers", () => {
 				},
 			},
 		});
-		await adminDb.$executeRaw`UPDATE "shared_transaction" SET "updatedAt" = ${old} WHERE id = ${made.id}`;
 		const svc = new VerificationService(ana.db as never, {
 			participantType: "user",
 			participantId: ana.user.id,

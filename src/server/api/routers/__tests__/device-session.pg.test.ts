@@ -82,9 +82,10 @@ describe("deviceSession router (signed-in devices)", () => {
 		});
 		// Signed in two days ago: not "fresh" for better-auth's session list.
 		const twoDaysAgo = new Date(Date.now() - 2 * DAY);
-		await adminDb.session.update({
-			where: { id: webId },
-			data: { createdAt: twoDaysAgo, updatedAt: twoDaysAgo },
+		// Backdated by making the row again: an update never stores an older stamp.
+		await adminDb.session.delete({ where: { id: webId } });
+		await adminDb.session.create({
+			data: { ...web, createdAt: twoDaysAgo, updatedAt: twoDaysAgo },
 		});
 
 		cli = await session(userId, {

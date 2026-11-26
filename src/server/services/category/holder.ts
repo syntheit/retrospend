@@ -16,7 +16,11 @@ export interface MergeCtx {
 	readonly sourceId: string;
 	/** Null: the category is deleted and its rows become uncategorized. */
 	readonly targetId: string | null;
-	/** The updatedAt every row this mutation writes gets, so the undo can tell its own rows. */
+	/**
+	 * The updatedAt a row this mutation writes asks for. The database keeps the
+	 * larger of it and the row's old stamp plus a millisecond (stamp_moves), so
+	 * what a row stored is read back from the write, never assumed to be this.
+	 */
 	readonly stamp: Date;
 }
 
@@ -32,11 +36,42 @@ export interface HolderAdapter<H> {
 	restore(c: MergeCtx, held: H): Promise<void>;
 }
 
-/** Rows moved by one stamp. */
-export interface Stamped {
+/** Rows the database stored with one stamp. */
+export interface StampGroup {
 	readonly ids: readonly string[];
 	readonly stamp: string;
 }
+
+/**
+ * Rows a move wrote, with the stamp each stored. The undo writes a row back
+ * only while it still has the stamp the move left, so each row's own stamp is
+ * kept (rows rarely differ, so most holders hold one group).
+ */
+export interface Stamped {
+	readonly stamps: readonly StampGroup[];
+}
+
+/** A row as `updateManyAndReturn` answers it with `{ id, updatedAt }` selected. */
+export interface StampedRow {
+	readonly id: string;
+	readonly updatedAt: Date;
+}
+
+/** The rows grouped by the stamp they stored, in the order they first appear. */
+export function groupByStamp(rows: readonly StampedRow[]): Stamped {
+	const groups = new Map<string, string[]>();
+	for (const r of rows) {
+		const stamp = r.updatedAt.toISOString();
+		groups.set(stamp, [...(groups.get(stamp) ?? []), r.id]);
+	}
+	return {
+		stamps: [...groups].map(([stamp, ids]) => ({ ids, stamp })),
+	};
+}
+
+/** How many rows a `Stamped` holds. */
+export const heldCount = (held: Stamped) =>
+	held.stamps.reduce((n, g) => n + g.ids.length, 0);
 
 export const staleUndo = () =>
 	new TRPCError({
@@ -52,20 +87,17 @@ function* chunksOf<T>(items: readonly T[]): Generator<T[]> {
 }
 
 /**
- * Writes `ids` in chunks and returns the ones that now carry the move's stamp
- * (a row another transaction took away in between is not held).
+ * Writes `ids` in chunks and holds the rows the write returned with the stamp
+ * each stored (a row another transaction took away in between is not
+ * returned, so it is not held).
  */
 export async function stampedMove(
 	ids: readonly string[],
-	write: (chunk: string[]) => Promise<unknown>,
-	stamped: (chunk: string[]) => Promise<string[]>,
-): Promise<string[]> {
-	const out: string[] = [];
-	for (const chunk of chunksOf(ids)) {
-		await write(chunk);
-		out.push(...(await stamped(chunk)));
-	}
-	return out;
+	write: (chunk: string[]) => Promise<StampedRow[]>,
+): Promise<Stamped> {
+	const out: StampedRow[] = [];
+	for (const chunk of chunksOf(ids)) out.push(...(await write(chunk)));
+	return groupByStamp(out);
 }
 
 /**
@@ -83,5 +115,17 @@ export async function swapAll(
 	if (done !== ids.length) throw staleUndo();
 }
 
+/**
+ * The undo of a stamped move: each group is swapped back only while its rows
+ * still have the stamp the move left (`swapAll` refuses if any does not).
+ */
+export async function swapStamped(
+	held: Stamped,
+	write: (chunk: string[], stamp: Date) => Promise<{ count: number }>,
+): Promise<void> {
+	for (const group of held.stamps)
+		await swapAll(group.ids, (chunk) => write(chunk, new Date(group.stamp)));
+}
+
 /** `held` of a holder with nothing to put back. */
-export const nothing = { ids: [], stamp: "" } satisfies Stamped;
+export const nothing = { stamps: [] } satisfies Stamped;
