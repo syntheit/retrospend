@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import type { ProblemCode } from "@retrospend/api-contract/errors";
 import type { Outbox, OutboxEntry, OutboxKind } from "@/data/outbox";
 import { originOf, PARKED_STAMP } from "@/data/outbox-chain";
 import type { Sender, SendResult } from "@/data/sync";
@@ -83,14 +84,20 @@ export const KEY_REUSED = "idempotency_key_reused";
 export const PARKED_NO_STAMP = "no_stamp";
 /** A recurring confirm or skip that names no due date: never sent, never guessed. */
 export const PARKED_NO_DUE = "no_due_date";
+/**
+ * The server's codes this sender branches on. The contract owns them
+ * (PROBLEM_STATUS): typing each by `ProblemCode` makes a misspelled or retired
+ * one fail the typecheck instead of silently never matching.
+ */
+const problem = <C extends ProblemCode>(code: C): C => code;
 /** The id a confirm named for its expense is held by another row: nothing was booked. */
-export const PARKED_ID_TAKEN = "id_taken";
+export const PARKED_ID_TAKEN = problem("id_taken");
 /** The server read the account as protected: the run stops and the entry stays. */
-export const PROTECTED_ACCOUNT = "protected_account";
+export const PROTECTED_ACCOUNT = problem("protected_account");
 /** The server's typed answers to a recurring write that name why it did not book. */
-export const RECURRING_ALREADY_POSTED = "recurring_already_posted";
-export const RECURRING_NOT_DUE = "recurring_not_due";
-export const RECURRING_CHANGED = "recurring_changed";
+export const RECURRING_ALREADY_POSTED = problem("recurring_already_posted");
+export const RECURRING_NOT_DUE = problem("recurring_not_due");
+export const RECURRING_CHANGED = problem("recurring_changed");
 
 /** The server answered that it did not take the write, and said nothing of an earlier try. */
 export function notStored(sent: { http?: number; reason: string }): boolean {

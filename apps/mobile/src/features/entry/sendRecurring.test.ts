@@ -1,4 +1,8 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import {
+	PROBLEM_STATUS,
+	type ProblemCode,
+} from "@retrospend/api-contract/errors";
 import { createOutbox, type OutboxEntry } from "@/data/outbox";
 import { confirm, templateEdit } from "@/data/outboxFixtures";
 import { createMemoryStore } from "@/data/store";
@@ -11,14 +15,8 @@ import {
 	forgetNotFound,
 	forgetUndoTokens,
 	notFoundPull,
-	PARKED_ID_TAKEN,
 	PARKED_NO_DUE,
 	PARKED_NO_STAMP,
-	PARKED_NOT_FOUND,
-	PROTECTED_ACCOUNT,
-	RECURRING_ALREADY_POSTED,
-	RECURRING_CHANGED,
-	RECURRING_NOT_DUE,
 	undoFor,
 	undoWith,
 } from "./send";
@@ -34,7 +32,18 @@ const DUE = "2026-12-01T03:00:00.000Z";
 const STAMP = "2026-11-18T10:00:00.000Z";
 const STAMP2 = "2026-12-01T03:05:00.000Z";
 
-const problem = (status: number, code: string) =>
+// Every code and status here is the contract's (PROBLEM_STATUS), not send.ts's
+// own constants, so a code that drifted from the contract fails these tests.
+const CODE = {
+	alreadyPosted: "recurring_already_posted",
+	notDue: "recurring_not_due",
+	changed: "recurring_changed",
+	protectedAccount: "protected_account",
+	idTaken: "id_taken",
+	notFound: "not_found",
+} as const satisfies Record<string, ProblemCode>;
+
+const problem = (code: ProblemCode, status: number = PROBLEM_STATUS[code]) =>
 	Object.assign(new Error(code), { status, code });
 
 const entry = (over: Record<string, unknown> = {}) =>
@@ -219,62 +228,66 @@ describe("routing by kind", () => {
 });
 
 describe("classifying a recurring answer", () => {
-	const answer = (status: number, code: string, origin?: "poster" | "user") =>
-		classify(problem(status, code), 0, {
+	const answer = (
+		code: ProblemCode,
+		origin?: "poster" | "user",
+		status: number = PROBLEM_STATUS[code],
+	) =>
+		classify(problem(code, status), 0, {
 			entity: "recurring",
 			...(origin ? { origin } : {}),
 		});
 
 	it("recurring_already_posted retires a poster entry and parks a person's, which waits for a pull", () => {
-		expect(answer(409, RECURRING_ALREADY_POSTED, "poster")).toEqual({
+		expect(answer(CODE.alreadyPosted, "poster")).toEqual({
 			status: "retired",
 		});
-		expect(answer(409, RECURRING_ALREADY_POSTED)).toEqual({
+		expect(answer(CODE.alreadyPosted)).toEqual({
 			status: "conflict",
-			reason: RECURRING_ALREADY_POSTED,
+			reason: CODE.alreadyPosted,
 			http: 409,
 		});
-		expect(answer(409, RECURRING_ALREADY_POSTED, "user")).toMatchObject({
+		expect(answer(CODE.alreadyPosted, "user")).toMatchObject({
 			status: "conflict",
 		});
 	});
 
 	it("recurring_changed retires a poster entry and parks a person's", () => {
-		expect(answer(409, RECURRING_CHANGED, "poster")).toEqual({
+		expect(answer(CODE.changed, "poster")).toEqual({
 			status: "retired",
 		});
-		expect(answer(409, RECURRING_CHANGED)).toEqual({
+		expect(answer(CODE.changed)).toEqual({
 			status: "conflict",
-			reason: RECURRING_CHANGED,
+			reason: CODE.changed,
 			http: 409,
 		});
 	});
 
 	it("recurring_not_due waits for either, and is never a conflict", () => {
-		expect(answer(409, RECURRING_NOT_DUE, "poster")).toEqual({
+		expect(answer(CODE.notDue, "poster")).toEqual({
 			status: "later",
 		});
-		expect(answer(409, RECURRING_NOT_DUE)).toEqual({ status: "later" });
+		expect(answer(CODE.notDue)).toEqual({ status: "later" });
 	});
 
 	it("protected_account stops the run and keeps the entry, for either", () => {
 		for (const origin of ["poster", "user"] as const)
-			expect(answer(403, PROTECTED_ACCOUNT, origin)).toEqual({
+			expect(answer(CODE.protectedAccount, origin)).toEqual({
 				status: "retry",
-				reason: PROTECTED_ACCOUNT,
+				reason: CODE.protectedAccount,
 				kind: "network",
 			});
 	});
 
 	it("a 404 parks as not_found, a taken id parks as id_taken", () => {
-		expect(answer(404, PARKED_NOT_FOUND, "poster")).toEqual({
+		expect(answer(CODE.notFound, "poster")).toEqual({
 			status: "conflict",
-			reason: PARKED_NOT_FOUND,
+			reason: CODE.notFound,
 			http: 404,
 		});
-		expect(answer(409, PARKED_ID_TAKEN, "poster")).toEqual({
+		expect(answer(CODE.idTaken, "poster")).toEqual({
 			status: "conflict",
-			reason: PARKED_ID_TAKEN,
+			reason: CODE.idTaken,
 			http: 409,
 		});
 	});
@@ -283,12 +296,12 @@ describe("classifying a recurring answer", () => {
 		expect(
 			classify(new TypeError("offline"), 0, { entity: "recurring" }),
 		).toMatchObject({ status: "retry", kind: "network" });
-		expect(answer(500, "boom")).toEqual({
+		expect(answer("bad_request", undefined, 500)).toEqual({
 			status: "retry",
-			reason: "boom",
+			reason: "bad_request",
 			kind: "server",
 		});
-		expect(answer(422, "missing_rate")).toEqual({
+		expect(answer("missing_rate")).toEqual({
 			status: "conflict",
 			reason: "missing_rate",
 			http: 422,
@@ -297,12 +310,12 @@ describe("classifying a recurring answer", () => {
 
 	it("the typed answers mean nothing to another entity: an expense edit still parks", () => {
 		expect(
-			classify(problem(409, RECURRING_ALREADY_POSTED), 0, {
+			classify(problem(CODE.alreadyPosted), 0, {
 				entity: "expenses",
 				origin: "poster",
 			}),
 		).toMatchObject({ status: "conflict" });
-		expect(classify(problem(409, RECURRING_NOT_DUE))).toMatchObject({
+		expect(classify(problem(CODE.notDue))).toMatchObject({
 			status: "conflict",
 		});
 	});
@@ -311,11 +324,11 @@ describe("classifying a recurring answer", () => {
 describe("answers through the sender", () => {
 	it("a taken id on a confirm books nothing and parks: it is never counted as sent", async () => {
 		const { api, recurring } = recurringApi();
-		recurring.confirm.mockRejectedValueOnce(problem(409, PARKED_ID_TAKEN));
+		recurring.confirm.mockRejectedValueOnce(problem(CODE.idTaken));
 		const sent = await createEntrySender(apiTransport(api))(entry());
 		expect(sent).toEqual({
 			status: "conflict",
-			reason: PARKED_ID_TAKEN,
+			reason: CODE.idTaken,
 			http: 409,
 		});
 		// Not a gone template: a pull resolves nothing for it.
@@ -324,7 +337,7 @@ describe("answers through the sender", () => {
 
 	it("a 404 notes the pull it arrived in, so only a later pull can resolve it", async () => {
 		const { api, recurring } = recurringApi();
-		recurring.confirm.mockRejectedValueOnce(problem(404, PARKED_NOT_FOUND));
+		recurring.confirm.mockRejectedValueOnce(problem(CODE.notFound));
 		await createEntrySender(apiTransport(api), { pullsBegun: () => 7 })(
 			entry(),
 		);
@@ -333,9 +346,7 @@ describe("answers through the sender", () => {
 
 	it("a person's already-posted answer notes the pull too", async () => {
 		const { api, recurring } = recurringApi();
-		recurring.confirm.mockRejectedValueOnce(
-			problem(409, RECURRING_ALREADY_POSTED),
-		);
+		recurring.confirm.mockRejectedValueOnce(problem(CODE.alreadyPosted));
 		await createEntrySender(apiTransport(api), { pullsBegun: () => 5 })(
 			entry(),
 		);

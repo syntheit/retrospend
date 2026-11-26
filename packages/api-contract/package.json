@@ -9,6 +9,7 @@
 		".": "./src/index.ts",
 		"./budget": "./src/budget/schemas.ts",
 		"./common": "./src/common/index.ts",
+		"./errors": "./src/common/errors.ts",
 		"./feedback-client": "./src/feedback/client.ts",
 		"./sync": "./src/sync/wire.ts",
 		"./keys": "./src/keys/index.ts",
