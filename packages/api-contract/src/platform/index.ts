@@ -27,6 +27,10 @@ export const serverInfoSchema = z
 					description:
 						"Whether this server offers turning on Advanced protection. Accounts that already have it sign in the same way whatever this says.",
 				}),
+				autoPost: z.boolean().meta({
+					description:
+						"Whether this server's recurring auto-post is on (RECURRING_AUTO_POST, or on in production when unset). Instance setting, the same for every caller. An app that posts due recurring expenses itself posts only when this is true.",
+				}),
 			})
 			.meta({ description: "Optional server capabilities." }),
 		auth: z.object({

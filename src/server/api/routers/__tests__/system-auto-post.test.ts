@@ -3,18 +3,18 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockEnv = vi.hoisted(() => ({
+	DATABASE_URL: "postgresql://mock",
+	NODE_ENV: "test",
+	RECURRING_AUTO_POST: "true" as string | undefined,
+	ADVANCED_PROTECTION_ENABLED: false,
+	SIDECAR_URL: "http://localhost:8080",
+}));
 const mockDb = vi.hoisted(() => ({
 	systemStatus: { findUnique: vi.fn() },
 }));
 
-vi.mock("~/env", () => ({
-	env: {
-		DATABASE_URL: "postgresql://mock",
-		NODE_ENV: "test",
-		RECURRING_AUTO_POST: "true",
-		SIDECAR_URL: "http://localhost:8080",
-	},
-}));
+vi.mock("~/env", () => ({ env: mockEnv }));
 vi.mock("~/server/db", () => ({
 	db: mockDb as never,
 	createUserScopedDb: vi.fn(() => mockDb),
@@ -25,10 +25,13 @@ vi.mock("~/server/better-auth", () => ({
 vi.mock("~/server/services/admin-access.service", () => ({
 	logAdminProcedure: vi.fn(),
 }));
-vi.mock("~/server/services/settings", () => ({ getAppSettings: vi.fn() }));
+vi.mock("~/server/services/settings", () => ({
+	getAppSettings: vi.fn(async () => ({ enableFeedback: true })),
+}));
 vi.mock("~/server/services/preview", () => ({ forUser: vi.fn() }));
 
 import { createCallerFactory } from "~/server/api/trpc";
+import { autoPostEnabled } from "~/server/services/recurring-auto-post";
 import { makeAdminSession, makeSession } from "~/test/trpc-test-utils";
 import { systemRouter } from "../system";
 
@@ -82,5 +85,20 @@ describe("system.getAutoPostStatus", () => {
 			lastRun: "2026-11-12T11:50:00.000Z",
 			counts: { posted: 3, missingRate: 0, capped: 0, failed: 2 },
 		});
+	});
+});
+
+describe("system.getFeatureFlags autoPost", () => {
+	it.each([
+		["true", true],
+		["false", false],
+	])("RECURRING_AUTO_POST=%s gives %s, equal to autoPostEnabled()", async (setting, expected) => {
+		mockEnv.RECURRING_AUTO_POST = setting;
+		const flags = await callAndFlush(() =>
+			caller(null as never).getFeatureFlags(),
+		);
+		expect(flags.autoPost).toBe(expected);
+		expect(flags.autoPost).toBe(autoPostEnabled());
+		mockEnv.RECURRING_AUTO_POST = "true";
 	});
 });
