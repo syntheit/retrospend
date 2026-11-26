@@ -1,10 +1,12 @@
-import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
+import {
+	type SnapshotPlan,
+	snapshotPlan,
+} from "@retrospend/domain/accounts/snapshot-plan";
 import { isValidRate } from "@retrospend/domain/money";
 import {
 	convertDec,
 	fromUSDDec,
 	hasRate as hasUsableRate,
-	roundUSDDec,
 	toUSDDec,
 	USD,
 } from "@retrospend/domain/money-dec";
@@ -15,6 +17,7 @@ import {
 	dec,
 	toFloat,
 } from "@retrospend/domain/precise-decimal";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
@@ -102,12 +105,10 @@ export class WealthService {
 	/**
 	 * Records an asset snapshot and history entry within a transaction.
 	 *
-	 * This method must be called within a Prisma transaction context.
-	 * It creates/updates the daily snapshot and appends to the history log.
-	 * The snapshot keeps the account's currency, type and rate type, so a
-	 * later edit of the account does not revalue it. The USD value is rounded
-	 * here to cents, half to even like the account leg trigger: the column
-	 * would round half away from zero.
+	 * This method must be called within a Prisma transaction context. The
+	 * rows come from snapshotPlan (domain accounts/snapshot-plan), the one
+	 * owner of one snapshot per account per day, its rounding and its meta.
+	 * `date` is the stored day from snapshotDay: each path names its day rule.
 	 */
 	async recordAssetSnapshot(
 		tx: Prisma.TransactionClient,
@@ -118,46 +119,28 @@ export class WealthService {
 		userId: string,
 		meta: SnapshotMeta,
 	): Promise<void> {
-		const balance = dec(units).toFixed();
-		const balanceInUSD = roundUSDDec(usd).toFixed(2);
-		// recordedAt orders this balance against legs of the same day (domain accounts/series.ts).
-		const snapshotMeta = {
-			currency: meta.currency,
-			type: meta.type,
-			exchangeRateType: meta.exchangeRateType ?? null,
-			recordedAt: new Date(),
-		};
+		await this.writeSnapshotPlan(
+			tx,
+			assetId,
+			userId,
+			snapshotPlan({ day: date, units, usd, meta, recordedAt: new Date() }),
+		);
+	}
 
-		// Upsert snapshot (one per asset per day)
+	/** Upserts the day's snapshot (one per asset per day) and appends the history row. */
+	async writeSnapshotPlan(
+		tx: Prisma.TransactionClient,
+		assetId: string,
+		userId: string,
+		plan: SnapshotPlan,
+	): Promise<void> {
 		await tx.assetSnapshot.upsert({
-			where: {
-				accountId_date: {
-					accountId: assetId,
-					date,
-				},
-			},
-			update: {
-				balance,
-				balanceInUSD,
-				...snapshotMeta,
-			},
-			create: {
-				accountId: assetId,
-				userId,
-				date,
-				balance,
-				balanceInUSD,
-				...snapshotMeta,
-			},
+			where: { accountId_date: { accountId: assetId, date: plan.day } },
+			update: plan.row,
+			create: { accountId: assetId, userId, date: plan.day, ...plan.row },
 		});
-
-		// Append to history (unlimited entries)
 		await tx.assetHistory.create({
-			data: {
-				assetId,
-				userId,
-				balance,
-			},
+			data: { assetId, userId, balance: plan.history.balance },
 		});
 	}
 

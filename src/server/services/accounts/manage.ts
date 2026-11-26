@@ -6,6 +6,7 @@
  */
 
 import { isLiability } from "@retrospend/domain/accounts/places";
+import { snapshotDay } from "@retrospend/domain/accounts/snapshot-plan";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { dec } from "@retrospend/domain/envelope/units";
 import {
@@ -17,14 +18,12 @@ import {
 import type { Decimal, DecimalInput } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
-import { normalizeDate } from "~/lib/date";
 import { userTransaction } from "~/server/db-tx";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { WealthService } from "~/server/services/wealth.service";
 import { deleteFile } from "~/server/storage";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { writeCheckpoint } from "./checkpoint";
-import { moveDay } from "./dates";
 import { homeCurrencyOf, lockOpenAccount } from "./ledger";
 import { switchRateType } from "./rate-type.mutation";
 
@@ -61,9 +60,7 @@ async function accountRate(
 }
 
 const column = (value: number | null | undefined, scale: number) =>
-	value === null || value === undefined
-		? value
-		: columnText(value, scale);
+	value === null || value === undefined ? value : columnText(value, scale);
 
 const otherFields = (input: AccountFields) => ({
 	name: input.name,
@@ -78,7 +75,7 @@ const otherFields = (input: AccountFields) => ({
 
 /** A balance typed by hand is dated by the user's day, like every leg. */
 const checkpointDay = (timeZone: string) =>
-	moveDay(null, new Date(), timeZone);
+	snapshotDay({ rule: "zone", now: new Date(), timeZone });
 
 export async function createAccountIn(
 	tx: Prisma.TransactionClient,
@@ -241,7 +238,7 @@ export async function closeAccountIn(
 	await new WealthService(tx).recordAssetSnapshot(
 		tx,
 		asset.id,
-		normalizeDate(now),
+		snapshotDay({ rule: "utc", now }),
 		0,
 		0,
 		userId,
@@ -271,7 +268,10 @@ async function reopenRate(
 		return rate;
 	} catch {
 		// No table rate: the account's own stored rate, if any
-		if (asset.exchangeRate !== null && hasRate(asset.currency, asset.exchangeRate))
+		if (
+			asset.exchangeRate !== null &&
+			hasRate(asset.currency, asset.exchangeRate)
+		)
 			return asset.exchangeRate;
 		throw new MissingRateError(asset.currency);
 	}
@@ -289,7 +289,7 @@ export async function reopenAccountIn(
 	userId: string,
 	id: string,
 ) {
-	const today = normalizeDate(new Date());
+	const today = snapshotDay({ rule: "utc", now: new Date() });
 	const asset = await ownAccount(tx, userId, id);
 	if (!asset.closedAt) return { success: true };
 	const service = new WealthService(tx);
