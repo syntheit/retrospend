@@ -1108,10 +1108,12 @@ test.describe("Set up your budget", () => {
 				.getByRole("button", { name: "Undo" })
 				.click(),
 		);
-		// "Undone" shows as the undo resolves and closes after sonner's 4 s; on a
-		// slow runner the sheet can take longer than that to close, so the
-		// toast is checked first.
-		await expect(toast(page, "Undone")).toBeVisible();
+		// "Undone" shows once the undo's streamed result is in and the page has
+		// refreshed (up to 2 s, use-write.ts REFRESH_WAIT_MS); the undo of a
+		// whole setup is a heavy write, so on a loaded runner that can pass
+		// untilSaved's 5 s stream cap. It closes after sonner's 4 s, so it is
+		// checked before the sheet.
+		await expect(toast(page, "Undone")).toBeVisible({ timeout: 20_000 });
 		await expect(sheet).toBeHidden();
 		await expect(
 			page
