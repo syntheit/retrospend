@@ -189,28 +189,36 @@ export async function undoTemplateCreate(
 	if (result !== "undone") throw new Error("Could not undo the new template");
 }
 
+/** The edit's send began and no answer is known: it may be on the server, so it is neither taken out nor written back over. */
+export class EditStillSending extends Error {}
+
 /**
- * Takes an edit back: out of the outbox while it waits, or by writing the old
- * values over the template as it is now (the server has no undo for an edit).
+ * Takes an edit back, by what the outbox says happened to it (not by what the
+ * sheet was told, which a slow send makes stale):
+ * - never sent, or parked (the server refused it): taken out of the outbox;
+ * - sent with no answer yet: refused (`EditStillSending`), and nothing is sent;
+ * - left the outbox, so the server took it: the old values written over the
+ *   template as it is now (the server has no undo for an edit).
  */
 export async function undoTemplateEdit(input: {
 	device: SettleDevice;
-	answer: Extract<TemplateAnswer, { clientId: string }>;
+	clientId: string;
 	id: string;
 	back: TemplatePatch;
 	title: string;
 }): Promise<void> {
-	const { device, answer, id, back, title } = input;
-	if (answer.settled === "queued") {
-		const result = await undoSaved({
-			outbox: device.outbox,
-			api: device.api,
-			transport: transportFor(device.api),
-			clientId: answer.clientId,
-		});
-		if (result !== "undone") throw new Error("Could not undo the edit");
-		return;
-	}
+	const { device, clientId, id, back, title } = input;
+	const { outbox, writes } = device;
+	const found = await exclusive(outbox, async () => {
+		const entry = (await outbox.all()).find((e) => e.clientId === clientId);
+		if (!entry) return "left";
+		if (entry.attempts > 0 && entry.state !== "conflict") return "unknown";
+		await outbox.discard(clientId);
+		await writes.refresh().catch(() => undefined);
+		return "taken";
+	});
+	if (found === "taken") return;
+	if (found === "unknown") throw new EditStillSending();
 	const out = await editTemplateOnDevice({
 		device,
 		id,

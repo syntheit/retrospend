@@ -343,15 +343,16 @@ describe("Pause and auto-pay under the dev flag", () => {
 		});
 	});
 
-	it("Undo of a pause still waiting to send is not a second write: it fails offline and the first stays queued", async () => {
+	it("Undo of a pause whose send has no answer says it is still sending, sends nothing and leaves it queued", async () => {
 		const { recurring } = setup();
 		recurring.update.mockRejectedValue(network());
 		const { tree } = await openItem();
 		await pressAsync(tree, "Pause");
 		await lastToast().undo?.onUndo();
 		expect(lastToast().message).toBe(
-			"Couldn't undo. It may have changed already.",
+			"Netflix is still sending. Try again in a moment.",
 		);
+		expect(recurring.update).toHaveBeenCalledTimes(1);
 		const entries = await world.local.outbox.all();
 		expect(entries).toHaveLength(1);
 		expect(entries[0]?.payload).toMatchObject({ paused: true });

@@ -8,9 +8,9 @@ import { isOfflineError } from "@/features/entry/preview";
 import { undoSaved } from "@/features/entry/queue";
 import { useToast } from "@/ui/Toast";
 import type { SettleAnswer, SettleDevice } from "./deviceSettle";
-import type { TemplateAnswer } from "./deviceTemplate";
+import { EditStillSending, type TemplateAnswer } from "./deviceTemplate";
 import type { RecurringItem } from "./source";
-import { useRecurringToast } from "./useRecurringToast";
+import { UndoRefused, useRecurringToast } from "./useRecurringToast";
 
 // The hooks of the device settle (deviceSettle.ts): which sheets use it, and
 // the toast that ends it.
@@ -172,7 +172,16 @@ export function useTemplateToast() {
 							? tq("queued", { title })
 							: t("parked", { title }),
 				// A parked write is not taken back here: Couldn't sync discards it.
-				undo: answer.settled === "parked" ? undefined : () => done.undo(answer),
+				undo:
+					answer.settled === "parked"
+						? undefined
+						: () =>
+								done.undo(answer).catch((error: unknown) => {
+									// An edit whose send has no answer yet: say so, never send it again.
+									if (error instanceof EditStillSending)
+										throw new UndoRefused(t("busy", { title }));
+									throw error;
+								}),
 				onChanged: done.onChanged,
 			});
 		},

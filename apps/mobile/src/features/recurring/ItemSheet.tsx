@@ -93,7 +93,7 @@ export function ItemSheet({
 					undo: (made) =>
 						undoTemplateEdit({
 							device,
-							answer: made,
+							clientId: made.clientId,
 							id: item.id,
 							back,
 							title: item.title,

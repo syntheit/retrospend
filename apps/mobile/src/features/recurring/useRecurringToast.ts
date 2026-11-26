@@ -2,6 +2,9 @@ import { useCallback } from "react";
 import { useTranslations } from "use-intl";
 import { useToast } from "@/ui/Toast";
 
+/** An undo that did not happen, with the sentence that says why. */
+export class UndoRefused extends Error {}
+
 /**
  * A pause or resume ends in a toast that puts it back by writing the old
  * value (R15); a confirm, skip or delete uses the write sheet and the
@@ -31,8 +34,11 @@ export function useRecurringToast() {
 									await undo();
 									toast.show({ message: tw("undone") });
 									done.onChanged();
-								} catch {
-									toast.show({ message: tw("undoError") });
+								} catch (error) {
+									toast.show({
+										message:
+											error instanceof UndoRefused ? error.message : tw("undoError"),
+									});
 								}
 							},
 						}
