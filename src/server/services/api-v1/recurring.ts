@@ -321,6 +321,7 @@ export async function confirmRecurring(
 				kept: v.kept,
 				plan: planDto(v.plan),
 				templateUpdatedAt: null,
+				expenseUpdatedAt: null,
 			},
 			undo: undoFor(caller, FAMILY, "income.unconfirmRecurring", {
 				expenseId: v.expenseId,
@@ -344,6 +345,7 @@ export async function confirmRecurring(
 			kept: null,
 			plan: null,
 			templateUpdatedAt: v.templateUpdatedAt.toISOString(),
+			expenseUpdatedAt: v.expenseUpdatedAt.toISOString(),
 		},
 		undo: undoFor(caller, FAMILY, "recurring.unconfirm", {
 			expenseId: v.expenseId,
