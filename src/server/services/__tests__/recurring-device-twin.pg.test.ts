@@ -23,7 +23,12 @@ import { contract } from "@retrospend/api-contract";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { expectBody } from "~/server/api/v1/core/__tests__/harness";
 import { expectedCounts, newDevice, pullAll } from "~/test/parity/pull";
-import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	fixtureNameIndex,
+} from "~/test/pg-harness";
 import { bookedChangesOf } from "../../../../packages/engine/src/device/book";
 import type { PendingChange } from "../../../../packages/engine/src/device/pending";
 import { LocalDb } from "../../../../packages/engine/src/local-db";
@@ -354,23 +359,71 @@ describe("one period, confirmed on both", () => {
 			]);
 		});
 
-		it("a template edit that differs in the amount names the amount", async () => {
+		// Each compared template column on its own: the device edits it, the server
+		// is given another value (or none), and the compare names exactly that column.
+		const COLUMNS: [string, string[], object, object][] = [
+			["amount", ["amount"], { amount: "25" }, { amount: "26" }],
+			["currency", ["currency"], { currency: "EUR" }, { currency: "GBP" }],
+			[
+				"frequency",
+				["frequency"],
+				{ frequency: "WEEKLY" },
+				{ frequency: "BIWEEKLY" },
+			],
+			["isActive", ["isActive"], { isActive: false }, {}],
+			["autoPay", ["autoPay"], { autoPay: false }, {}],
+			["amountMode", ["amountMode"], { amountMode: "ASK" }, {}],
+			[
+				"nextDueDate",
+				["nextDueDate", "anchorDay"],
+				{ nextDueDate: "2026-12-15" },
+				{ nextDueDate: "2026-12-16" },
+			],
+		];
+		for (const [column, fields, device, server] of COLUMNS)
+			it(`a template edit that differs in ${column} names ${fields.join(" and ")}`, async () => {
+				const me = await arsUser();
+				const id = await usdTemplate(me);
+				const { changes } = await onDevice(
+					me,
+					NOW,
+					TEMPLATE_UPDATE,
+					updateTemplate({ id, ...device }),
+				);
+				// The server edits a column the compare does not read, so its row differs only where `server` says.
+				const res = await (await v1For(me))(
+					"PATCH",
+					`/recurring/${id}`,
+					v1TemplateBody({ name: "Gym", ...server }),
+				);
+				expect(res.status, await res.clone().text()).toBe(200);
+				expect(await compared(me, NOW, changes, null)).toEqual([
+					{ id, outcome: "differs", fields },
+				]);
+			});
+
+		it("a template edit that differs in the category names categoryId", async () => {
 			const me = await arsUser();
 			const id = await usdTemplate(me);
+			const name = "Housing";
+			const category = await fixtureDb.category.create({
+				data: {
+					userId: me,
+					name,
+					color: "teal",
+					kind: "EXPENSE",
+					nameIndex: await fixtureNameIndex(me, name),
+				},
+			});
 			const { changes } = await onDevice(
 				me,
 				NOW,
 				TEMPLATE_UPDATE,
-				updateTemplate({ id, amount: "25", isActive: false }),
+				updateTemplate({ id, categoryId: category.id }),
 			);
-			// The server was given another amount: 26, not 25.
-			const res = await (await v1For(me))("PATCH", `/recurring/${id}`, {
-				amount: "26",
-				paused: true,
-			});
-			expect(res.status).toBe(200);
+			await (await v1For(me))("PATCH", `/recurring/${id}`, { name: "Gym" });
 			expect(await compared(me, NOW, changes, null)).toEqual([
-				{ id, outcome: "differs", fields: ["amount"] },
+				{ id, outcome: "differs", fields: ["categoryId"] },
 			]);
 		});
 
