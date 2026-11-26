@@ -73,6 +73,10 @@ const templateApi = () => {
 	const recurring = {
 		create: jest.fn(async () => ({ id: ID, updatedAt: MADE })),
 		update: jest.fn(async () => ({ id: ID, updatedAt: AFTER_EDIT })),
+		get: jest.fn(async (_input: unknown, _options?: unknown) => ({
+			id: ID,
+			updatedAt: MADE,
+		})),
 		delete: jest.fn(async () => ({ ok: true })),
 	};
 	return { recurring, api: { recurring } as never as RetrospendClient };
@@ -112,14 +116,68 @@ describe("sending a template create", () => {
 		);
 	});
 
-	it("a taken id parks and is never counted as sent: nothing was made", async () => {
+	it("a taken id that is our own template counts as sent, with the version the read names", async () => {
 		const { api, recurring } = templateApi();
 		recurring.create.mockRejectedValueOnce(problem("id_taken"));
+		recurring.get.mockResolvedValueOnce({ id: ID, updatedAt: MADE });
+		expect(await createEntrySender(apiTransport(api))(make())).toEqual({
+			status: "sent",
+			version: MADE,
+		});
+		expect(recurring.get).toHaveBeenCalledWith({ id: ID }, expect.anything());
+	});
+
+	it("a taken id that no template of the person's answers to parks and is never counted as sent", async () => {
+		const { api, recurring } = templateApi();
+		recurring.create.mockRejectedValueOnce(problem("id_taken"));
+		recurring.get.mockRejectedValueOnce(problem("not_found"));
 		expect(await createEntrySender(apiTransport(api))(make())).toEqual({
 			status: "conflict",
 			reason: "id_taken",
 			http: 409,
 		});
+	});
+
+	it("a taken id whose read gets no answer waits and tries again", async () => {
+		const { api, recurring } = templateApi();
+		recurring.create.mockRejectedValueOnce(problem("id_taken"));
+		recurring.get.mockRejectedValueOnce(new TypeError("offline"));
+		expect(await createEntrySender(apiTransport(api))(make())).toMatchObject({
+			status: "retry",
+			kind: "network",
+		});
+	});
+
+	it("an edit chained after a create answered by the read takes that version", async () => {
+		const { api, recurring } = templateApi();
+		recurring.create.mockRejectedValueOnce(problem("id_taken"));
+		recurring.get.mockResolvedValueOnce({ id: ID, updatedAt: MADE });
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue({
+			clientId: ID,
+			entity: "recurring",
+			kind: "create",
+			targetId: ID,
+			baseVersion: null,
+			payload: BODY,
+		});
+		await outbox.enqueue({
+			clientId: EDIT,
+			entity: "recurring",
+			kind: "update",
+			targetId: ID,
+			baseVersion: { after: ID },
+			payload: { paused: true },
+		});
+		const report = await flushOutbox(
+			outbox,
+			createEntrySender(apiTransport(api)),
+		);
+		expect(report).toMatchObject({ sent: 2, conflicts: 0 });
+		expect(recurring.update).toHaveBeenCalledWith(
+			expect.objectContaining({ expectedUpdatedAt: MADE }),
+			expect.anything(),
+		);
 	});
 
 	it("a refused body parks with the server's code", async () => {

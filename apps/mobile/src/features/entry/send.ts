@@ -311,9 +311,8 @@ export function createEntrySender(
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
 			// No answer, so no version: an entry chained after it parks as
-			// chain_lost, and Try again re-bases it over the pulled row. Not for
-			// a template: the key replays a create that landed, so a taken id
-			// is another row's and nothing was made (it parks).
+			// chain_lost, and Try again re-bases it over the pulled row. A template
+			// create reads the row back first (`createTemplate`) and never gets here.
 			if (
 				entry.kind === "create" &&
 				entry.entity !== "recurring" &&
@@ -539,17 +538,41 @@ async function create(
 					)
 				).undo,
 			};
-		case "recurring": {
-			// The template takes the entry's client id, so the server's row and the phone's are one.
-			const made = await api.recurring.create(
-				{
-					...(entry.payload as Omit<Body<typeof api.recurring.create>, "id">),
-					id: entry.clientId,
-				},
-				options,
-			);
-			return { undo: NO_TOKEN, version: made.updatedAt };
-		}
+		case "recurring":
+			return createTemplate(api, entry, options);
+	}
+}
+
+/**
+ * A new template under the entry's client id, so the server's row and the
+ * phone's are one. A taken id is read back: the key replays a create that
+ * landed only for a day, so after that (or after the server lost the answer)
+ * the id is held by our own row, and the answer is its version, which the
+ * entries chained after it take. Another answer to the read (a 404: the id
+ * is held by nothing the person can read) leaves the taken id as it was, and
+ * the entry parks.
+ */
+async function createTemplate(
+	api: RetrospendClient,
+	entry: OutboxEntry,
+	options: CallOptions,
+): Promise<Created> {
+	const body = {
+		...(entry.payload as Omit<Body<typeof api.recurring.create>, "id">),
+		id: entry.clientId,
+	};
+	try {
+		const made = await api.recurring.create(body, options);
+		return { undo: NO_TOKEN, version: made.updatedAt };
+	} catch (error) {
+		if (!idTaken(error)) throw error;
+		const held = await api.recurring
+			.get({ id: entry.clientId }, { signal: options.signal })
+			.catch((read: unknown) => {
+				if ((read as { status?: number } | null)?.status === 404) throw error;
+				throw read;
+			});
+		return { undo: NO_TOKEN, version: held.updatedAt };
 	}
 }
 
