@@ -42,7 +42,8 @@ export function rebasedBody(
 }
 
 export interface RebasePlan {
-	op: WriteOp;
+	/** A re-based write is an expense edit or delete, or a confirm or skip: a template edit is discarded, not re-based. */
+	op: Exclude<WriteOp, { kind: "templateCreate" | "templateUpdate" }>;
 	/** The pulled version the new write is checked against. */
 	version: string;
 	/** What the new entry sends. */

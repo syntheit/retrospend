@@ -93,9 +93,9 @@ describe("DeviceEngine.book of a template create or edit", () => {
 	});
 
 	it("books a new due date as the due instant and the anchor", async () => {
-		const booked = await (
-			await setup()
-		).book(edit({ nextDueDate: "2026-12-20" }));
+		const booked = await (await setup()).book(
+			edit({ nextDueDate: "2026-12-20" }),
+		);
 		expect(after(booked)).toMatchObject({
 			nextDueDate: new Date("2026-12-20T03:00:00.000Z"),
 			anchorDay: 20,

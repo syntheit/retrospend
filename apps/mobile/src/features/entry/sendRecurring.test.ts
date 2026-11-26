@@ -204,8 +204,8 @@ describe("routing by kind", () => {
 		for (const bad of [
 			entry({ kind: "wat" }),
 			entry({ entity: "expenses" }),
-			{ ...entry({ kind: "update" }), entity: "recurring" } as OutboxEntry,
-			{ ...entry({ kind: "create" }), entity: "recurring" } as OutboxEntry,
+			// A template has no delete on this transport: it stays online.
+			{ ...entry({ kind: "delete" }), entity: "recurring" } as OutboxEntry,
 		])
 			await expect(transport.dispatch(bad, options)).rejects.toThrow();
 		expect(recurring.confirm).not.toHaveBeenCalled();
@@ -213,15 +213,21 @@ describe("routing by kind", () => {
 		expect(expenses.create).not.toHaveBeenCalled();
 	});
 
-	it("a template edit or create has no sender yet and does not stop the queue", async () => {
+	it("a template create and edit are the sender's, and a template delete is not and does not stop the queue", async () => {
 		const outbox = createOutbox(createMemoryStore(), "a");
 		await outbox.enqueue(templateEdit("e1", TEMPLATE, STAMP));
 		await outbox.enqueue({
 			...templateEdit("e2", "t2", null),
 			kind: "create",
 		});
+		await outbox.enqueue({
+			...templateEdit("e4", "t4", STAMP),
+			kind: "delete",
+		});
 		await outbox.enqueue(confirm(KEY, "t3", STAMP));
 		expect((await entryOutbox(outbox).all()).map((e) => e.clientId)).toEqual([
+			"e1",
+			"e2",
 			KEY,
 		]);
 	});
