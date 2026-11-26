@@ -11,7 +11,10 @@
  * millisecond) and one an hour past it (this server's clock is behind).
  */
 import { randomUUID } from "node:crypto";
+import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { userTransaction } from "~/server/db-tx";
+import { putUndoStash } from "~/server/services/entry/undo-stash";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { forUser } from "~/server/services/preview";
 import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
@@ -270,5 +273,66 @@ describe("rows stamped at or after the merge's clock", () => {
 				(d.expectedIn as { categoryId: string }[]).map((r) => r.categoryId),
 			),
 		).toEqual([src.id, src.id]);
+	});
+});
+
+describe("an undo stash from before the stamps were held per row", () => {
+	it("is refused as not valid, and nothing is restored", async () => {
+		const me = await arsUser();
+		const src = await category(me, "Cafe");
+		const tgt = await category(me, "Food");
+		const row = await fixtureDb.expense.create({
+			data: {
+				userId: me,
+				title: "Lunch",
+				amount: "10",
+				currency: "USD",
+				date: new Date(),
+				categoryId: src.id,
+				amountInUSD: "10",
+				exchangeRate: "1",
+				pricingSource: "MANUAL",
+			},
+		});
+		await run(me, src.id, tgt.id);
+		// The shape a v1 stash had: one stamp for a holder's ids.
+		const old = await userTransaction(adminDb, me, (tx) =>
+			putUndoStash(tx, me, {
+				v: 1,
+				category: {
+					id: src.id,
+					name: "Cafe",
+					color: "blue",
+					icon: null,
+					isFixed: false,
+					excludeByDefault: false,
+					kind: "EXPENSE",
+				},
+				targetId: tgt.id,
+				// Every holder is present, as the undo requires, each in its v1 shape.
+				held: {
+					expense: { ids: [row.id], stamp: new Date().toISOString() },
+					template: { ids: [], stamp: "" },
+					sharedTransaction: { ids: [], stamp: "", setToNone: 0 },
+					share: { groups: [], stamp: "" },
+					budget: { ids: [], stamp: "", dropped: [] },
+					envelopeLink: { moved: [], dropped: [], rerouted: [] },
+					preference: { moved: null, dropped: null },
+					incomeRule: { ids: [], stamp: "" },
+					draft: { drafts: [], stamp: "" },
+				},
+			}),
+		);
+
+		await expect(undo(me, old)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+			message: UNDO_NOT_VALID,
+		});
+		await expect(
+			fixtureDb.category.count({ where: { id: src.id } }),
+		).resolves.toBe(0);
+		await expect(
+			fixtureDb.expense.findUniqueOrThrow({ where: { id: row.id } }),
+		).resolves.toMatchObject({ categoryId: tgt.id });
 	});
 });

@@ -22,7 +22,7 @@
 -- made as retrospend_app still advances the stamp.
 --
 -- The tables are every @updatedAt model of prisma/schema.prisma except two,
--- each with a reason (src/server/services/sync/stamps-coverage.pg.test.ts builds
+-- each with a reason (src/test/migrations/stamps-trigger.pg.test.ts builds
 -- the list from the schema and the trigger catalog, and fails on a difference):
 --   asset_account: the stamp is kept on purpose. An icon swap writes the stamp
 --     it read back (accounts/icon.ts) and an undone delete writes the old stamp

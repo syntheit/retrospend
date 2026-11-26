@@ -11,7 +11,7 @@
 -- "_prisma_migrations", so that starting this release again applies the
 -- migration again (a roll forward). Nothing else reads these objects in the
 -- older image; stamps already stored stay as they are. Checked by
--- src/server/services/sync/stamps-migration.pg.test.ts.
+-- src/test/migrations/stamps-trigger.pg.test.ts.
 -- Idempotent: running it twice changes nothing more.
 
 DO $$
