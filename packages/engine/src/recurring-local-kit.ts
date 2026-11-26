@@ -24,7 +24,7 @@ export const templateOf = (seed: RecurringSeed): TemplateRow => ({
 	frequency: seed.template.frequency,
 	nextDueDate: seed.template.nextDueDate,
 	anchorDay: seed.template.anchorDay,
-	direction: "OUT",
+	direction: seed.template.direction ?? "OUT",
 	isActive: seed.template.isActive ?? true,
 	autoPay: seed.template.autoPay ?? true,
 	amountMode: seed.template.amountMode ?? "FIXED",
