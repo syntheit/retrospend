@@ -10,12 +10,13 @@
  * before this one.
  */
 import { type PaidOnSchedule, previousDueDay } from "../recurring";
-import { dayKey, parseDateOnlyIn } from "../time-zone";
+import { dayKey } from "../time-zone";
 import {
 	DATE_BEFORE_PREVIOUS_DUE,
 	DATE_IN_FUTURE,
 	RecurringInputRefusal,
 } from "./refusals";
+import { dueInstant } from "./template";
 
 export function paidOnInstant(
 	day: string,
@@ -31,7 +32,5 @@ export function paidOnInstant(
 			"date_before_previous_due",
 			DATE_BEFORE_PREVIOUS_DUE,
 		);
-	return direction === "IN"
-		? new Date(`${day}T00:00:00.000Z`)
-		: parseDateOnlyIn(day, timeZone);
+	return dueInstant(day, direction, timeZone);
 }
