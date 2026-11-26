@@ -23,8 +23,12 @@
  *   leaves the engine goes through `templateWithoutText` (templates.ts).
  */
 
+import {
+	templateCreateFieldsSchema,
+	templateEditFieldsSchema,
+} from "@retrospend/api-contract/template-fields";
 import { FIGURE_PLAN_COST } from "@retrospend/domain/envelope/figures";
-import { CURRENCY_KEY } from "@retrospend/domain/rate-booking";
+import { dec } from "@retrospend/domain/precise-decimal";
 import {
 	RECURRING_CHANGED,
 	RECURRING_NOT_FOUND,
@@ -38,7 +42,7 @@ import {
 	type TemplateEdit,
 	type TemplateInput,
 } from "@retrospend/domain/recurring-post/template";
-import { parseAmount, refusing } from "./expense-create";
+import { refusing } from "./expense-create";
 import type { WriteFn } from "./local-db";
 import { InvalidInputError } from "./port";
 import { deviceMutation } from "./preview";
@@ -56,6 +60,11 @@ const RECURRING_COST_FIGURES = DEVICE_FIGURE_IDS.filter((id) =>
 	id.startsWith("recurring.cost."),
 );
 
+/** The one template's own amount figure, which an edit of its amount or currency changes. */
+const RECURRING_AMOUNT_FIGURES = DEVICE_FIGURE_IDS.filter(
+	(id) => id === "recurring.amount",
+);
+
 export interface CreateTemplateInput extends TemplateInput {
 	/** Client-made, so the server's row can meet this one. */
 	readonly id: string;
@@ -67,23 +76,30 @@ export interface UpdateTemplateInput extends TemplateEdit {
 	readonly expectedVersion?: string | null;
 }
 
-/** The amount as the store holds it: a positive decimal. */
-function positiveAmount(amount: string): string {
-	const value = parseAmount(amount);
-	if (value.lte(0)) throw new InvalidInputError("Enter an amount");
-	return value.toFixed();
+/**
+ * The device sends v1, so it checks what v1 checks, with v1's own schemas
+ * (api-contract template-fields.ts): the amount pattern, the currency code,
+ * a real calendar day (an empty one is invalid, not absent) and the user-text
+ * rules (length, control characters, lone surrogates).
+ */
+function checkFields(
+	schema: typeof templateCreateFieldsSchema | typeof templateEditFieldsSchema,
+	input: TemplateEdit,
+) {
+	const checked = schema.safeParse({
+		name: input.name,
+		amount: input.amount,
+		currency: input.currency,
+		nextDueDate: input.nextDueDate,
+		websiteUrl: input.websiteUrl,
+		paymentSource: input.paymentSource,
+	});
+	if (!checked.success)
+		throw new InvalidInputError(checked.error.issues[0]?.message ?? "Invalid");
 }
 
-function checkFields(fields: {
-	readonly name?: string;
-	readonly amount?: string;
-	readonly currency?: string;
-}) {
-	if (fields.name !== undefined && fields.name.length === 0)
-		throw new InvalidInputError("Enter a name");
-	if (fields.currency !== undefined && !CURRENCY_KEY.test(fields.currency))
-		throw new InvalidInputError(`Unknown currency ${fields.currency}`);
-}
+/** The amount as the store holds it: v1's plain decimal text, without trailing zeros. */
+const storedAmount = (amount: string) => dec(amount).toFixed();
 
 /** The category's kind against the template's direction, and the joined reference the store keeps. */
 function categoryRefOf(
@@ -107,10 +123,10 @@ export function createTemplate(
 		refusing(() => {
 			const direction = newTemplateDirection(input);
 			if (direction === "IN") throw new InvalidInputError(INCOME_NOT_ON_DEVICE);
-			checkFields(input);
+			checkFields(templateCreateFieldsSchema, input);
 			const category = categoryRefOf(r, input.categoryId, direction);
 			const made = newTemplateRow(
-				{ ...input, amount: positiveAmount(input.amount) },
+				{ ...input, amount: storedAmount(input.amount) },
 				r.settings.require().timeZone,
 			);
 			const row: TemplateRow = {
@@ -137,7 +153,7 @@ export function updateTemplate(
 			const row = loadTemplate(r, input.id);
 			if (input.expectedVersion && input.expectedVersion !== row.version)
 				throw new RecurringRefusal("changed", RECURRING_CHANGED);
-			checkFields(input);
+			checkFields(templateEditFieldsSchema, input);
 			const category = input.categoryId
 				? categoryRefOf(r, input.categoryId, row.direction)
 				: null;
@@ -145,9 +161,7 @@ export function updateTemplate(
 				{
 					...input,
 					amount:
-						input.amount === undefined
-							? undefined
-							: positiveAmount(input.amount),
+						input.amount === undefined ? undefined : storedAmount(input.amount),
 				},
 				row.direction,
 				r.settings.require().timeZone,
@@ -190,10 +204,11 @@ export const TEMPLATE_CREATE_MUTATION = deviceMutation({
 	write: createTemplate,
 });
 
-/** recurring.update on the device: an edit moves the cost figures when amount, schedule or pause changes. */
+/** recurring.update on the device: an edit moves the cost figures and the template's own amount. */
 export const TEMPLATE_UPDATE_MUTATION = deviceMutation({
 	id: TEMPLATE_UPDATE,
-	touches: RECURRING_COST_FIGURES,
+	touches: [...RECURRING_COST_FIGURES, ...RECURRING_AMOUNT_FIGURES],
+	scope: (input: UpdateTemplateInput) => ({ recurringId: input.id }),
 	write: updateTemplate,
 });
 

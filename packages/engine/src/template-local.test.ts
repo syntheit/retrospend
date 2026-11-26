@@ -16,9 +16,18 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EnvelopeRow } from "./book-rows";
 import { at, BA, rate } from "./expense-create-vectors";
+import { fixtureRow } from "./fixtures";
 import { LocalDb } from "./local-db";
 import { seededStore } from "./local-expense-create";
-import { InvalidInputError, SETTINGS_ID, type Store } from "./port";
+import { MemoryStore } from "./memory-store";
+import {
+	InvalidInputError,
+	SETTINGS_ID,
+	type Store,
+	TABLE_NAMES,
+	type TableName,
+	type TableRows,
+} from "./port";
 import { createDevicePreviewRunner, type DeviceMutation } from "./preview";
 import { confirmRecurring } from "./recurring-local";
 import { deviceFigures } from "./registry";
@@ -28,6 +37,7 @@ import {
 	TEMPLATE_CREATE,
 	TEMPLATE_CREATE_MUTATION,
 	TEMPLATE_DELETE,
+	TEMPLATE_DELETE_MUTATION,
 	TEMPLATE_UPDATE,
 	TEMPLATE_UPDATE_MUTATION,
 	updateTemplate,
@@ -109,6 +119,28 @@ async function moveZone(store: Store, timeZone: string) {
 		if (s) tx.put("settings", { ...s, timeZone });
 	});
 }
+
+// v1's own rules (api-contract template-fields.ts): each of these is a 400 there.
+const V1_REFUSED = [
+	["an amount in scientific notation", { amount: "1e3" }],
+	["a hex amount", { amount: "0x10" }],
+	["an amount with nine decimals", { amount: "20.123456789" }],
+	["an amount with twelve digits", { amount: "123456789012" }],
+	["a zero amount", { amount: "0.00" }],
+	["a negative amount", { amount: "-5" }],
+	["a blank name", { name: "" }],
+	["a name of 192 characters", { name: "x".repeat(192) }],
+	["a name with a control character", { name: "Re\u0001nt" }],
+	["a name with a lone surrogate", { name: "Rent\ud800" }],
+	["a website of 513 characters", { websiteUrl: "x".repeat(513) }],
+	["a lower case currency", { currency: "usd" }],
+	["a one character currency", { currency: "U" }],
+	["an eleven character currency", { currency: "ABCDEFGHIJK" }],
+	["February 30", { nextDueDate: "2026-02-30" }],
+	["month 13", { nextDueDate: "2026-13-45" }],
+	["text for a day", { nextDueDate: "next friday" }],
+	["an empty day", { nextDueDate: "" }],
+] as const;
 
 describe("create", () => {
 	it("a client id, the start of the day in Buenos Aires and the domain's defaults", async () => {
@@ -241,16 +273,28 @@ describe("create", () => {
 		expect(store.list("recurringTemplates")).toHaveLength(0);
 	});
 
-	it("an amount that is not above zero, a blank name and a bad currency are refused", async () => {
-		const { db } = await open();
-		for (const bad of [
-			{ amount: "0" },
-			{ amount: "-5" },
-			{ amount: "abc" },
-			{ name: "" },
-			{ currency: "US" },
-		])
+	it.each(V1_REFUSED)(
+		"refuses %s, as v1 does, and stores nothing",
+		async (_, bad) => {
+			const { store, db } = await open();
 			await expect(create(db, bad)).rejects.toBeInstanceOf(InvalidInputError);
+			expect(store.list("recurringTemplates")).toHaveLength(0);
+		},
+	);
+
+	it("accepts what v1 accepts at its limits", async () => {
+		const { db } = await open();
+		const { value } = await create(db, {
+			amount: "99999999999.12345678",
+			name: "x".repeat(191),
+			currency: "US",
+			websiteUrl: "x".repeat(512),
+			nextDueDate: "2028-02-29",
+		});
+		expect(value.amount).toBe("99999999999.12345678");
+		// Feb 29 2028 00:00 at UTC-3.
+		expect(iso(value)).toBe("2028-02-29T03:00:00.000Z");
+		expect(value.anchorDay).toBe(29);
 	});
 
 	it("keeps its text in the store; the row that may leave has none", async () => {
@@ -439,14 +483,21 @@ describe("edit", () => {
 		);
 	});
 
-	it("refuses a bad amount, a blank name and a bad currency, keeping the row", async () => {
-		const { store, db } = await withRent();
-		for (const bad of [{ amount: "0" }, { name: "" }, { currency: "x" }])
+	it.each(V1_REFUSED)(
+		"refuses %s on an edit, as v1 does, keeping the row",
+		async (_, bad) => {
+			const { store, db } = await withRent();
 			await expect(edit(db, { id: "t1", ...bad })).rejects.toBeInstanceOf(
 				InvalidInputError,
 			);
-		expect(stored(store)).toMatchObject({ name: "Rent", version: "v1" });
-	});
+			expect(stored(store)).toMatchObject({
+				name: "Rent",
+				amount: "20",
+				version: "v1",
+			});
+			expect(iso(stored(store))).toBe("2026-12-01T03:00:00.000Z");
+		},
+	);
 
 	it("undo puts the template back as it was", async () => {
 		const { store, db } = await withRent();
@@ -571,9 +622,178 @@ describe("preview", () => {
 		]);
 	});
 
-	it("the update mutation declares the cost figures an edit can move", () => {
-		expect(TEMPLATE_UPDATE_MUTATION.touches).toEqual(
-			TEMPLATE_CREATE_MUTATION.touches,
+	it("an amount edit moves the template's own amount figure and the cost, and writes nothing", async () => {
+		const { store, db, preview } = await runner();
+		await create(db);
+		const out = await preview.preview(TEMPLATE_UPDATE_MUTATION, {
+			id: "t1",
+			amount: "25",
+		});
+		expect(stored(store).amount).toBe("20");
+		// USD 20 -> 25 at blue 1545: ARS 30,900.00 -> 38,625.00 a month.
+		expect(
+			out.changes.map((c) => [c.id, c.before?.minor, c.after?.minor]),
+		).toEqual([
+			["recurring.cost.out.month", 3_090_000, 3_862_500],
+			["recurring.cost.out.quarter", 9_270_000, 11_587_500],
+			["recurring.cost.out.year", 37_080_000, 46_350_000],
+			// The template's own amount, in its own currency: USD 20.00 -> 25.00.
+			["recurring.amount", 2_000, 2_500],
+		]);
+	});
+
+	it("pausing takes the template out of the monthly cost", async () => {
+		const { db, preview } = await runner();
+		await create(db);
+		const out = await preview.preview(TEMPLATE_UPDATE_MUTATION, {
+			id: "t1",
+			isActive: false,
+		});
+		expect(
+			out.changes.find((c) => c.id === "recurring.cost.out.month"),
+		).toMatchObject({ before: { minor: 3_090_000 }, after: { minor: 0 } });
+	});
+});
+
+describe("delete of a template a BILL envelope follows", () => {
+	const NOW = at("2026-11-14T15:00:00Z");
+	const KEY = JSON.stringify([
+		"ARS",
+		BA,
+		"2026-11-05T03:00:00.000Z",
+		[[202611, 5, "blue"]],
+	]);
+
+	/** ARS home, one book from Nov 5, a BILL envelope following a USD 20 template; blue 1,500. */
+	function billStore() {
+		const rows = Object.fromEntries(
+			TABLE_NAMES.map((t) => [t, [] as unknown[]]),
+		) as unknown as { [T in TableName]: TableRows[T][] };
+		const filled: typeof rows = {
+			...rows,
+			settings: [
+				{
+					id: SETTINGS_ID,
+					homeCurrency: "ARS",
+					timeZone: BA,
+					startDay: 1,
+					hiddenProjectIds: [],
+				},
+			],
+			rates: [
+				{
+					id: "r1",
+					currency: "ARS",
+					type: "blue",
+					rate: "1500",
+					date: at("2026-10-01T00:00:00Z"),
+				},
+			],
+			budgetBooks: [
+				{
+					...fixtureRow("budgetBooks", "book"),
+					style: "SAVE_FIRST",
+					timeZone: BA,
+					startDate: at("2026-11-05T03:00:00Z"),
+					startMonth: 202611,
+					defaultEnvelopeId: "spending",
+					startingBalanceExpenseId: null,
+				},
+			],
+			bookPeriods: [
+				{
+					id: "p1",
+					bookId: "book",
+					fromMonth: 202611,
+					startDay: 5,
+					rateType: "blue",
+				},
+			],
+			envelopeGroups: [
+				{
+					...fixtureRow("envelopeGroups", "bills"),
+					bookId: "book",
+					targetKind: "NONE",
+					targetValue: null,
+				},
+			],
+			envelopes: [
+				{
+					...fixtureRow("envelopes", "rent"),
+					bookId: "book",
+					groupId: "bills",
+					kind: "BILL",
+					targetAmount: null,
+					targetMode: "SET_ASIDE",
+					targetTemplateId: "t1",
+				},
+				{
+					...fixtureRow("envelopes", "spending"),
+					bookId: "book",
+					groupId: "bills",
+					kind: "MONTHLY",
+					targetAmount: null,
+					sortOrder: 1,
+				},
+			],
+			recurringTemplates: [
+				{
+					...fixtureRow("recurringTemplates", "t1"),
+					amount: "20",
+					currency: "USD",
+					nextDueDate: at("2026-12-01T03:00:00Z"),
+				},
+			],
+			budgetSnapshot: [
+				{
+					...fixtureRow("budgetSnapshot", "budget"),
+					bookId: "book",
+					valuationKey: KEY,
+				},
+			],
+		};
+		const store = new MemoryStore({ rows: filled });
+		const preview = createDevicePreviewRunner({
+			store,
+			figures: deviceFigures({ clock: () => NOW }),
+			actor: { userId: "device" },
+		});
+		return { store, db: new LocalDb(store), preview };
+	}
+
+	it("previews the plan cost falling from ARS 30,000.00 to nothing", async () => {
+		const { store, preview } = billStore();
+		const out = await preview.preview(TEMPLATE_DELETE_MUTATION, { id: "t1" });
+		// 20 USD x 1500 blue = 30,000.00 a month, in the cost and in the plan.
+		expect(
+			out.changes.map((c) => [c.id, c.before?.minor, c.after?.minor]),
+		).toEqual([
+			["recurring.cost.out.month", 3_000_000, 0],
+			["recurring.cost.out.quarter", 9_000_000, 0],
+			["recurring.cost.out.year", 36_000_000, 0],
+			["budget.planCost", 3_000_000, 0],
+		]);
+		expect(store.list("recurringTemplates")).toHaveLength(1);
+	});
+
+	it("undo of the delete puts back the template and the envelope's target", async () => {
+		const { store, db } = billStore();
+		const before = {
+			templates: store.list("recurringTemplates"),
+			envelopes: store.list("envelopes"),
+		};
+		const { undo } = await db.write(
+			TEMPLATE_DELETE,
+			deleteTemplate({ id: "t1" }),
 		);
+		expect(store.list("recurringTemplates")).toHaveLength(0);
+		expect(store.list("envelopes").find((e) => e.id === "rent")).toMatchObject({
+			targetTemplateId: null,
+		});
+		await db.undo(undo);
+		expect({
+			templates: store.list("recurringTemplates"),
+			envelopes: store.list("envelopes"),
+		}).toEqual(before);
 	});
 });
