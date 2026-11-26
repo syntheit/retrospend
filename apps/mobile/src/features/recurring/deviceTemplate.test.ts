@@ -1,6 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
+import { forgetUndoTokens, rememberUndo } from "@/features/entry/send";
 import {
 	EditStillSending,
 	templateHasWrites,
@@ -14,6 +15,8 @@ import {
 jest.mock("@/data/ids", () => ({
 	newClientId: () => "00000000-0000-4000-8000-000000000001",
 }));
+
+beforeEach(() => forgetUndoTokens());
 
 const STAMP = "2026-10-20T10:00:00.000Z";
 const AFTER = "2026-11-02T10:00:05.000Z";
@@ -42,7 +45,7 @@ function setup() {
 			back: { paused: false },
 			title: "Netflix",
 		});
-	const enqueue = () =>
+	const enqueue = (booked = false) =>
 		outbox.enqueue({
 			clientId: "u1",
 			entity: "recurring",
@@ -50,6 +53,7 @@ function setup() {
 			targetId: "t1",
 			baseVersion: STAMP,
 			payload: { paused: true, title: "Netflix" },
+			...(booked ? { device: { bookedAt: 1, changes: [], changed: [] } } : {}),
 		});
 	return { outbox, request, book, undo, enqueue };
 }
@@ -86,24 +90,51 @@ describe("undo of a template edit", () => {
 		expect(book).not.toHaveBeenCalled();
 	});
 
-	it("writes the old values back once the server took the edit, even when the sheet was told it was queued", async () => {
-		const { outbox, book, undo, enqueue } = setup();
-		await enqueue();
-		await outbox.markSending("u1");
-		// The send landed after the sheet gave up waiting.
-		await outbox.markSent("u1", { version: AFTER, pull: 1 });
-		await undo();
-		expect(book).toHaveBeenCalledWith({
+	const writtenBack = async (
+		prove: (s: ReturnType<typeof setup>) => Promise<void>,
+	) => {
+		const t = setup();
+		await prove(t);
+		await t.undo();
+		expect(t.book).toHaveBeenCalledWith({
 			kind: "templateUpdate",
 			body: { id: "t1", paused: false },
 		});
-		const [back] = await outbox.all();
+		const [back] = await t.outbox.all();
 		expect(back).toMatchObject({
 			kind: "update",
 			targetId: "t1",
 			baseVersion: AFTER,
 			payload: { paused: false, title: "Netflix" },
 		});
+	};
+
+	it("writes the old values back once the server took the edit (its ack is in the acked list), even when the sheet was told it was queued", () =>
+		writtenBack(async ({ outbox, enqueue }) => {
+			await enqueue(true);
+			await outbox.markSending("u1");
+			// The send landed after the sheet gave up waiting.
+			await outbox.markSent("u1", { version: AFTER, pull: 1 });
+		}));
+
+	it("writes them back on the sender's remembered ack too, for an edit the device did not book", () =>
+		writtenBack(async ({ outbox, enqueue }) => {
+			await enqueue();
+			await outbox.markSending("u1");
+			await outbox.markSent("u1", { version: AFTER, pull: 1 });
+			rememberUndo("u1", { entity: "recurring", token: "", kind: "update" });
+		}));
+
+	it("sends nothing for an edit that was parked and then discarded: it never reached the server, and another device's change stands", async () => {
+		const { outbox, request, book, undo, enqueue } = setup();
+		await enqueue(true);
+		await outbox.markSending("u1");
+		await outbox.markConflict("u1", "recurring_changed");
+		await outbox.discard("u1");
+		await undo();
+		expect(book).not.toHaveBeenCalled();
+		expect(request).not.toHaveBeenCalled();
+		expect(await outbox.all()).toEqual([]);
 	});
 });
 

@@ -11,6 +11,7 @@ import {
 	flushThenOutcome,
 	undoSaved,
 } from "@/features/entry/queue";
+import { undoFor } from "@/features/entry/send";
 import { type SettleDevice, withTimeout } from "./deviceSettle";
 
 // A person's template create, edit and pause under the dev flag: the device
@@ -203,8 +204,11 @@ export class EditStillSending extends Error {}
  * sheet was told, which a slow send makes stale):
  * - never sent, or parked (the server refused it): taken out of the outbox;
  * - sent with no answer yet: refused (`EditStillSending`), and nothing is sent;
- * - left the outbox, so the server took it: the old values written over the
- *   template as it is now (the server has no undo for an edit).
+ * - left the outbox with proof the server took it (its ack, in the acked list
+ *   or remembered by the sender): the old values written over the template as
+ *   it is now (the server has no undo for an edit);
+ * - left the outbox with no proof (Discard in Sync issues removes a parked
+ *   one): nothing was applied, so nothing is sent.
  */
 export async function undoTemplateEdit(input: {
 	device: SettleDevice;
@@ -217,13 +221,18 @@ export async function undoTemplateEdit(input: {
 	const { outbox, writes } = device;
 	const found = await exclusive(outbox, async () => {
 		const entry = (await outbox.all()).find((e) => e.clientId === clientId);
-		if (!entry) return "left";
+		if (!entry) {
+			const acked = (await outbox.snapshot()).acked;
+			return acked.some((e) => e.clientId === clientId) || undoFor(clientId)
+				? "left"
+				: "none";
+		}
 		if (entry.attempts > 0 && entry.state !== "conflict") return "unknown";
 		await outbox.discard(clientId);
 		await writes.refresh().catch(() => undefined);
 		return "taken";
 	});
-	if (found === "taken") return;
+	if (found === "taken" || found === "none") return;
 	if (found === "unknown") throw new EditStillSending();
 	const out = await editTemplateOnDevice({
 		device,

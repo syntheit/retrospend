@@ -27,6 +27,7 @@ const ID = "0b1f6d6e-3c1a-4f1e-9a57-5c1f4d3a2b10";
 const EDIT = "9d2c7a1e-8b34-4c55-a1e0-2f6b7c8d9e01";
 const STAMP = "2026-11-18T10:00:00.000Z";
 const MADE = "2026-12-01T03:05:00.000Z";
+const LATER = "2026-12-05T09:00:00.000Z";
 const AFTER_EDIT = "2026-12-01T03:06:00.000Z";
 
 const problem = (code: ProblemCode) =>
@@ -116,13 +117,12 @@ describe("sending a template create", () => {
 		);
 	});
 
-	it("a taken id that is our own template counts as sent, with the version the read names", async () => {
+	it("a taken id that is our own template counts as sent, with no version: the read names the template as it is now", async () => {
 		const { api, recurring } = templateApi();
 		recurring.create.mockRejectedValueOnce(problem("id_taken"));
-		recurring.get.mockResolvedValueOnce({ id: ID, updatedAt: MADE });
+		recurring.get.mockResolvedValueOnce({ id: ID, updatedAt: LATER });
 		expect(await createEntrySender(apiTransport(api))(make())).toEqual({
 			status: "sent",
-			version: MADE,
 		});
 		expect(recurring.get).toHaveBeenCalledWith({ id: ID }, expect.anything());
 	});
@@ -148,10 +148,11 @@ describe("sending a template create", () => {
 		});
 	});
 
-	it("an edit chained after a create answered by the read takes that version", async () => {
+	it("an edit chained after a create answered by the read parks as chain_lost and sends nothing: a later web change is never overwritten", async () => {
 		const { api, recurring } = templateApi();
 		recurring.create.mockRejectedValueOnce(problem("id_taken"));
-		recurring.get.mockResolvedValueOnce({ id: ID, updatedAt: MADE });
+		// Another device changed the template in the gap: the read is newer than the create.
+		recurring.get.mockResolvedValueOnce({ id: ID, updatedAt: LATER });
 		const outbox = createOutbox(createMemoryStore(), "a");
 		await outbox.enqueue({
 			clientId: ID,
@@ -169,15 +170,11 @@ describe("sending a template create", () => {
 			baseVersion: { after: ID },
 			payload: { paused: true },
 		});
-		const report = await flushOutbox(
-			outbox,
-			createEntrySender(apiTransport(api)),
-		);
-		expect(report).toMatchObject({ sent: 2, conflicts: 0 });
-		expect(recurring.update).toHaveBeenCalledWith(
-			expect.objectContaining({ expectedUpdatedAt: MADE }),
-			expect.anything(),
-		);
+		await flushOutbox(outbox, createEntrySender(apiTransport(api)));
+		expect(recurring.update).not.toHaveBeenCalled();
+		expect(await outbox.all()).toMatchObject([
+			{ clientId: EDIT, state: "conflict", lastError: "chain_lost" },
+		]);
 	});
 
 	it("a refused body parks with the server's code", async () => {

@@ -547,10 +547,12 @@ async function create(
  * A new template under the entry's client id, so the server's row and the
  * phone's are one. A taken id is read back: the key replays a create that
  * landed only for a day, so after that (or after the server lost the answer)
- * the id is held by our own row, and the answer is its version, which the
- * entries chained after it take. Another answer to the read (a 404: the id
- * is held by nothing the person can read) leaves the taken id as it was, and
- * the entry parks.
+ * the id is held by our own row and the create counts as sent. The read
+ * names the template as it is now, not as the create made it, so no version
+ * is returned: an entry chained after it parks as chain_lost (shown, never
+ * stamped with a later version that would overwrite another device's change).
+ * Another answer to the read (a 404: the id is held by nothing the person can
+ * read) leaves the taken id as it was, and the entry parks.
  */
 async function createTemplate(
 	api: RetrospendClient,
@@ -566,13 +568,13 @@ async function createTemplate(
 		return { undo: NO_TOKEN, version: made.updatedAt };
 	} catch (error) {
 		if (!idTaken(error)) throw error;
-		const held = await api.recurring
+		await api.recurring
 			.get({ id: entry.clientId }, { signal: options.signal })
 			.catch((read: unknown) => {
 				if ((read as { status?: number } | null)?.status === 404) throw error;
 				throw read;
 			});
-		return { undo: NO_TOKEN, version: held.updatedAt };
+		return { undo: NO_TOKEN };
 	}
 }
 
