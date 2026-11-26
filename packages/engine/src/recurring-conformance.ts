@@ -34,11 +34,7 @@ import {
 	recurringVectors,
 } from "./recurring-vectors";
 import type { CreateTemplateInput } from "./template-local";
-import {
-	type ComparedTemplate,
-	differingTemplateFields,
-	sameColumnValue,
-} from "./write-parity";
+import { type ComparedTemplate, sameColumnValue } from "./write-parity";
 
 /** A stored expense a recurring write booked: the booked fields and the link to its template. */
 export interface PostedRow extends BookedExpense {
@@ -186,9 +182,21 @@ async function runVector(
 	}
 }
 
-const asTemplate = (e: ExpectedTemplate): ComparedTemplate => ({
-	...e,
-	nextDueDate: new Date(e.nextDueDate),
+/**
+ * The stored template as the vectors write it. The columns are listed here by
+ * hand, not read from the compare's own list, so a column dropped from that
+ * list still fails a case.
+ */
+const shown = (t: ComparedTemplate): ExpectedTemplate => ({
+	nextDueDate: t.nextDueDate.toISOString(),
+	anchorDay: t.anchorDay,
+	isActive: t.isActive,
+	autoPay: t.autoPay,
+	amount: dec(t.amount).toFixed(),
+	currency: t.currency,
+	frequency: t.frequency,
+	categoryId: t.categoryId ?? null,
+	amountMode: t.amountMode,
 });
 
 async function runTemplateVector(
@@ -199,11 +207,7 @@ async function runTemplateVector(
 	await a.reset(v.seed, v.tz);
 	for (const op of v.ops) await a.template(op);
 	for (const [id, want] of Object.entries(v.expect))
-		expectEqual(
-			differingTemplateFields(await a.read(id), asTemplate(want)),
-			[],
-			`template ${id}`,
-		);
+		expectEqual(shown(await a.read(id)), want, `template ${id}`);
 }
 
 const base = recurringVectors[0] as RecurringVector;
