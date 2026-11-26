@@ -360,8 +360,17 @@ export function vaultHarness(): Harness {
 		name: "vault",
 		// The vault path never reads the API client.
 		api: {} as RetrospendClient,
-		get transport() {
-			return sender;
+		get transport(): Transport {
+			return {
+				...sender,
+				// The fake vault writes expenses only; a recurring entry is refused
+				// until the sealed recurring sender exists.
+				dispatch: (entry, call) => {
+					if (entry.kind === "confirm" || entry.kind === "skip")
+						throw new Error("The fake vault has no recurring writes");
+					return sender.dispatch({ ...entry, kind: entry.kind }, call);
+				},
+			};
 		},
 		rebuildTransport: () => {
 			sender = build();

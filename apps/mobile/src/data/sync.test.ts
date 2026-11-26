@@ -1,7 +1,7 @@
 import { createOutbox } from "./outbox";
-import { create, edit } from "./outboxFixtures";
+import { confirm, confirmBooking, create, edit } from "./outboxFixtures";
 import { createMemoryStore } from "./store";
-import { flushOutbox, type Sender } from "./sync";
+import { flushOutbox, type Sender, templateAck } from "./sync";
 
 const T0 = "2026-10-15T15:00:00.000Z";
 const T1 = "2026-10-15T15:00:01.000Z";
@@ -28,7 +28,13 @@ describe("flush with chains", () => {
 			{ id: "u1", base: T0 },
 			{ id: "u2", base: T1 },
 		]);
-		expect(report).toEqual({ sent: 2, conflicts: 0, stopped: false });
+		expect(report).toEqual({
+			sent: 2,
+			conflicts: 0,
+			retired: 0,
+			later: 0,
+			stopped: false,
+		});
 	});
 
 	it("second edit carries the first ack's updatedAt after the first is retired", async () => {
@@ -147,5 +153,177 @@ describe("flush with chains", () => {
 			pullsBegun: () => 4,
 		});
 		expect((await outbox.acked())[0]?.ack).toEqual({ version: T1, pull: 4 });
+	});
+});
+
+const ids = async (outbox: ReturnType<typeof createOutbox>) =>
+	(await outbox.all()).map((e) => [e.clientId, e.state, e.lastError]);
+
+/** Ends a run that keeps sending, so a broken rule fails a test instead of hanging it. */
+const capped =
+	(send: Sender, limit = 5): Sender =>
+	async (e) => {
+		if (--limit < 0) return { status: "retry", reason: "stop" };
+		return send(e);
+	};
+
+describe("recurring confirm and skip entries", () => {
+	it("second poster confirm carries the first ack's templateUpdatedAt", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(
+			confirm("c1", "t1", T0, {
+				origin: "poster",
+				device: confirmBooking("c1", "t1"),
+			}),
+		);
+		await outbox.enqueue(
+			confirm("c2", "t1", { after: "c1" }, { origin: "poster" }),
+		);
+		const sent: unknown[] = [];
+		await flushOutbox(outbox, async (e) => {
+			sent.push(e.baseVersion);
+			return templateAck({
+				templateUpdatedAt: e.clientId === "c1" ? T1 : T2,
+			});
+		});
+		expect(sent).toEqual([T0, T1]);
+	});
+
+	it("a skip chains behind a confirm of the same template", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("c1", "t1", T0));
+		await outbox.enqueue({
+			...confirm("s1", "t1", { after: "c1" }),
+			kind: "skip",
+		});
+		const sent: unknown[] = [];
+		await flushOutbox(outbox, async (e) => {
+			sent.push([e.kind, e.baseVersion]);
+			return templateAck({ templateUpdatedAt: T1 });
+		});
+		expect(sent).toEqual([
+			["confirm", T0],
+			["skip", T1],
+		]);
+	});
+
+	it("retired poster entry drops its run's later entries for the template", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		const poster = { origin: "poster" } as const;
+		await outbox.enqueue(confirm("c1", "t1", T0, poster));
+		await outbox.enqueue(confirm("c2", "t1", { after: "c1" }, poster));
+		await outbox.enqueue(confirm("c3", "t1", { after: "c2" }, poster));
+		await outbox.enqueue(confirm("d1", "t2", T0, poster));
+		const sent: string[] = [];
+		const report = await flushOutbox(
+			outbox,
+			capped(async (e) => {
+				sent.push(e.clientId);
+				return e.clientId === "c1"
+					? { status: "retired" }
+					: { status: "sent", version: T1 };
+			}),
+		);
+		expect(sent).toEqual(["c1", "d1"]);
+		expect(report).toMatchObject({ retired: 1, sent: 1, conflicts: 0 });
+		expect(await outbox.all()).toEqual([]);
+		// No ack, and no Sync issue.
+		expect(await outbox.acked()).toEqual([]);
+	});
+
+	it("a retired poster entry hands a person's later entry its own base", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("c1", "t1", T0, { origin: "poster" }));
+		await outbox.enqueue(
+			confirm("c2", "t1", { after: "c1" }, { origin: "poster" }),
+		);
+		await outbox.enqueue(confirm("p1", "t1", { after: "c2" }));
+		const sent: unknown[] = [];
+		await flushOutbox(
+			outbox,
+			capped(async (e) => {
+				sent.push([e.clientId, e.baseVersion]);
+				return e.clientId === "c1"
+					? { status: "retired" }
+					: { status: "sent", version: T1 };
+			}),
+		);
+		expect(sent).toEqual([
+			["c1", T0],
+			["p1", T0],
+		]);
+	});
+
+	it("a retired person's entry leaves the later ones, re-pointed to its base", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("p1", "t1", T0));
+		await outbox.enqueue(
+			confirm("c1", "t1", { after: "p1" }, { origin: "poster" }),
+		);
+		const sent: unknown[] = [];
+		await flushOutbox(
+			outbox,
+			capped(async (e) => {
+				sent.push([e.clientId, e.baseVersion]);
+				return e.clientId === "p1"
+					? { status: "retired" }
+					: { status: "sent", version: T1 };
+			}),
+		);
+		expect(sent).toEqual([
+			["p1", T0],
+			["c1", T0],
+		]);
+	});
+
+	it("recurring_not_due stays pending and the next template's entry is sent", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("c1", "t1", T0, { origin: "poster" }));
+		await outbox.enqueue(confirm("d1", "t2", T0, { origin: "poster" }));
+		const sent: string[] = [];
+		const report = await flushOutbox(outbox, async (e) => {
+			sent.push(e.clientId);
+			// A run that sends it again must end, so a broken hold fails instead of hanging.
+			if (sent.length > 3) return { status: "retry", reason: "stop" };
+			return e.clientId === "c1"
+				? { status: "later" }
+				: { status: "sent", version: T1 };
+		});
+		expect(sent).toEqual(["c1", "d1"]);
+		expect(report).toMatchObject({ later: 1, sent: 1, stopped: false });
+		const [left] = await outbox.all();
+		// Waiting, not parked, and nothing held against it.
+		expect(left).toMatchObject({
+			clientId: "c1",
+			state: "pending",
+			lastError: null,
+			serverErrors: 0,
+			networkFailures: 0,
+		});
+	});
+
+	it("a later entry is not sent twice in one run, nor are the ones behind it", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(confirm("c1", "t1", T0, { origin: "poster" }));
+		await outbox.enqueue(
+			confirm("c2", "t1", { after: "c1" }, { origin: "poster" }),
+		);
+		const sent: string[] = [];
+		const send: Sender = async (e) => {
+			sent.push(e.clientId);
+			// A run that sends it again must end, so a broken hold fails instead of hanging.
+			return sent.length > 3
+				? { status: "retry", reason: "stop" }
+				: { status: "later" };
+		};
+		await flushOutbox(outbox, send);
+		expect(sent).toEqual(["c1"]);
+		// The hold is for the run only: the next flush tries it again.
+		await flushOutbox(outbox, send);
+		expect(sent).toEqual(["c1", "c1"]);
+		expect(await ids(outbox)).toEqual([
+			["c1", "pending", null],
+			["c2", "pending", null],
+		]);
 	});
 });

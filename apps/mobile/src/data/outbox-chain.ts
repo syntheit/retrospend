@@ -1,6 +1,12 @@
 import type { PendingChange } from "@retrospend/engine/device";
 import { decodeRow, encodeRow } from "./engine-db/serialize";
-import type { BaseVersion, DeviceBooking, OutboxEntry } from "./outbox";
+import type {
+	BaseVersion,
+	DeviceBooking,
+	NewOutboxEntry,
+	OutboxEntry,
+	OutboxOrigin,
+} from "./outbox";
 
 // The rules that keep a chain of writes to one row in order: who waits on
 // whom, what a stamp is written into, and how an entry is stored. Pure
@@ -33,13 +39,21 @@ export const replacementOf = (entry: OutboxEntry): string | null =>
 		? entry.lastError.slice(REPLACED.length)
 		: null;
 
-function bare<R extends object | null>(
-	table: PendingChange["table"],
-	row: R,
-): R {
+/**
+ * The text columns of `table`. A table that has no list throws: a row of a
+ * table nobody declared text for is never kept (fail closed), whatever its
+ * type said at compile time (an entry can come from a script or an old build).
+ */
+function textColumnsOf(table: string): readonly string[] {
+	if (!Object.hasOwn(DEVICE_TEXT_COLUMNS, table))
+		throw new Error(`Outbox: unknown table "${table}" has no text columns`);
+	return DEVICE_TEXT_COLUMNS[table as PendingChange["table"]];
+}
+
+function bare<R extends object | null>(table: string, row: R): R {
 	if (row === null) return row;
 	const out: Record<string, unknown> = { ...row };
-	for (const column of DEVICE_TEXT_COLUMNS[table]) delete out[column];
+	for (const column of textColumnsOf(table)) delete out[column];
 	return out as R;
 }
 
@@ -62,6 +76,21 @@ export function withoutDeviceText(device: DeviceBooking): DeviceBooking {
 						},
 		),
 	};
+}
+
+/** Who made the entry. Entries written before `origin` existed were a person's. */
+export const originOf = (entry: Pick<OutboxEntry, "origin">): OutboxOrigin =>
+	entry.origin ?? "user";
+
+/**
+ * A poster entry always carries its template's stamp: a transport cannot say
+ * the post was automatic, so the stamp is the only guard against posting after
+ * the template was changed elsewhere (revision 3, item 2). Refused in the
+ * shape of the entry, not in a comment.
+ */
+export function assertStamped(entry: NewOutboxEntry): void {
+	if (entry.origin === "poster" && entry.baseVersion === null)
+		throw new Error("A poster entry needs the template's version or a chain");
 }
 
 /** Whether `entry` waits for `clientId` to be acked and wrote its version. */
@@ -89,21 +118,40 @@ export const isUnresolved = (base: BaseVersion): base is { after: string } =>
 	typeof base === "object" && base !== null;
 
 /**
+ * The table of the row an entity's writes are about: the row whose version an
+ * ack names (an expense's `updatedAt`, a confirm's `templateUpdatedAt`). An
+ * entity not listed names no row, so no booked row is stamped for it.
+ */
+const ENTITY_TABLE: Readonly<Record<string, PendingChange["table"]>> = {
+	expenses: "expenses",
+	recurring: "recurringTemplates",
+};
+
+const rowKey = (change: { table: string; id: string }) =>
+	`${change.table}:${change.id}`;
+
+/**
  * What an entry takes when the entry before it is acked at `version`: its
- * base, and the version of every row of its `before` that the acked one
- * wrote (a device-booked row has none until its ack, and the overlay finds
- * the base of a stacked entry by it).
+ * base, and the version of its `before` row that the acked one wrote (a
+ * device-booked row has none until its ack, and the overlay finds the base of
+ * a stacked entry by it). Rows are keyed by table and id, and only the row the
+ * ack names is stamped: a confirm also books an expense, whose own version the
+ * answer does not carry, so it never takes the template's.
  */
 export function stampedBy(
 	dependent: OutboxEntry,
 	acked: OutboxEntry,
 	version: string,
 ): Partial<OutboxEntry> {
-	const written = new Set(acked.device?.changes.map((c) => c.id));
+	const table = Object.hasOwn(ENTITY_TABLE, acked.entity)
+		? ENTITY_TABLE[acked.entity]
+		: undefined;
+	const named = table && rowKey({ table, id: acked.targetId });
+	const wrote = acked.device?.changes.some((c) => rowKey(c) === named);
 	const device = dependent.device && {
 		...dependent.device,
 		changes: dependent.device.changes.map((c): PendingChange => {
-			if (!c.before || !written.has(c.id)) return c;
+			if (!wrote || !c.before || rowKey(c) !== named) return c;
 			return c.table === "expenses"
 				? { ...c, before: { ...c.before, version } }
 				: { ...c, before: { ...c.before, version } };

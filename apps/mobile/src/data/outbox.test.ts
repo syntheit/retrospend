@@ -7,10 +7,13 @@ import { DEVICE_TEXT_COLUMNS } from "./outbox-chain";
 import {
 	bookedRow,
 	booking,
+	confirm,
+	confirmBooking,
 	create,
 	edit,
 	SENTINEL,
 	TEMPLATE_SENTINEL,
+	templateEdit,
 	templateRow,
 } from "./outboxFixtures";
 import { createMemoryStore } from "./store";
@@ -110,7 +113,7 @@ describe("device field", () => {
 			after: Record<string, unknown>,
 		) => booking("t1", before, after, {}, "recurringTemplates");
 		await outbox.enqueue(
-			edit(
+			templateEdit(
 				"u1",
 				"t1",
 				"v0",
@@ -118,7 +121,7 @@ describe("device field", () => {
 			),
 		);
 		await outbox.enqueue(
-			edit(
+			templateEdit(
 				"u2",
 				"t1",
 				{ after: "u1" },
@@ -504,5 +507,146 @@ describe("chains", () => {
 			["u3", "pending", null],
 			["u4", "conflict", "expense_changed"],
 		]);
+	});
+});
+
+describe("recurring entries", () => {
+	const TEMPLATE_TEXTS = [
+		TEMPLATE_SENTINEL.name,
+		TEMPLATE_SENTINEL.websiteUrl,
+		TEMPLATE_SENTINEL.paymentSource,
+		TEMPLATE_SENTINEL.category.name,
+	];
+
+	it("a confirm holds no text of the expense or of the template, each table by its own list", async () => {
+		const store = createMemoryStore();
+		await createOutbox(store, "a").enqueue(
+			confirm("c1", "t1", T1, {
+				device: confirmBooking("c1", "t1", { withText: true }),
+			}),
+		);
+		for (const key of await store.keys("")) {
+			const raw = (await store.get(key)) ?? "";
+			for (const text of [...Object.values(SENTINEL), ...TEMPLATE_TEXTS])
+				expect(raw).not.toContain(text);
+		}
+		const [expense, template] =
+			(await createOutbox(store, "a").all())[0]?.device?.changes ?? [];
+		expect(expense?.after).toMatchObject({ id: "c1", amount: "100.00" });
+		expect(template?.after).toMatchObject({ id: "t1", autoPay: true });
+	});
+
+	it("an unknown table throws and keeps nothing", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		const bogus = {
+			bookedAt: 1,
+			changed: [],
+			changes: [{ table: "accounts", id: "a1", before: null, after: {} }],
+		};
+		await expect(
+			outbox.enqueue(confirm("c1", "t1", T1, { device: bogus as never })),
+		).rejects.toThrow(/unknown table "accounts"/);
+		expect(await store.keys("")).toEqual([]);
+	});
+
+	it("a table named like an object property is still unknown", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		const bogus = {
+			bookedAt: 1,
+			changed: [],
+			changes: [{ table: "toString", id: "a1", before: null, after: {} }],
+		};
+		await expect(
+			outbox.enqueue(confirm("c1", "t1", T1, { device: bogus as never })),
+		).rejects.toThrow(/unknown table "toString"/);
+	});
+
+	it("keeps its origin across a restart, and an entry without one is a person's", async () => {
+		const store = createMemoryStore();
+		await createOutbox(store, "a").enqueue(
+			confirm("c1", "t1", T1, { origin: "poster" }),
+		);
+		await createOutbox(store, "a").enqueue(confirm("c2", "t2", T1));
+		const [first, second] = await createOutbox(store, "a").all();
+		expect(first?.origin).toBe("poster");
+		expect(second?.origin).toBeUndefined();
+	});
+
+	it("refuses a poster entry with no stamp, and keeps nothing", async () => {
+		const store = createMemoryStore();
+		const outbox = createOutbox(store, "a");
+		await expect(
+			outbox.enqueue(confirm("c1", "t1", null, { origin: "poster" })),
+		).rejects.toThrow(/needs the template's version/);
+		expect(await store.keys("")).toEqual([]);
+		await outbox.enqueue(confirm("c2", "t1", null));
+		await outbox.enqueue(
+			confirm("c3", "t1", { after: "c2" }, { origin: "poster" }),
+		);
+		expect((await outbox.all()).map((e) => e.clientId)).toEqual(["c2", "c3"]);
+	});
+
+	it("stamps the template row of a chained confirm and leaves the expense the first one booked alone", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(
+			confirm("c1", "t1", T1, { device: confirmBooking("c1", "t1") }),
+		);
+		const next = confirmBooking("c2", "t1");
+		// The second entry also names the first one's expense as a `before` row.
+		next.changes = [
+			{
+				table: "expenses",
+				id: "c1",
+				before: bookedRow("c1") as never,
+				after: bookedRow("c1", { amount: "5.00" }) as never,
+			},
+			...next.changes,
+		];
+		await outbox.enqueue(
+			confirm("c2", "t1", { after: "c1" }, { device: next }),
+		);
+		await outbox.markSent("c1", { version: T2, pull: 1 });
+		const second = (await outbox.all())[0];
+		expect(second?.baseVersion).toBe(T2);
+		const [expense, , template] = second?.device?.changes ?? [];
+		expect(template?.before).toMatchObject({ id: "t1", version: T2 });
+		expect(expense?.before).toMatchObject({ id: "c1", version: null });
+	});
+
+	it("keys rows by table and id: an expense and a template with one id take their own stamp", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(
+			confirm("c1", "x", T1, { device: confirmBooking("x", "x") }),
+		);
+		const next = confirmBooking("c2", "x");
+		next.changes = [
+			{
+				table: "expenses",
+				id: "x",
+				before: bookedRow("x") as never,
+				after: bookedRow("x", { amount: "5.00" }) as never,
+			},
+			...next.changes.slice(1),
+		];
+		await outbox.enqueue(confirm("c2", "x", { after: "c1" }, { device: next }));
+		await outbox.markSent("c1", { version: T2, pull: 1 });
+		const [expense, template] = (await outbox.all())[0]?.device?.changes ?? [];
+		expect(template?.before).toMatchObject({ version: T2 });
+		expect(expense?.before).toMatchObject({ version: null });
+	});
+
+	it("an entity that names no row stamps no booked row, but the base still moves", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		const entry = (id: string, base: string | { after: string }) => ({
+			...confirm(id, "t1", base, { device: confirmBooking(id, "t1") }),
+			entity: "unlisted",
+		});
+		await outbox.enqueue(entry("c1", T1));
+		await outbox.enqueue(entry("c2", { after: "c1" }));
+		await outbox.markSent("c1", { version: T2, pull: 1 });
+		const second = (await outbox.all())[0];
+		expect(second?.baseVersion).toBe(T2);
+		expect(second?.device?.changes[1]?.before).toMatchObject({ version: null });
 	});
 });

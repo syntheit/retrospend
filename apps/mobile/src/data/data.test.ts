@@ -94,7 +94,13 @@ describe("outbox", () => {
 			return { status: "sent" };
 		});
 		expect(seen).toEqual(["one", "two", "three"]);
-		expect(report).toEqual({ sent: 1, conflicts: 1, stopped: true });
+		expect(report).toEqual({
+			sent: 1,
+			conflicts: 1,
+			retired: 0,
+			later: 0,
+			stopped: true,
+		});
 		const all = await outbox.all();
 		expect(all.map((e) => [e.clientId, e.state])).toEqual([
 			["two", "conflict"],

@@ -1,9 +1,11 @@
 import type { PendingChange } from "@retrospend/engine/device";
 import {
+	assertStamped,
 	chainLost,
 	decodeEntry,
 	encodeEntry,
 	isChainedTo,
+	originOf,
 	PARKED_DISCARDING,
 	PARKED_STAMP,
 	parkedReplacedBy,
@@ -22,7 +24,13 @@ import type { KeyValueStore } from "./store";
 // list, so the overlay and the write compare can still see it until a pull
 // brings the server's row. Both lists live in the one store, in one order.
 
-export type OutboxKind = "create" | "update" | "delete";
+/**
+ * `confirm` and `skip` are a recurring template's: their `targetId` is the
+ * template, so the hold rule orders every write to one template.
+ */
+export type OutboxKind = "create" | "update" | "delete" | "confirm" | "skip";
+/** `poster` entries were planned by the phone, not typed by a person. */
+export type OutboxOrigin = "user" | "poster";
 /**
  * pending: never tried. sending: a send began (kept after a crash, so a write
  * that may have reached the server is never mistaken for one that did not).
@@ -64,6 +72,8 @@ export interface OutboxEntry {
 	payload: unknown;
 	/** The device's own booking of it; never any text. */
 	device?: DeviceBooking;
+	/** Left out means `user`. A poster entry always has a stamp (never a null base). */
+	origin?: OutboxOrigin;
 	createdAt: string;
 	/** Sends begun, counted before the request leaves: 0 means it never left. */
 	attempts: number;
@@ -98,7 +108,7 @@ export type NewOutboxEntry = Pick<
 	OutboxEntry,
 	"clientId" | "entity" | "kind" | "targetId" | "baseVersion" | "payload"
 > &
-	Partial<Pick<OutboxEntry, "device" | "sealed" | "attempts">>;
+	Partial<Pick<OutboxEntry, "device" | "sealed" | "attempts" | "origin">>;
 
 export interface Ack {
 	/** The `updatedAt` from the answer; null for a delete, absent when it named none. */
@@ -126,6 +136,19 @@ export interface Outbox {
 	 * (a delete, or an answer that named none) is parked as chain_lost.
 	 */
 	markSent(clientId: string, ack?: Ack): Promise<void>;
+	/**
+	 * The server already has this write, or it was planned over a template that
+	 * moved: the entry leaves with no ack and no Sync issue. Entries chained
+	 * after it rest on its own base, except that a poster entry takes the
+	 * poster entries after it for the same template along (the next run plans
+	 * them again).
+	 */
+	dropRetired(clientId: string): Promise<void>;
+	/**
+	 * The server said not yet: the entry goes back to waiting, with no error
+	 * and nothing counted against it.
+	 */
+	markLater(clientId: string): Promise<void>;
 	/** Keeps the sealed request of an entry before its request leaves (see `OutboxEntry.sealed`). */
 	seal(clientId: string, bytes: string): Promise<void>;
 	/** `network`: no answer. `server`: a 5xx. */
@@ -338,6 +361,26 @@ export function createOutbox(
 		await store.delete(key);
 	}
 
+	async function dropRetired(clientId: string) {
+		const key = await keyFor(clientId);
+		const entry = key ? await read(key) : null;
+		if (!key || !entry) return;
+		if (originOf(entry) === "poster") {
+			// Oldest first: each one's dependents re-point to its own base, and
+			// the retired entry's discard then carries them the rest of the way.
+			const run = (await load())
+				.filter(
+					(e) =>
+						e.targetId === entry.targetId &&
+						originOf(e) === "poster" &&
+						(e.seq ?? 0) > (entry.seq ?? 0),
+				)
+				.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+			for (const later of run) await discard(later.clientId);
+		}
+		await discard(clientId);
+	}
+
 	async function replace(clientId: string, input: NewOutboxEntry) {
 		// Every re-base is a new write under a new key: the old key is the
 		// replaced entry's, and a crash leaves it to tell the two apart.
@@ -397,6 +440,7 @@ export function createOutbox(
 	}
 
 	function fresh(input: NewOutboxEntry): OutboxEntry {
+		assertStamped(input);
 		return {
 			...input,
 			...(input.device ? { device: withoutDeviceText(input.device) } : {}),
@@ -413,9 +457,9 @@ export function createOutbox(
 	return {
 		enqueue: (input) =>
 			serial(async () => {
+				const entry = fresh(input);
 				const seq = Number((await store.get(seqKey)) ?? "0") + 1;
 				await store.set(seqKey, String(seq));
-				const entry = fresh(input);
 				const key = `${prefix}${String(seq).padStart(SEQ_WIDTH, "0")}:${input.clientId}`;
 				await write(key, entry);
 				return { ...entry, seq };
@@ -456,6 +500,11 @@ export function createOutbox(
 				),
 			),
 		discard: (clientId) => serial(() => discard(clientId)),
+		dropRetired: (clientId) => serial(() => dropRetired(clientId)),
+		markLater: (clientId) =>
+			serial(() =>
+				update(clientId, () => ({ state: "pending", lastError: null })),
+			),
 		replace: (clientId, input) => serial(() => replace(clientId, input)),
 		snapshot: () =>
 			serial(async () => ({ open: await load(), acked: await prune() })),
