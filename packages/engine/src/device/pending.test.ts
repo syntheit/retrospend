@@ -536,6 +536,8 @@ describe("retiring and comparing on a pull", () => {
 		async function ackedTemplate(
 			after: (t: TemplateRow) => TemplateRow,
 			version: string | null = null,
+			// Rows the same entry changed before the template, as a confirm's posted expense.
+			before: (e1: Row) => PendingChange[] = () => [],
 		) {
 			const pending = new FakePending();
 			const { api } = fakeDeviceApi({
@@ -554,7 +556,8 @@ describe("retiring and comparing on a pull", () => {
 				view.get("recurringTemplates", "t1"),
 			);
 			if (!pulled) throw new Error("no template");
-			const before = {
+			const e1 = await pulledRow(engine);
+			const stepped = {
 				...pulled,
 				nextDueDate: new Date("2026-12-01T03:00:00Z"),
 			};
@@ -562,10 +565,11 @@ describe("retiring and comparing on a pull", () => {
 				entry(
 					"c1",
 					[
+						...before(e1),
 						{
 							table: "recurringTemplates",
 							id: "t1",
-							before: templateWithoutText(before),
+							before: templateWithoutText(stepped),
 							after: templateWithoutText(after(pulled)),
 						},
 					],
@@ -580,6 +584,16 @@ describe("retiring and comparing on a pull", () => {
 			const { engine, pending } = await ackedTemplate((t) => t);
 			expect(engine.writeParity.counts).toEqual({ match: 1 });
 			expect(pending.retired).toEqual(["c1"]);
+		});
+
+		it("holds the ack's version to the template only: a confirm's expense carries its own", async () => {
+			// The answer names the template's version; the pulled expense has another.
+			const { engine } = await ackedTemplate(
+				(t) => t,
+				"2026-11-18T10:00:00.000Z",
+				(e1) => [change("e1", e1, e1)],
+			);
+			expect(engine.writeParity.counts).toEqual({ match: 2 });
 		});
 
 		it("names the column that differs, and only it", async () => {
