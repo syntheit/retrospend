@@ -9,54 +9,28 @@ import {
 	RECURRING_NOT_FOUND,
 	RecurringRefusal,
 } from "@retrospend/domain/recurring-post/refusals";
-import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
+import {
+	checkTemplateCategory,
+	editPatch,
+	newTemplateDirection,
+	newTemplateRow,
+	type TemplateDirection,
+	type TemplateEdit,
+	type TemplateInput,
+} from "@retrospend/domain/recurring-post/template";
 import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import type {
-	ExpenseDirection,
-	Prisma,
-	PrismaClient,
-	RecurringAmountMode,
-	RecurringFrequency,
-} from "~prisma";
+import type { Prisma, PrismaClient } from "~prisma";
+import { asBadRequest } from "./rate-types";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
-export interface NewTemplate {
+export interface NewTemplate extends TemplateInput {
 	/** A client-made id; a taken one is a unique violation (id_taken), not a second template. */
 	readonly id?: string;
-	readonly name: string;
-	readonly amount: string;
-	readonly currency: string;
-	readonly categoryId?: string;
-	readonly frequency: RecurringFrequency;
-	/** YYYY-MM-DD, the first due day: a calendar date, kept in the user's saved zone. */
-	readonly nextDueDate: string;
-	/**
-	 * Day of month a monthly-type schedule keeps (1 to 31). Without it the
-	 * anchor is the day of nextDueDate, which loses 31 when the first date
-	 * was clamped to a short month.
-	 */
-	readonly anchorDay?: number;
-	readonly direction?: ExpenseDirection;
-	readonly amountMode?: RecurringAmountMode;
-	readonly websiteUrl?: string;
-	readonly paymentSource?: string;
-	readonly autoPay?: boolean;
 }
 
-export interface TemplateChanges {
-	readonly name?: string;
-	readonly amount?: string;
-	readonly currency?: string;
-	readonly categoryId?: string | null;
-	readonly frequency?: RecurringFrequency;
-	readonly nextDueDate?: string;
-	readonly amountMode?: RecurringAmountMode;
-	readonly websiteUrl?: string | null;
-	readonly paymentSource?: string | null;
-	readonly autoPay?: boolean;
-	readonly isActive?: boolean;
+export interface TemplateChanges extends TemplateEdit {
 	/** The updatedAt the caller read; the write runs only while the template still has it. */
 	readonly expectedUpdatedAt?: Date;
 }
@@ -65,69 +39,14 @@ async function refuseForeignCategory(
 	db: Db,
 	userId: string,
 	categoryId: string | null | undefined,
-	direction: ExpenseDirection,
+	direction: TemplateDirection,
 ) {
 	if (!categoryId) return;
-	const category = await db.category.findFirst({
-		where: {
-			id: categoryId,
-			userId,
-			kind: direction === "IN" ? "INCOME" : "EXPENSE",
-		},
-		select: { id: true },
+	const found = await db.category.findFirst({
+		where: { id: categoryId, userId },
+		select: { kind: true },
 	});
-	if (!category)
-		throw new TRPCError({ code: "FORBIDDEN", message: "Category not found" });
-}
-
-/** The day of month a schedule is anchored to, read off the typed day. */
-const anchorOf = (day: string) => Number(day.slice(8, 10));
-
-const MONTH_BASED: readonly RecurringFrequency[] = [
-	"MONTHLY",
-	"QUARTERLY",
-	"YEARLY",
-];
-
-/**
- * The anchor to store. A given anchorDay on a month-based schedule wins, but
- * the first date must be that day, or the last day of a month too short for it.
- */
-function resolveAnchor(input: NewTemplate): number {
-	const typed = anchorOf(input.nextDueDate);
-	const wanted = input.anchorDay;
-	if (wanted === undefined || !MONTH_BASED.includes(input.frequency))
-		return typed;
-	const [y, m] = input.nextDueDate.split("-").map(Number) as [number, number];
-	const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-	if (!Number.isInteger(wanted) || wanted < 1 || wanted > 31)
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "anchorDay must be 1 to 31",
-		});
-	if (typed !== Math.min(wanted, last))
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "nextDueDate must fall on anchorDay",
-		});
-	return wanted;
-}
-
-/**
- * The stored due instant for a typed day. Recurring income keeps its day as
- * UTC midnight, which is how the income code reads it (add.mutation,
- * confirm-recurring); an expense template keeps the start of the day in the
- * user's SAVED zone, the zone every step reads it in. The day is a calendar
- * date, so the zone of the request that typed it does not move it.
- */
-function dueInstant(
-	day: string,
-	direction: ExpenseDirection,
-	timeZone: string,
-): Date {
-	return direction === "IN"
-		? new Date(`${day}T00:00:00.000Z`)
-		: parseDateOnlyIn(day, timeZone);
+	checkTemplateCategory(found, direction);
 }
 
 export async function createTemplate(
@@ -135,29 +54,16 @@ export async function createTemplate(
 	userId: string,
 	input: NewTemplate,
 ) {
-	const direction = input.direction ?? "OUT";
-	await refuseForeignCategory(db, userId, input.categoryId, direction);
+	await refuseForeignCategory(
+		db,
+		userId,
+		input.categoryId,
+		newTemplateDirection(input),
+	);
+	const zone = await userTimeZone(db, userId);
+	const row = asBadRequest(() => newTemplateRow(input, zone));
 	return db.recurringTemplate.create({
-		data: {
-			id: input.id,
-			userId,
-			name: input.name,
-			amount: input.amount,
-			currency: input.currency,
-			categoryId: input.categoryId,
-			direction,
-			amountMode: input.amountMode ?? "FIXED",
-			frequency: input.frequency,
-			nextDueDate: dueInstant(
-				input.nextDueDate,
-				direction,
-				await userTimeZone(db, userId),
-			),
-			anchorDay: resolveAnchor(input),
-			websiteUrl: input.websiteUrl,
-			paymentSource: input.paymentSource,
-			autoPay: input.autoPay ?? true,
-		},
+		data: { id: input.id, userId, ...row },
 		select: { id: true },
 	});
 }
@@ -183,6 +89,11 @@ export async function updateTemplate(
 		changes.categoryId,
 		existing.direction,
 	);
+	const patch = editPatch(
+		changes,
+		existing.direction,
+		await userTimeZone(db, userId),
+	);
 	// With a stamp the write is a compare-and-set on updatedAt: two edits that
 	// read the same version cannot both land. It is an `update` (not an
 	// `updateMany`) so a sealed name is bound to this row's id.
@@ -194,27 +105,7 @@ export async function updateTemplate(
 					updatedAt: changes.expectedUpdatedAt,
 				}),
 			},
-			data: {
-				name: changes.name,
-				amount: changes.amount,
-				currency: changes.currency,
-				categoryId: changes.categoryId,
-				amountMode: changes.amountMode,
-				frequency: changes.frequency,
-				// A due date the user sets is the new anchor for monthly steps.
-				...(changes.nextDueDate && {
-					nextDueDate: dueInstant(
-						changes.nextDueDate,
-						existing.direction,
-						await userTimeZone(db, userId),
-					),
-					anchorDay: anchorOf(changes.nextDueDate),
-				}),
-				websiteUrl: changes.websiteUrl,
-				paymentSource: changes.paymentSource,
-				autoPay: changes.autoPay,
-				isActive: changes.isActive,
-			},
+			data: patch,
 		});
 	} catch (error) {
 		if (

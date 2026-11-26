@@ -44,16 +44,21 @@ export const DATE_BEFORE_PREVIOUS_DUE =
 	"The date is before the previous due date";
 export const AMOUNT_REQUIRED = "Confirm the amount for this recurring entry";
 export const AMOUNT_FIXED = "This recurring amount is fixed";
+export const ANCHOR_OUT_OF_RANGE = "anchorDay must be 1 to 31";
+export const ANCHOR_MISMATCH = "nextDueDate must fall on anchorDay";
 
 export type RecurringInputKind =
 	| "date_in_future"
 	| "date_before_previous_due"
 	| "amount_required"
-	| "amount_fixed";
+	| "amount_fixed"
+	| "anchor_out_of_range"
+	| "anchor_mismatch";
 
 /**
  * The request itself is wrong (a paid-on day that cannot be, an amount given
- * or missing), not the template's state. Transports answer it as a bad
+ * or missing, an anchor day the first date does not fall on), not the
+ * template's state. Transports answer it as a bad
  * request, with the message as it is today.
  */
 export class RecurringInputRefusal extends Error {

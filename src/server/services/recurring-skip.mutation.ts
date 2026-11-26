@@ -3,7 +3,7 @@
  * moves to its next date and no entry is booked, so a preview shows that
  * nothing moves but the date. The undo puts the template back on the skipped
  * date. Expense and income templates share it; only the way their due day is
- * stored differs (recurring.service dueInstant).
+ * stored differs (recurring-post/template dueInstant).
  */
 
 import { nextDueAfter } from "@retrospend/domain/recurring";
