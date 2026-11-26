@@ -8,7 +8,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { arsUser, expense } from "~/server/services/category/__tests__/merge-kit";
+import {
+	arsUser,
+	expense,
+} from "~/server/services/category/__tests__/merge-kit";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { readSchema } from "~/test/prisma-schema";
 import { inRolledBackTransaction } from "~/test/rolled-back-sql";
@@ -256,9 +259,10 @@ describe("the rollback snippet", () => {
 				[made.id, given],
 			);
 			const stored = (
-				await client.query(`SELECT "updatedAt" FROM "expense" WHERE "id" = $1`, [
-					made.id,
-				])
+				await client.query(
+					`SELECT "updatedAt" FROM "expense" WHERE "id" = $1`,
+					[made.id],
+				)
 			).rows[0].updatedAt as Date;
 			expect(stored.getTime()).toBe(given.getTime());
 		});

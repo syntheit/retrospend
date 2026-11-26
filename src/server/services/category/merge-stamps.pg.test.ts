@@ -245,7 +245,12 @@ describe("rows stamped at or after the merge's clock", () => {
 					kind: "WHAT_IF",
 					createdById: b.user.id,
 					expectedIn: [
-						{ id: "e1", templateId: null, categoryId: src.id, amountMinor: 100 },
+						{
+							id: "e1",
+							templateId: null,
+							categoryId: src.id,
+							amountMinor: 100,
+						},
 					],
 					pretend: [],
 					updatedAt,

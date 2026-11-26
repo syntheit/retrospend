@@ -75,10 +75,9 @@ describe("an expense", () => {
 
 		const held = probe();
 		await expect(
-			forUser(me).apply(
-				guardedExpense(held.mutation, S.toISOString(), stale),
-				{ id },
-			),
+			forUser(me).apply(guardedExpense(held.mutation, S.toISOString(), stale), {
+				id,
+			}),
 		).rejects.toThrow(STALE);
 		expect(held.ran).not.toHaveBeenCalled();
 
@@ -129,10 +128,9 @@ describe("a shared expense", () => {
 
 		const held = probe();
 		await expect(
-			forUser(me).apply(
-				guardedShared(held.mutation, S.toISOString(), stale),
-				{ id: row.id },
-			),
+			forUser(me).apply(guardedShared(held.mutation, S.toISOString(), stale), {
+				id: row.id,
+			}),
 		).rejects.toThrow(STALE);
 		expect(held.ran).not.toHaveBeenCalled();
 	});
