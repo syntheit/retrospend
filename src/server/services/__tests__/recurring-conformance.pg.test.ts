@@ -24,7 +24,12 @@ import {
 import { TRPCError } from "@trpc/server";
 import { afterAll, afterEach, beforeAll, describe, it, vi } from "vitest";
 import { forUser } from "~/server/services/preview";
-import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
+import {
+	adminDb,
+	createTestUser,
+	fixtureDb,
+	fixtureNameIndex,
+} from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 // The root app does not depend on the engine package; its cases are plain data and code.
 import {
@@ -89,6 +94,10 @@ function serverAdapter(): RecurringAdapter {
 	let userId = "";
 	/** The vector's template names, each a uuid here (templates are global rows, v1 wants uuids). */
 	const ids = new Map<string, string>();
+	/** The vector's category names, each a real row here. */
+	const categoryIds = new Map<string, string>();
+	const realCategory = (name: string | null | undefined) =>
+		name ? (categoryIds.get(name) ?? name) : name;
 	const idOf = (name: string) => {
 		const id = ids.get(name);
 		if (!id) throw new Error(`no template ${name}`);
@@ -155,7 +164,7 @@ function serverAdapter(): RecurringAdapter {
 	}
 
 	return {
-		async reset(seed, tz) {
+		async reset(seed, tz, categories = []) {
 			process.env.TZ = tz;
 			const { user } = await createTestUser();
 			userId = user.id;
@@ -194,6 +203,19 @@ function serverAdapter(): RecurringAdapter {
 			});
 			ids.clear();
 			ids.set("t1", made.id);
+			categoryIds.clear();
+			for (const name of categories) {
+				const row = await fixtureDb.category.create({
+					data: {
+						userId,
+						name,
+						color: "teal",
+						kind: "EXPENSE",
+						nameIndex: await fixtureNameIndex(userId, name),
+					},
+				});
+				categoryIds.set(name, row.id);
+			}
 		},
 		async step(step) {
 			const before = new Set((await rows()).map((r) => r.id));
@@ -213,11 +235,12 @@ function serverAdapter(): RecurringAdapter {
 			const v1 = await v1For(userId);
 			if ("create" in op) {
 				const { id, ...input } = op.create;
+				const categoryId = realCategory(input.categoryId) ?? undefined;
 				const uuid = randomUUID();
 				const res = await v1(
 					"POST",
 					"/recurring",
-					v1TemplateBody({ ...input, id: uuid }),
+					v1TemplateBody({ ...input, categoryId, id: uuid }),
 				);
 				if (res.status !== 200 && res.status !== 201)
 					throw new Error(`create: ${res.status} ${await res.text()}`);
@@ -225,10 +248,14 @@ function serverAdapter(): RecurringAdapter {
 				return;
 			}
 			const { id, ...edit } = op.edit;
+			const patch =
+				edit.categoryId === undefined
+					? edit
+					: { ...edit, categoryId: realCategory(edit.categoryId) };
 			const res = await v1(
 				"PATCH",
 				`/recurring/${idOf(id)}`,
-				v1TemplateBody(edit),
+				v1TemplateBody(patch),
 			);
 			if (res.status !== 200)
 				throw new Error(`edit: ${res.status} ${await res.text()}`);
@@ -245,7 +272,9 @@ function serverAdapter(): RecurringAdapter {
 				amount: t.amount.toFixed(),
 				currency: t.currency,
 				frequency: t.frequency,
-				categoryId: t.categoryId,
+				categoryId:
+					[...categoryIds].find(([, real]) => real === t.categoryId)?.[0] ??
+					t.categoryId,
 				amountMode: t.amountMode,
 			};
 		},

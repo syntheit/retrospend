@@ -55,12 +55,23 @@ function localAdapter(): RecurringAdapter {
 	let store: MemoryStore;
 	let db: LocalDb;
 	return {
-		async reset(seed, tz) {
+		async reset(seed, tz, categories = []) {
 			process.env.TZ = tz;
 			expect(new Date("2026-12-01T00:00:00Z").getHours()).toBe(
 				MIDNIGHT_HOUR[tz],
 			);
 			({ store, db } = await open(seed));
+			await store.transaction((tx) => {
+				for (const id of categories)
+					tx.put("categories", {
+						id,
+						kind: "EXPENSE",
+						name: id,
+						color: "blue",
+						icon: null,
+						excludeByDefault: false,
+					});
+			});
 		},
 		async step(step: RecurringStep, n) {
 			if (step.afterPull) await pull(store, `v${n}`);

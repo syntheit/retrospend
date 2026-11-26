@@ -55,8 +55,15 @@ export type TemplateOp =
 	| { readonly edit: TemplateEdit & { readonly id: string } };
 
 export interface RecurringAdapter {
-	/** Starts over: one user with this seed and its template "t1", under the process zone `tz`. */
-	reset(seed: RecurringSeed, tz: string): Promise<void>;
+	/**
+	 * Starts over: one user with this seed and its template "t1", under the
+	 * process zone `tz`, and one expense category per id in `categories`.
+	 */
+	reset(
+		seed: RecurringSeed,
+		tz: string,
+		categories?: readonly string[],
+	): Promise<void>;
 	/**
 	 * Runs one step. A refusal rejects with the domain's error (RecurringRefusal,
 	 * RecurringInputRefusal, MissingRateError) and stores nothing.
@@ -92,6 +99,8 @@ export interface TemplateVector {
 	name: string;
 	seed: RecurringSeed;
 	tz: string;
+	/** Expense categories the ops name, by id. */
+	categories?: string[];
 	ops: TemplateOp[];
 	/** The stored template after the ops, by id. */
 	expect: Record<string, ExpectedTemplate>;
@@ -204,7 +213,7 @@ async function runTemplateVector(
 	v: TemplateVector,
 ) {
 	const a = await make();
-	await a.reset(v.seed, v.tz);
+	await a.reset(v.seed, v.tz, v.categories);
 	for (const op of v.ops) await a.template(op);
 	for (const [id, want] of Object.entries(v.expect))
 		expectEqual(shown(await a.read(id)), want, `template ${id}`);
@@ -319,6 +328,35 @@ export const templateVectors: TemplateVector[] = [
 		expect: {
 			t1: { ...BASE_TEMPLATE, amount: "25", amountMode: "ASK", autoPay: false },
 		},
+	},
+	{
+		name: "edit: a currency alone changes the currency and nothing else",
+		seed: base.seed,
+		tz: "Pacific/Auckland",
+		ops: [{ edit: { id: "t1", currency: "EUR" } }],
+		expect: { t1: { ...BASE_TEMPLATE, currency: "EUR" } },
+	},
+	{
+		name: "edit: an expense category is set, and an edit of another column keeps it",
+		seed: base.seed,
+		tz: "Pacific/Auckland",
+		categories: ["cat-out"],
+		ops: [
+			{ edit: { id: "t1", categoryId: "cat-out" } },
+			{ edit: { id: "t1", name: "Rent" } },
+		],
+		expect: { t1: { ...BASE_TEMPLATE, categoryId: "cat-out" } },
+	},
+	{
+		name: "edit: a category cleared with null",
+		seed: base.seed,
+		tz: "Pacific/Auckland",
+		categories: ["cat-out"],
+		ops: [
+			{ edit: { id: "t1", categoryId: "cat-out" } },
+			{ edit: { id: "t1", categoryId: null } },
+		],
+		expect: { t1: BASE_TEMPLATE },
 	},
 	{
 		name: "edit in Tokyo: the due day typed under a changed saved zone is that day there",
