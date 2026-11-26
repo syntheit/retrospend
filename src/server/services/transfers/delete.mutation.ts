@@ -1,7 +1,7 @@
 /**
  * transfer.delete, the undo of transfer.create: the move, its legs, its fee
  * expense and the counted units it moved (D4) all go back. Its own undo is
- * transfer.create with `recreate`, the same id and the amounts as typed.
+ * transfer.create with `recreate`, the same id, the amounts as typed and the envelope its budget side used.
  */
 
 import { dec } from "@retrospend/domain/envelope/units";
@@ -9,6 +9,7 @@ import { TRPCError } from "@trpc/server";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";
+import { recordedBudgetEnvelope } from "./budget-side";
 import { type CreateTransferInput, TRANSFER_FIGURES } from "./create.mutation";
 
 type Tx = Prisma.TransactionClient;
@@ -34,6 +35,8 @@ async function recreateInput(
 				select: { accountId: true, amount: true },
 			})
 		: null;
+	// The budget side goes with the transfer; the undo records it into the same envelope.
+	const side = await recordedBudgetEnvelope(tx, transfer.id);
 	return {
 		id: transfer.id,
 		fromAccountId: transfer.fromAccountId,
@@ -46,8 +49,13 @@ async function recreateInput(
 		date: transfer.date.toISOString().slice(0, 10),
 		note: transfer.note,
 		fee: feeLeg
-			? { amount: dec(feeLeg.amount.toString()).abs().toString(), accountId: feeLeg.accountId }
+			? {
+					amount: dec(feeLeg.amount.toString()).abs().toString(),
+					accountId: feeLeg.accountId,
+				}
 			: null,
+		...(side?.direction === "TO_WEALTH" ? { envelopeId: side.envelopeId } : {}),
+		...(side?.direction === "FROM_WEALTH" ? { putIn: side.envelopeId } : {}),
 	};
 }
 

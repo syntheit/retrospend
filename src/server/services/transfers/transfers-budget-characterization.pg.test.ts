@@ -109,7 +109,7 @@ describe("a crossing transfer", () => {
 		expect(again?.id).not.toBe(side?.id);
 	});
 
-	it("takes the envelope it comes from, but the undo of its delete forgets it and lands in To assign", async () => {
+	it("takes the envelope it comes from, and the undo of its delete puts it back there", async () => {
 		const w = await world(true);
 		expect(w.envelopeId).not.toBeNull();
 		const run = forUser(w.userId);
@@ -124,10 +124,13 @@ describe("a crossing transfer", () => {
 		const removed = await run.apply(deleteTransfer, {
 			transferId: made.value.transferId,
 		});
-		// The recreate input carries no envelope (found, pinned as it is).
-		expect(removed.value.recreate).not.toHaveProperty("envelopeId");
+		// Changed by fix/transfer-recreate-envelope: PR0 pinned the undo landing
+		// in To assign; the recreate input now carries the envelope it came from.
+		expect(removed.value.recreate).toHaveProperty("envelopeId", w.envelopeId);
 		expect(removed.value.recreate).not.toHaveProperty("putIn");
 		const back = await run.apply(createTransfer, removed.value.recreate);
-		expect((await sides(back.value.transferId))[0]?.envelopeId).toBeNull();
+		expect((await sides(back.value.transferId))[0]?.envelopeId).toBe(
+			w.envelopeId,
+		);
 	});
 });
