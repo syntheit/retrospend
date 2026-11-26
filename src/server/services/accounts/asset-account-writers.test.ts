@@ -18,10 +18,17 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "../../../..");
 
-const CLIENT = /\.assetAccount\.(update|updateMany|create|createMany|upsert|delete|deleteMany)\b/g;
+const CLIENT =
+	/\.assetAccount\.(update|updateMany|create|createMany|upsert|delete|deleteMany)\b/g;
 const RAW = /(?:UPDATE|INSERT INTO|DELETE FROM)\s+"asset_account"/g;
 
-const SKIP_DIR = new Set(["node_modules", ".next", "generated", "dist", ".git"]);
+const SKIP_DIR = new Set([
+	"node_modules",
+	".next",
+	"generated",
+	"dist",
+	".git",
+]);
 const isTestSupport = (path: string) =>
 	/\.test\.tsx?$|__tests__|\/src\/test\/|test-support|test-fixtures|characterization-fixtures|\/e2e\//.test(
 		`/${path}`,
@@ -40,7 +47,13 @@ function sources(dir: string, out: string[] = []): string[] {
 /** Statements per file that write asset_account. */
 function found() {
 	const writers: Record<string, number> = {};
-	for (const dir of ["src", "scripts", "packages", "apps/mobile/src", "sidecar"]) {
+	for (const dir of [
+		"src",
+		"scripts",
+		"packages",
+		"apps/mobile/src",
+		"sidecar",
+	]) {
 		let files: string[] = [];
 		try {
 			files = sources(join(ROOT, dir));
@@ -51,7 +64,8 @@ function found() {
 			const rel = relative(ROOT, file);
 			if (isTestSupport(rel)) continue;
 			const text = readFileSync(file, "utf8");
-			const n = (text.match(CLIENT)?.length ?? 0) + (text.match(RAW)?.length ?? 0);
+			const n =
+				(text.match(CLIENT)?.length ?? 0) + (text.match(RAW)?.length ?? 0);
 			if (n > 0) writers[rel] = n;
 		}
 	}
@@ -64,13 +78,25 @@ const WRITERS: Record<string, readonly [number, string]> = {
 	"src/server/services/accounts/manage.ts": [5, "device (M6a), delete online"],
 	"src/server/services/accounts/checkpoint.ts": [1, "device (M6a)"],
 	"src/server/services/accounts/rate-type.mutation.ts": [2, "device (M6a)"],
-	"src/server/services/accounts/update-balance.mutation.ts": [1, "device (M6a)"],
+	"src/server/services/accounts/update-balance.mutation.ts": [
+		1,
+		"device (M6a)",
+	],
 	"src/server/services/accounts/icon.ts": [1, "online, keeps updatedAt"],
-	"src/server/services/accounts/delete-snapshot.ts": [2, "online, keeps updatedAt"],
+	"src/server/services/accounts/delete-snapshot.ts": [
+		2,
+		"online, keeps updatedAt",
+	],
 	"src/server/services/envelope/debt.service.ts": [1, "online (terms)"],
 	"src/server/services/income/move-in.mutation.ts": [1, "online, counted only"],
-	"src/server/services/transfers/create.mutation.ts": [2, "device (M6b), counted only"],
-	"src/server/services/transfers/delete.mutation.ts": [2, "device (M6b), counted only"],
+	"src/server/services/transfers/create.mutation.ts": [
+		2,
+		"device (M6b), counted only",
+	],
+	"src/server/services/transfers/delete.mutation.ts": [
+		2,
+		"device (M6b), counted only",
+	],
 };
 
 describe("asset_account writers", () => {
