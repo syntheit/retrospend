@@ -88,12 +88,12 @@ function found() {
 
 /** file: [statements, class]. */
 const WRITERS: Record<string, readonly [number, string]> = {
-	// create, edit, close, reopen (3 updates) and the web delete: M6a
 	// Rollback text that restores the leg trigger's function: balance only.
 	"prisma/rollback/20261112100000_account_leg_half_even.sql": [
 		2,
 		"balance-only, trigger rollback",
 	],
+	// create, edit, close, reopen (3 updates) and the web delete: M6a
 	"src/server/services/accounts/manage.ts": [5, "device (M6a), delete online"],
 	"src/server/services/accounts/checkpoint.ts": [1, "device (M6a)"],
 	"src/server/services/accounts/rate-type.mutation.ts": [2, "device (M6a)"],
