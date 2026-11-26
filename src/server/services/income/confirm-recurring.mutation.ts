@@ -278,6 +278,12 @@ export interface UnconfirmRecurringIncomeInput {
 	readonly expenseId: string;
 	/** The due date the confirm settled; the row's own date when omitted (paid on can differ). */
 	readonly dueDate?: Date | null;
+	/**
+	 * The template's anchor before the confirm, to put back. Only an auto post
+	 * books income through the expense confirm, which keeps it in its token;
+	 * a person's income confirm has none, and the anchor stays as it is.
+	 */
+	readonly anchorDay?: number | null;
 }
 
 /** Removes the posted row (its leg goes back) and puts the template back on that due date. */
@@ -328,7 +334,10 @@ export async function unconfirmRecurringIncomeIn(
 				userId,
 				nextDueDate: template.nextDueDate,
 			},
-			data: { nextDueDate: dueDate },
+			data: {
+				nextDueDate: dueDate,
+				...(input.anchorDay !== undefined && { anchorDay: input.anchorDay }),
+			},
 		});
 	}
 	return { expenseId: row.id, templateId: row.recurringTemplateId, accounts };

@@ -28,8 +28,9 @@ type JsonObject = Record<string, unknown>;
  * 1.10.0: POST /recurring and POST /recurring/{id}/confirm take a client id (id, expenseId); confirm, skip, their previews and PATCH /recurring/{id} take expectedUpdatedAt (409 recurring_changed); confirm and skip return templateUpdatedAt.
  * 1.11.0: GET /server-info features.autoPost says whether the server's recurring auto-post is on.
  * 1.12.0: POST /recurring/{id}/confirm returns expenseUpdatedAt, the booked expense's updatedAt (null for recurring income).
+ * 1.13.0: POST /recurring/{id}/confirm and its preview take auto: true, which books the period as the server's auto-post does (recurring income too, as the entry only) and refuses unless the template still pays automatically with a fixed amount.
  */
-export const CONTRACT_VERSION = "1.12.0";
+export const CONTRACT_VERSION = "1.13.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

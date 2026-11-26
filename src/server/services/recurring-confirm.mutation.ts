@@ -37,9 +37,10 @@ export interface ConfirmRecurringExpenseInput {
 	/** A client-made id for the entry; a taken one is a unique violation (id_taken). */
 	readonly expenseId?: string;
 	/**
-	 * Set only by the auto-post sweep (recurring-auto-post.ts), never by a
-	 * transport: the template must still pay automatically with a fixed
-	 * amount, since the sweep read it before this transaction.
+	 * An auto post (the sweep, recurring-auto-post.ts, or the phone's poster
+	 * through v1's `auto`): the template must still pay automatically with a
+	 * fixed amount, since the caller read it before this transaction. A
+	 * transport may set it because it only adds a refusal.
 	 */
 	readonly auto?: boolean;
 }

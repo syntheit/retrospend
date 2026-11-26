@@ -204,6 +204,10 @@ export const confirmRecurringSchema = z
 			description:
 				"The template's updatedAt you last read. A newer one is 409 recurring_changed and nothing is written. Recurring expenses only; left out, nothing is checked.",
 		}),
+		auto: z.literal(true).optional().meta({
+			description:
+				"Book this period as the server's auto-post does: the template must still pay automatically with a fixed amount, or it is refused as not found and nothing is written. Recurring income with auto is booked as the auto-post books it: the entry only, with no account, keep or plan. Take expenseId and expectedUpdatedAt along. Left out, a person's confirm.",
+		}),
 	})
 	.meta({ id: "ConfirmRecurring" });
 
