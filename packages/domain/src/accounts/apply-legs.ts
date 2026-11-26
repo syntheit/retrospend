@@ -20,6 +20,7 @@
  * next to a tie rounds the way the database rounds it.
  */
 import { Dec, type Decimal } from "../precise-decimal";
+import { cappedCounted, isLiability } from "./places";
 
 /** Postgres numeric: exact at any size the columns allow; its division rounds ties away from zero. */
 const Num = Dec.clone({ precision: 200, rounding: Dec.ROUND_HALF_UP });
@@ -107,10 +108,6 @@ const USD_LIMIT = new Num("1e10"); // numeric(12,2)
 
 function exact(value: LegAmount): Decimal {
 	return new Num(value.toString());
-}
-
-function isLiability(type: string): boolean {
-	return type.startsWith("LIABILITY_");
 }
 
 /** Postgres refuses a value its column cannot hold; so does this. */
@@ -280,14 +277,18 @@ function applyOne(
 	}
 }
 
-/** `account_cap_counted`: an account never counts more than it holds. */
+/** `account_cap_counted`: the SQL twin of `cappedCounted`, the one owner of the rule. */
 function capCounted(work: Work, accountId: string): void {
 	const account = work.accounts.get(accountId);
 	if (!account) return;
-	const capped = isLiability(account.type)
-		? ZERO
-		: Num.min(account.countedUnits, Num.max(0, account.balance));
-	work.accounts.set(accountId, { ...account, countedUnits: capped });
+	work.accounts.set(accountId, {
+		...account,
+		countedUnits: cappedCounted(
+			account.type,
+			account.countedUnits,
+			account.balance,
+		),
+	});
 }
 
 /**
