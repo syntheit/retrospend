@@ -1,4 +1,11 @@
 import {
+	amountModeOfWire,
+	directionOfWire,
+	isActiveOfWire,
+	type WireAmountMode,
+	type WireDirection,
+} from "@retrospend/api-contract/template-fields";
+import {
 	type CreateTemplateInput,
 	createTemplate,
 	TEMPLATE_CREATE_MUTATION,
@@ -13,15 +20,11 @@ import {
 // no stamp (as recurring-book.ts): which version the server holds is decided
 // at send, and a view that has moved on only makes this booking a refusal.
 
-/** The wire says direction and amount mode in lower case; the engine's rows in upper. */
-const DIRECTION = { out: "OUT", in: "IN" } as const;
-const AMOUNT_MODE = { fixed: "FIXED", ask: "ASK" } as const;
-
 /** The body of POST /recurring: the template's fields under its client-made id. */
 export interface TemplateCreateBody
 	extends Omit<CreateTemplateInput, "direction" | "amountMode"> {
-	direction?: keyof typeof DIRECTION;
-	amountMode?: keyof typeof AMOUNT_MODE;
+	direction?: WireDirection;
+	amountMode?: WireAmountMode;
 }
 
 /**
@@ -33,7 +36,7 @@ export interface TemplateUpdateBody
 		UpdateTemplateInput,
 		"isActive" | "expectedVersion" | "amountMode"
 	> {
-	amountMode?: keyof typeof AMOUNT_MODE;
+	amountMode?: WireAmountMode;
 	paused?: boolean;
 }
 
@@ -50,8 +53,8 @@ export function templatePlanOf(
 			touches: TEMPLATE_CREATE_MUTATION.touches,
 			write: createTemplate({
 				...rest,
-				...(direction ? { direction: DIRECTION[direction] } : {}),
-				...(amountMode ? { amountMode: AMOUNT_MODE[amountMode] } : {}),
+				...(direction ? { direction: directionOfWire(direction) } : {}),
+				...(amountMode ? { amountMode: amountModeOfWire(amountMode) } : {}),
 			}),
 		};
 	}
@@ -61,8 +64,8 @@ export function templatePlanOf(
 		touches: TEMPLATE_UPDATE_MUTATION.touches,
 		write: updateTemplate({
 			...edit,
-			...(amountMode ? { amountMode: AMOUNT_MODE[amountMode] } : {}),
-			...(paused !== undefined ? { isActive: !paused } : {}),
+			...(amountMode ? { amountMode: amountModeOfWire(amountMode) } : {}),
+			...(paused !== undefined ? { isActive: isActiveOfWire(paused) } : {}),
 		}),
 	};
 }

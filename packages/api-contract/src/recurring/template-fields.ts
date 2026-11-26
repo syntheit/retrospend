@@ -9,6 +9,25 @@ import { userText } from "../common/user-text";
 // owner, AGENTS 6.8). The v1 create and update bodies are made from these
 // fields; the engine's template writes parse with the two object schemas.
 
+/**
+ * How the wire says a template's direction, amount mode and pause, and what
+ * the stored row calls them: the one owner, read by v1's create and update
+ * and by the device's template writes. A field left out stays undefined, so
+ * the domain's own defaults apply.
+ */
+const DIRECTION = { out: "OUT", in: "IN" } as const;
+const AMOUNT_MODE = { fixed: "FIXED", ask: "ASK" } as const;
+export type WireDirection = keyof typeof DIRECTION;
+export type WireAmountMode = keyof typeof AMOUNT_MODE;
+
+export const directionOfWire = (wire: WireDirection | undefined) =>
+	wire && DIRECTION[wire];
+export const amountModeOfWire = (wire: WireAmountMode | undefined) =>
+	wire && AMOUNT_MODE[wire];
+/** `paused` on the wire is `isActive` false on the row. */
+export const isActiveOfWire = (paused: boolean | undefined) =>
+	paused === undefined ? undefined : !paused;
+
 export const templateName = userText("recurring.name", 191);
 export const templateAmount = amountTextSchema;
 export const templateCurrency = currencyCodeSchema;
