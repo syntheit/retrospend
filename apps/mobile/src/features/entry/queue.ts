@@ -38,17 +38,19 @@ import { releaseSent, retainSent } from "./sentRetain";
 // delete an entry whose send is in flight, and the server would keep a write
 // the person took back.
 
-const queues = new WeakMap<Outbox, Promise<unknown>>();
+// Keyed by the outbox's account scope: the app and a background task each make
+// their own Outbox over the same stored entries, and must not interleave.
+const queues = new Map<string, Promise<unknown>>();
 
-/** Runs `task` after everything queued before it on this outbox has ended. */
+/** Runs `task` after everything queued before it on this account's outbox has ended. */
 export function exclusive<T>(
-	outbox: Outbox,
+	outbox: Pick<Outbox, "scope">,
 	task: () => Promise<T>,
 ): Promise<T> {
-	const before = queues.get(outbox) ?? Promise.resolve();
+	const before = queues.get(outbox.scope) ?? Promise.resolve();
 	const run = before.then(task, task);
 	queues.set(
-		outbox,
+		outbox.scope,
 		run.catch(() => undefined),
 	);
 	return run;
