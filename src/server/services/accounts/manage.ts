@@ -6,6 +6,7 @@
  */
 
 import { isLiability } from "@retrospend/domain/accounts/places";
+import { snapshotDay } from "@retrospend/domain/accounts/snapshot-plan";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { dec } from "@retrospend/domain/envelope/units";
 import {
@@ -17,7 +18,6 @@ import {
 import type { Decimal, DecimalInput } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
-import { normalizeDate } from "~/lib/date";
 import { userTransaction } from "~/server/db-tx";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { WealthService } from "~/server/services/wealth.service";
@@ -76,7 +76,11 @@ const otherFields = (input: AccountFields) => ({
 	...(input.inBudget !== undefined ? { inBudget: input.inBudget } : {}),
 });
 
-/** A balance typed by hand is dated by the user's day, like every leg. */
+/**
+ * A balance typed by hand (create, edit) is dated by the user's day, like
+ * every leg: moveDay, the zone rule of snapshotDay. Close and reopen date
+ * their snapshot by the UTC day instead.
+ */
 const checkpointDay = (timeZone: string) =>
 	moveDay(null, new Date(), timeZone);
 
@@ -241,7 +245,7 @@ export async function closeAccountIn(
 	await new WealthService(tx).recordAssetSnapshot(
 		tx,
 		asset.id,
-		normalizeDate(now),
+		snapshotDay({ rule: "utc", now }),
 		0,
 		0,
 		userId,
@@ -289,7 +293,7 @@ export async function reopenAccountIn(
 	userId: string,
 	id: string,
 ) {
-	const today = normalizeDate(new Date());
+	const today = snapshotDay({ rule: "utc", now: new Date() });
 	const asset = await ownAccount(tx, userId, id);
 	if (!asset.closedAt) return { success: true };
 	const service = new WealthService(tx);

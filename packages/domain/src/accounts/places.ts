@@ -19,7 +19,7 @@ export type AssetType =
 	| "LIABILITY_CREDIT_CARD"
 	| "LIABILITY_MORTGAGE";
 
-export const isLiability = (type: AssetType) => type.startsWith("LIABILITY_");
+export const isLiability = (type: string) => type.startsWith("LIABILITY_");
 
 /** How a leg of `worth` changes the stored balance of an account of `type`. */
 export function balanceEffect(type: AssetType, worth: Decimal): Decimal {
@@ -85,7 +85,7 @@ export function countedOnArrival(
  * same cap after every leg.
  */
 export function cappedCounted(
-	type: AssetType,
+	type: string,
 	counted: Decimal,
 	balance: Decimal,
 ): Decimal {

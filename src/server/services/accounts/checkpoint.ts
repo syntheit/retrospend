@@ -6,18 +6,14 @@
  * that sets a balance by hand (Update balance, Edit, import) comes here.
  */
 
-import { cappedCounted, worthOf } from "@retrospend/domain/accounts/places";
-import { dec } from "@retrospend/domain/envelope/units";
-import { columnText } from "@retrospend/domain/money-dec";
+import {
+	checkpointDifference,
+	checkpointPlan,
+} from "@retrospend/domain/accounts/checkpoint-plan";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
 import { WealthService } from "~/server/services/wealth.service";
 import type { Prisma } from "~prisma";
-import {
-	type AccountChange,
-	type AccountRow,
-	bookHome,
-	ratePickFor,
-} from "./ledger";
+import { type AccountChange, type AccountRow, ratePickFor } from "./ledger";
 
 type Tx = Prisma.TransactionClient;
 
@@ -45,34 +41,39 @@ export async function writeCheckpoint(
 		homeCurrency: string;
 	},
 ): Promise<Checkpoint> {
-	const before = dec(account.balance.toString());
-	const notLogged = worthOf(account.type, next.balance.sub(before));
-	let legId: string | null = null;
-	if (!notLogged.isZero()) {
-		const pick = await ratePickFor(tx, [account.currency, next.homeCurrency]);
-		const valuedAt = {
+	const typed = { type: account.type, balance: account.balance };
+	// Rates are loaded only when there is a leg to book.
+	const pick = checkpointDifference(typed, next.balance).isZero()
+		? null
+		: await ratePickFor(tx, [account.currency, next.homeCurrency]);
+	const plan = checkpointPlan({
+		account: {
+			type: account.type,
 			currency: account.currency,
-			exchangeRateType: next.rate.rateType,
-			exchangeRate: next.rate.rate,
-		};
-		const home = bookHome(
-			pick,
-			{ currency: account.currency, account: valuedAt },
-			notLogged,
-			next.homeCurrency,
-			next.date,
-		);
+			balance: account.balance,
+			countedUnits: account.countedUnits,
+		},
+		balance: next.balance,
+		// The resolved rate is a float; it becomes the decimal it names here.
+		rate: { rate: String(next.rate.rate), rateType: next.rate.rateType },
+		day: next.date,
+		homeCurrency: next.homeCurrency,
+		pick,
+		recordedAt: new Date(),
+	});
+	let legId: string | null = null;
+	if (plan.leg) {
 		legId = (
 			await tx.accountLeg.create({
 				data: {
 					userId,
 					accountId: account.id,
-					currency: account.currency,
-					amount: notLogged.toString(),
-					homeAmount: home?.amount.toString() ?? null,
-					homeCurrency: home?.currency ?? null,
-					date: next.date,
-					source: "BALANCE_UPDATE",
+					currency: plan.leg.currency,
+					amount: plan.leg.amount,
+					homeAmount: plan.leg.homeAmount,
+					homeCurrency: plan.leg.homeCurrency,
+					date: plan.leg.date,
+					source: plan.leg.source,
 					createdAt: new Date(),
 				},
 				select: { id: true },
@@ -81,44 +82,23 @@ export async function writeCheckpoint(
 	}
 	await tx.assetAccount.update({
 		where: { id: account.id },
-		data: {
-			balance: next.balance.toString(),
-			countedUnits: cappedCounted(
-				account.type,
-				dec(account.countedUnits.toString()),
-				next.balance,
-			).toString(),
-			exchangeRate: columnText(next.rate.rate, 6),
-			exchangeRateType: next.rate.rateType,
-		},
+		data: plan.account,
 	});
-	const service = new WealthService(tx);
-	await service.recordAssetSnapshot(
+	await new WealthService(tx).writeSnapshotPlan(
 		tx,
 		account.id,
-		next.date,
-		next.balance,
-		service.calculateBalanceInUSD(
-			next.balance,
-			next.rate.rate,
-			account.currency,
-		),
 		userId,
-		{
-			currency: account.currency,
-			type: account.type,
-			exchangeRateType: next.rate.rateType,
-		},
+		plan.snapshot,
 	);
 	return {
 		change: {
 			accountId: account.id,
 			name: account.name,
 			currency: account.currency,
-			before: before.toString(),
-			after: next.balance.toString(),
+			before: plan.before.toString(),
+			after: plan.after.toString(),
 		},
-		notLogged: notLogged.toString(),
+		notLogged: plan.notLogged.toString(),
 		legId,
 	};
 }

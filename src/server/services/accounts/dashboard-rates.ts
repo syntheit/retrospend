@@ -5,6 +5,7 @@
  * the same rule. A rate that is missing, zero or negative is null, never 1.
  */
 
+import type { SnapshotMeta } from "@retrospend/domain/accounts/snapshot-plan";
 import {
 	homePerUnit,
 	homeValue,
@@ -12,21 +13,14 @@ import {
 	type RatePick,
 	ratePerUnit,
 } from "@retrospend/domain/accounts/valuation";
-import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { MissingRateError, toUSDDec, USD } from "@retrospend/domain/money-dec";
 import {
 	type Decimal,
 	type DecimalInput,
 	dec,
 } from "@retrospend/domain/precise-decimal";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import type { AssetType } from "~prisma";
-
-/** What an account was when a snapshot of it was taken. */
-export interface SnapshotMeta {
-	currency: string;
-	type: AssetType;
-	exchangeRateType: string | null;
-}
 
 /** An account's latest snapshot while history is rebuilt, as recorded. */
 export interface HeldSnapshot extends SnapshotMeta {

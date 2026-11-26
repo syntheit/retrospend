@@ -5,6 +5,7 @@
  * past. Undo (account.revertRateType) removes the switch.
  */
 
+import { rateSwitchPlan } from "@retrospend/domain/accounts/rate-switch-plan";
 import { dayOf, valueOn } from "@retrospend/domain/accounts/series";
 import { toMinor } from "@retrospend/domain/envelope/units";
 import { TRPCError } from "@trpc/server";
@@ -82,29 +83,31 @@ export async function switchRateType(
 	const day = dayOf(from);
 	const before = await valueOnDay(tx, userId, account.id, day);
 	const rows = await switchesOf(tx, account.id);
-	const base = rows[0] ? rows[0].previousType : account.exchangeRateType;
-	const earlier = rows.filter((r) => r.from <= from).at(-1);
-	const next = rows.find((r) => r.from > from);
+	const plan = rateSwitchPlan({
+		rows,
+		current: account.exchangeRateType,
+		from,
+		rateType: input.rateType,
+	});
 	const row = await tx.assetRateType.create({
 		data: {
 			userId,
 			accountId: account.id,
-			from,
-			type: input.rateType,
-			previousType: earlier ? earlier.type : base,
+			...plan.insert,
 			createdAt: new Date(),
 		},
 	});
-	if (next) {
+	if (plan.repoint) {
 		await tx.assetRateType.update({
-			where: { id: next.id },
-			data: { previousType: input.rateType },
+			where: { id: plan.repoint.id },
+			data: { previousType: plan.repoint.previousType },
 		});
-	} else {
-		// moveDay never returns a future day, so the latest switch is in force today.
+	}
+	// moveDay never returns a future day, so the latest switch is in force today.
+	if (plan.accountRateType) {
 		await tx.assetAccount.update({
 			where: { id: account.id },
-			data: { exchangeRateType: input.rateType },
+			data: { exchangeRateType: plan.accountRateType.value },
 		});
 	}
 	const after = await valueOnDay(tx, userId, account.id, day);
