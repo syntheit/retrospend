@@ -118,12 +118,10 @@ export function resolveKind(input: TransferPlanInput): TransferKind {
 	}
 }
 
-const inBudgetOf = (input: TransferPlanInput, side: "from" | "to") =>
-	placeInBudget(
-		input[side],
-		side === "from" ? input.fromCurrency : input.toCurrency,
-		input.homeCurrency,
-	);
+const sourceInBudget = (input: TransferPlanInput) =>
+	placeInBudget(input.from, input.fromCurrency, input.homeCurrency);
+const destinationInBudget = (input: TransferPlanInput) =>
+	placeInBudget(input.to, input.toCurrency, input.homeCurrency);
 
 export function planTransfer(input: TransferPlanInput): TransferPlan {
 	if (!input.fromAmount.gt(0) || !input.toAmount.gt(0)) {
@@ -133,8 +131,8 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
 	if (kind !== "EXCHANGE" && !input.fromAmount.eq(input.toAmount)) {
 		throw bad("A move in one currency has one amount");
 	}
-	const fromIn = inBudgetOf(input, "from");
-	const toIn = inBudgetOf(input, "to");
+	const fromIn = sourceInBudget(input);
+	const toIn = destinationInBudget(input);
 	const counted =
 		input.from && !fromIn
 			? units8(
@@ -174,8 +172,8 @@ export function budgetEffect(
 		readonly toHome: Decimal | null;
 	},
 ): BudgetEffect {
-	const fromIn = inBudgetOf(input, "from");
-	const toIn = inBudgetOf(input, "to");
+	const fromIn = sourceInBudget(input);
+	const toIn = destinationInBudget(input);
 	const home = input.homeCurrency;
 	if (fromIn === toIn) return { effect: "none" };
 	if (fromIn) {

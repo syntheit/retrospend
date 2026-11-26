@@ -255,14 +255,17 @@ function mergeChange(changes: AccountChange[], change: AccountChange) {
 /** D4: counted units leave the source and follow the money (the rows say how many). */
 async function moveCounted(tx: Tx, moves: readonly CountedMove[]) {
 	for (const { accountId, delta } of moves) {
-		await tx.assetAccount.update({
-			where: { id: accountId },
-			data: {
-				countedUnits: delta.isNegative()
-					? { decrement: delta.neg().toString() }
-					: { increment: delta.toString() },
-			},
-		});
+		if (delta.isNegative()) {
+			await tx.assetAccount.update({
+				where: { id: accountId },
+				data: { countedUnits: { decrement: delta.neg().toString() } },
+			});
+		} else {
+			await tx.assetAccount.update({
+				where: { id: accountId },
+				data: { countedUnits: { increment: delta.toString() } },
+			});
+		}
 	}
 }
 
