@@ -6,6 +6,8 @@
 
 import { dec } from "@retrospend/domain/envelope/units";
 import { TRPCError } from "@trpc/server";
+import type { RecordDebtPaymentInput } from "~/lib/schemas/envelope-debt";
+import { debtPaymentOf } from "~/server/services/envelope/debt-payment-inverse";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";
@@ -22,6 +24,12 @@ export interface DeletedTransfer {
 	readonly accounts: readonly AccountChange[];
 	/** transfer.create with this input brings the move back as it was. */
 	readonly recreate: CreateTransferInput;
+	/**
+	 * Set when the transfer was a debt payment: its undo replays
+	 * envelope.recordDebtPayment with this input, since `recreate` would bring
+	 * back neither the principal's budget side nor the interest's envelope.
+	 */
+	readonly debtPayment: RecordDebtPaymentInput | null;
 }
 
 async function recreateInput(
@@ -46,7 +54,10 @@ async function recreateInput(
 		date: transfer.date.toISOString().slice(0, 10),
 		note: transfer.note,
 		fee: feeLeg
-			? { amount: dec(feeLeg.amount.toString()).abs().toString(), accountId: feeLeg.accountId }
+			? {
+					amount: dec(feeLeg.amount.toString()).abs().toString(),
+					accountId: feeLeg.accountId,
+				}
 			: null,
 	};
 }
@@ -63,6 +74,7 @@ export async function deleteTransferIn(
 		throw new TRPCError({ code: "NOT_FOUND", message: "Transfer not found" });
 	}
 	const recreate = await recreateInput(tx, transfer);
+	const debtPayment = await debtPaymentOf(tx, userId, transfer);
 	const accounts = await reverseLegs(tx, { transferId: transfer.id });
 	if (transfer.fromAccountId && transfer.countedFromUnits.gt(0)) {
 		await tx.assetAccount.update({
@@ -86,7 +98,7 @@ export async function deleteTransferIn(
 			where: { id: transfer.feeExpenseId, userId },
 		});
 	}
-	return { transferId: transfer.id, accounts, recreate };
+	return { transferId: transfer.id, accounts, recreate, debtPayment };
 }
 
 export const deleteTransfer: MoneyMutation<
