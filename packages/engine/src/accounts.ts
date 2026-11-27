@@ -11,6 +11,7 @@ import {
 export type AccountRow = TableRows["accounts"];
 export type LegRow = TableRows["legs"];
 export type SnapshotRow = TableRows["snapshots"];
+export type RateSwitchRow = TableRows["rateSwitches"];
 
 export interface AccountAggregate {
 	readonly account: AccountRow;
@@ -26,6 +27,9 @@ export function accountReads(r: Reader) {
 		snapshots: r.list("snapshots").filter((s) => s.accountId === account.id),
 	});
 	return {
+		/** The account's dated rate type switches, in the order they were stored (rateSwitchPlan sorts). */
+		rateSwitches: (accountId: string): RateSwitchRow[] =>
+			r.list("rateSwitches").filter((s) => s.accountId === accountId),
 		get(id: string): AccountAggregate | undefined {
 			const account = accounts.get(id);
 			return account && assemble(account);
@@ -39,6 +43,7 @@ export function accountRepo(w: Writer) {
 	const accounts = tableWrites(w, "accounts");
 	const legs = tableWrites(w, "legs");
 	const snapshots = tableWrites(w, "snapshots");
+	const switches = tableWrites(w, "rateSwitches");
 
 	const needAccount = (id: string | null) => {
 		if (id === null || !accounts.get(id))
@@ -63,14 +68,36 @@ export function accountRepo(w: Writer) {
 		},
 		/** Changes the account row only; its legs and snapshots stay. */
 		updateAccount: (account: AccountRow) => accounts.replace(account),
+		/** Adds a leg; a null account is Not tracked, which has no row to need. */
 		addLeg(leg: LegRow) {
-			needAccount(leg.accountId);
+			if (leg.accountId !== null) needAccount(leg.accountId);
 			legs.insert(leg);
 		},
 		addSnapshot(snapshot: SnapshotRow) {
 			needAccount(snapshot.accountId);
 			snapshots.insert(snapshot);
 		},
+		/**
+		 * The day's snapshot: replaces the account's snapshot of that day (one
+		 * per account per day, as the server's upsert) or adds the first.
+		 */
+		putSnapshot(snapshot: SnapshotRow) {
+			needAccount(snapshot.accountId);
+			const day = snapshot.date.getTime();
+			const same = w
+				.list("snapshots")
+				.find(
+					(s) => s.accountId === snapshot.accountId && s.date.getTime() === day,
+				);
+			// The stored row keeps its id: a pulled one is the server's.
+			if (same) snapshots.replace({ ...snapshot, id: same.id });
+			else snapshots.insert(snapshot);
+		},
+		addRateSwitch(row: RateSwitchRow) {
+			needAccount(row.accountId);
+			switches.insert(row);
+		},
+		updateRateSwitch: (row: RateSwitchRow) => switches.replace(row),
 		/** Removes the account and everything that hangs off it: legs, snapshots, rate switches. */
 		remove(id: string): boolean {
 			if (!accounts.get(id)) return false;
