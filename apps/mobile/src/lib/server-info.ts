@@ -38,6 +38,19 @@ export function serverAutoConfirm(info: {
 	return info.features.autoConfirm === true;
 }
 
+/**
+ * Whether the server takes what the phone queues for an account or a transfer
+ * (features.wealthWrites, contract 1.16.0): client-made ids, the version and
+ * balance checks, and the ids a PUT answers. A server before that leaves it
+ * out and ignores ids it does not know, so absent counts as off: the phone
+ * books these writes on the server, online, as before.
+ */
+export function serverWealthWrites(info: {
+	features: Record<string, boolean | undefined>;
+}): boolean {
+	return info.features.wealthWrites === true;
+}
+
 export type ProbeResult =
 	| { ok: true; baseUrl: string; insecure: boolean; info: ServerInfo }
 	| { ok: false; reason: "invalidUrl" | "unreachable" | "notRetrospend" }
