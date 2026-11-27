@@ -151,22 +151,20 @@ describe("account client ids", () => {
 			let mine: { legId: string; rateTypeId: string };
 			let theirs: { legId: string; rateTypeId: string };
 
+			// Client-made ids: only a uuid can be sent back as a taken one.
 			const seed = async (headers: Record<string, string>) => {
 				const acct = await open(headers);
-				const done = await expectBody<Write>(
+				const ids = { legId: randomUUID(), rateTypeId: randomUUID() };
+				await expectBody(
 					await send(
 						"POST",
 						`/accounts/${acct.id}/balance`,
-						{ id: acct.id, balance: "1100", rateType: "blue" },
+						{ id: acct.id, balance: "1100", rateType: "blue", ...ids },
 						headers,
 					),
 					c.updateBalance,
 				);
-				return {
-					legId: done.result.legId as string,
-					rateTypeId: (done.result.rateSwitch as { rateTypeId: string })
-						.rateTypeId,
-				};
+				return ids;
 			};
 			beforeAll(async () => {
 				mine = await seed(as);

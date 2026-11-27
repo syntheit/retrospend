@@ -5,8 +5,8 @@ import type * as z from "zod";
 import { transferView } from "~/server/services/entry/views";
 import {
 	type CreateTransferInput,
-	createTransfer,
-	type TransferValue,
+	createTransferWithLegs,
+	type TransferWithLegs,
 } from "~/server/services/transfers/create.mutation";
 import {
 	type DeletedTransfer,
@@ -26,7 +26,7 @@ import { readUndo } from "./undo";
 
 type LedgerCaller = Caller & { timeZone: string };
 type Input = z.infer<typeof createTransferSchema>;
-type Created = TransferValue;
+type Created = TransferWithLegs;
 
 const FAMILY = "transfer" as const;
 
@@ -71,7 +71,7 @@ export function transferResult(value: Created) {
 export async function createTransferWrite(caller: LedgerCaller, input: Input) {
 	const value = await applyWrite(
 		caller,
-		createTransfer,
+		createTransferWithLegs,
 		createInput(caller, input),
 	);
 	return {
@@ -83,7 +83,7 @@ export async function createTransferWrite(caller: LedgerCaller, input: Input) {
 }
 
 export const previewCreateTransfer = (caller: LedgerCaller, input: Input) =>
-	previewWrite(caller, createTransfer, createInput(caller, input));
+	previewWrite(caller, createTransferWithLegs, createInput(caller, input));
 
 /** The undo of a delete: the recreate plus the stored budget side and fee fields (transfers/stash.ts). */
 const restoreInput = (value: DeletedTransfer): CreateTransferInput => ({
@@ -127,9 +127,9 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 			timeZone: caller.timeZone,
 		};
 		return {
-			preview: () => previewWrite(caller, createTransfer, args),
+			preview: () => previewWrite(caller, createTransferWithLegs, args),
 			apply: async () => {
-				const value = await applyWrite(caller, createTransfer, args);
+				const value = await applyWrite(caller, createTransferWithLegs, args);
 				return {
 					id: value.transferId,
 					accounts: transferResult(value).accounts,

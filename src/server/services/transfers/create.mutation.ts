@@ -113,7 +113,14 @@ export interface TransferValue {
 	readonly netWorthEffect: Money | null;
 	readonly budget: BudgetEffect & { readonly side: BudgetSideResult };
 	readonly feeExpenseId: string | null;
-	/** The ids of the legs the move wrote (the fee's only when a fee was booked). */
+}
+
+/**
+ * The value API v1 answers: the ids of the legs the move wrote (the fee's
+ * only when a fee was booked). The web's value leaves them out, so a preview
+ * and its write, which differ in the ids the server makes, still read equal.
+ */
+export interface TransferWithLegs extends TransferValue {
 	readonly legIds: {
 		readonly from: string;
 		readonly to: string;
@@ -192,7 +199,7 @@ export async function createTransferIn(
 	tx: Tx,
 	userId: string,
 	given: CreateTransferInput,
-): Promise<TransferValue> {
+): Promise<TransferWithLegs> {
 	// Resolved once here: the fee row reads the same zone as the move's day.
 	const input = await withUserZone(tx, userId, given);
 	const move = await resolveMove(tx, userId, input);
@@ -337,27 +344,43 @@ async function budgetSideOf(
 	});
 }
 
+export const createTransferWithLegs: MoneyMutation<
+	CreateTransferInput,
+	TransferWithLegs
+> = {
+	id: "transfer.create",
+	touches: TRANSFER_FIGURES,
+	scope: (input) => {
+		const accountId = input.fromAccountId ?? input.toAccountId;
+		const envelopeId = input.envelopeId ?? input.putIn;
+		return {
+			...(accountId ? { accountId } : {}),
+			...(envelopeId ? { envelopeId } : {}),
+		};
+	},
+	run: async (tx, input, actor) => {
+		const value = await createTransferIn(tx, actor.userId, input);
+		return {
+			value,
+			undo: {
+				kind: "revert",
+				mutation: "transfer.delete",
+				rows: [{ table: "transfer", id: value.transferId }],
+			},
+		};
+	},
+};
+
 export const createTransfer: MoneyMutation<CreateTransferInput, TransferValue> =
 	{
-		id: "transfer.create",
-		touches: TRANSFER_FIGURES,
-		scope: (input) => {
-			const accountId = input.fromAccountId ?? input.toAccountId;
-			const envelopeId = input.envelopeId ?? input.putIn;
-			return {
-				...(accountId ? { accountId } : {}),
-				...(envelopeId ? { envelopeId } : {}),
-			};
-		},
+		...createTransferWithLegs,
 		run: async (tx, input, actor) => {
-			const value = await createTransferIn(tx, actor.userId, input);
-			return {
-				value,
-				undo: {
-					kind: "revert",
-					mutation: "transfer.delete",
-					rows: [{ table: "transfer", id: value.transferId }],
-				},
-			};
+			const { value, undo } = await createTransferWithLegs.run(
+				tx,
+				input,
+				actor,
+			);
+			const { legIds: _legIds, ...rest } = value;
+			return { value: rest, undo };
 		},
 	};
