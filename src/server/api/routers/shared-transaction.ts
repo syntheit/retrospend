@@ -10,11 +10,7 @@ import {
 import { participantRefSchema } from "~/server/services/payments/input";
 import { getImageUrl } from "~/server/storage";
 import { deleteSharedAndRecord } from "~/server/services/shared-expenses/delete-tell";
-import {
-	receiptUrlSchema,
-	splitModeEnum,
-	splitParticipantSchema,
-} from "~/server/services/shared-expenses/input";
+import { receiptUrlSchema, splitModeEnum, splitParticipantSchema } from "~/server/services/shared-expenses/input";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import { toFloat } from "@retrospend/domain/precise-decimal";
 import { categoryIdSchema } from "~/lib/schemas/row-ids";

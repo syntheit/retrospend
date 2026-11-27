@@ -541,21 +541,23 @@ describe("the name check: index path and plaintext fallback", () => {
 });
 
 describe("a device's UUID id", () => {
-	it("is refused by the web's categories router before it reads anything (cuid only), while v1 takes it", async () => {
+	it("passes the web's categories router to the lookup, which finds no such row, as v1 does", async () => {
 		const user = await createTestUser();
 		const api = trpcOf(user);
 		const uuid = randomUUID();
 		const cuid = `c${uuid.replaceAll("-", "")}`;
+		// The router takes either id shape (categoryIdSchema), so each of
+		// these reaches the lookup and is answered not found, not refused as
+		// malformed.
 		await expect(
 			api.update({ id: uuid, name: "Food", color: "teal" }),
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		await expect(
 			api.remove({ id: uuid, targetId: null }),
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		await expect(
 			api.remove({ id: cuid, targetId: uuid }),
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		// v1 reads the id as any string: the row is simply not found.
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		await expectProblem(
 			await call(`/categories/${uuid}`, {
 				headers: await asMobile(user.user.id),

@@ -405,7 +405,7 @@
 		"src/server/api/routers/claim.ts": 31,
 		"src/server/api/routers/guest.ts": 144,
 		"src/server/api/routers/invite.ts": 13,
-		"src/server/api/routers/shared-transaction.ts": 53,
+		"src/server/api/routers/shared-transaction.ts": 50,
 		"src/server/services/import-queue.service.ts": 375,
 		"src/server/services/shared-expenses/audit-log-formatter.ts": 338,
 		"src/server/services/shared-expenses/balances-perspective.service.ts": 13,
