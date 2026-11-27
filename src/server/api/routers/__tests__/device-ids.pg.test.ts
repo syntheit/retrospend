@@ -320,6 +320,12 @@ describe("a shared expense in a device's project", () => {
 			projectId: null,
 		});
 		expect(await projectOf(id)).toBeNull();
+		await caller.entry.shared.update.save({
+			...form,
+			notes: null,
+			projectId: trip.id,
+		});
+		expect(await projectOf(id)).toBe(trip.id);
 	});
 });
 
