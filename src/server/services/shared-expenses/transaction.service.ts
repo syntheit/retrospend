@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { noticeChanges } from "~/server/services/notification-text";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
+import { assertSharedRowCategory } from "~/server/services/category/own";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
 	notifyExpenseDeleted,
@@ -61,6 +62,12 @@ interface UpdateSharedTransactionInput {
 	currency?: string;
 	description?: string;
 	categoryId?: string | null;
+	/**
+	 * `categoryId` comes from a record the server wrote and signed (the v1 undo
+	 * token of an edit). Never set from a request body: the transport schemas
+	 * do not carry it.
+	 */
+	restoredFromServerRecord?: boolean;
 	date?: Date;
 	paidBy?: ParticipantRef;
 	splitWith?: SplitParticipantInput[];
@@ -132,6 +139,8 @@ export class SharedTransactionService {
 		const result = await this.runInTransaction(async (tx) => {
 			let billingPeriodId: string | null = null;
 			let backdatedWarning: { periodLabel: string } | null = null;
+
+			await assertSharedRowCategory(tx, this.actor, input.categoryId);
 
 			if (input.projectId) {
 				// Validate caller is at least CONTRIBUTOR on this project
@@ -260,6 +269,10 @@ export class SharedTransactionService {
 				this.actor.participantId,
 			);
 			before = { amount: existing.amount, currency: existing.currency };
+			await assertSharedRowCategory(tx, this.actor, input.categoryId, {
+				unchangedFrom: existing.categoryId,
+				restoredFromServerRecord: input.restoredFromServerRecord,
+			});
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};
 
