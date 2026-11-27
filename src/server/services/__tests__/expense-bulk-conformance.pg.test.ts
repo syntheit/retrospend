@@ -121,11 +121,17 @@ function deviceSide(): Side {
 				else
 					tx.put("transfers", {
 						id: `t-${id}`,
+						kind: "TRANSFER",
 						date: row.date,
+						fromAccountId: null,
+						fromAmount: "0",
 						toAccountId: null,
 						toAmount: "0",
 						toCurrency: row.currency,
 						feeExpenseId: id,
+						countedFromUnits: "0",
+						countedToUnits: "0",
+						note: null,
 					});
 			});
 		},
