@@ -138,7 +138,7 @@ export function useParkedEntries() {
 						api,
 						writes,
 						clientId,
-						kind: parked.kind,
+						kind: parked.kind as RebaseOffer["kind"],
 						options,
 						done: async (next) => {
 							forgetNotFound(clientId);

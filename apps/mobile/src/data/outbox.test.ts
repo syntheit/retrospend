@@ -478,8 +478,11 @@ describe("chains", () => {
 		await outbox.markSent("u1", { version: T2 });
 		const [second] = await outbox.all();
 		expect(second?.baseVersion).toBe(T2);
-		expect(second?.device?.changes[0]?.before?.version).toBe(T2);
-		expect(second?.device?.changes[0]?.after?.version).toBeNull();
+		const rows = second?.device?.changes[0] as
+			| { before: { version: unknown }; after: { version: unknown } }
+			| undefined;
+		expect(rows?.before.version).toBe(T2);
+		expect(rows?.after.version).toBeNull();
 	});
 
 	it("parks an entry chained to an ack with no version", async () => {

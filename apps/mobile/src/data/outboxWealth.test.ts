@@ -54,7 +54,14 @@ function accountBooking(
 		bookedAt: Date.parse("2026-11-10T15:00:00.000Z"),
 		changes: [
 			...(leg
-				? [{ table: "legs" as const, id: "l1", before: null, after: legRow }]
+				? [
+						{
+							table: "legs" as const,
+							id: "l1",
+							before: null,
+							after: legRow as never,
+						},
+					]
 				: []),
 			{
 				table: "accounts" as const,
@@ -177,7 +184,9 @@ describe("account entries in the outbox", () => {
 				{ after: "u1" },
 				{
 					bookedAt: 0,
-					changes: [{ table: "legs", id: "l1", before: legRow, after: null }],
+					changes: [
+						{ table: "legs", id: "l1", before: legRow as never, after: null },
+					],
 					changed: [],
 				},
 			),

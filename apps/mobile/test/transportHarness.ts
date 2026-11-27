@@ -368,7 +368,7 @@ export function vaultHarness(): Harness {
 				dispatch: (entry, call) => {
 					if (entry.kind === "confirm" || entry.kind === "skip")
 						throw new Error("The fake vault has no recurring writes");
-					return sender.dispatch({ ...entry, kind: entry.kind }, call);
+					return sender.dispatch(entry, call);
 				},
 			};
 		},

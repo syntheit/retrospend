@@ -331,7 +331,7 @@ describe("a 404 retires only after a pull shows the row gone", () => {
 		expect(
 			(await resolveParked(outbox, api, entryOf("accounts", "balance")))?.gone,
 		).toBe(false);
-		writes.absentSince.mockResolvedValue(true);
+		(writes.absentSince as unknown as jest.Mock).mockResolvedValue(true);
 		const gone = await resolveParked(
 			outbox,
 			api,
@@ -371,7 +371,7 @@ describe("a 404 retires only after a pull shows the row gone", () => {
 			await resolveParked(outbox, api, entryOf("transfers", "delete")),
 		).not.toBeNull();
 		expect(await outbox.all()).toHaveLength(1);
-		writes.absentSince.mockResolvedValue(true);
+		(writes.absentSince as unknown as jest.Mock).mockResolvedValue(true);
 		expect(
 			await resolveParked(outbox, api, entryOf("transfers", "delete")),
 		).toBeNull();

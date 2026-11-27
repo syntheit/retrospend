@@ -174,7 +174,15 @@ export async function accountOffer(input: {
 	api: RetrospendClient;
 	writes: DeviceWrites;
 	clientId: string;
-	kind: OutboxEntry["kind"];
+	kind:
+		| "close"
+		| "reopen"
+		| "balance"
+		| "rateType"
+		| "update"
+		| "delete"
+		| "confirm"
+		| "skip";
 	options: { signal: AbortSignal };
 	done: (next: string) => Promise<boolean>;
 }) {
