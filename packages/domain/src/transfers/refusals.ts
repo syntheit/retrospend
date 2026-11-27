@@ -1,7 +1,8 @@
 /**
  * What the transfer rules refuse, as typed errors. The domain knows no
  * transport: the server maps each to a bad request with the same message
- * (services/transfers/refusals.ts) and the device to its own input error.
+ * (asBadRequest in src/server/services/rate-types.ts) and the device to its
+ * own input error.
  */
 import { MissingRateError } from "../money-dec";
 

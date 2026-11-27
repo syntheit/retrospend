@@ -185,6 +185,11 @@ export function rowDateOf(day: Date, timeZone?: string): Date {
 	return parseDateOnlyIn(day.toISOString().slice(0, 10), timeZone);
 }
 
+/** The calendar day of an expense row stored by rowDateOf, as moveDay takes it. */
+export function rowDayOf(date: Date, timeZone?: string): string {
+	return dayKey(date, timeZone);
+}
+
 /**
  * The first instant of the calendar day `parts` in `timeZone` (out-of-range
  * parts roll over like Date.UTC). Where DST skips local midnight (Santiago,

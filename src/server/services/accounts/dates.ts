@@ -28,8 +28,3 @@ export function moveDay(
 	}
 	return new Date(`${picked}T00:00:00.000Z`);
 }
-
-/** The calendar day of an expense row stored by rowDateOf, as moveDay takes it. */
-export function rowDayOf(date: Date, timeZone?: string): string {
-	return dayKey(date, timeZone);
-}
