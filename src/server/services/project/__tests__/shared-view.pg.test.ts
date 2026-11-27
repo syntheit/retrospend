@@ -5,7 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import {
 	anonymousCaller,
 	seedGuest,
@@ -176,6 +176,61 @@ describe("publicPageView", () => {
 			[{ minor: 126_250, currency: "USD" }],
 		]);
 		expect(v?.payments).toEqual([]);
+	});
+
+	it("names a category only on a split its owner created or is on", async () => {
+		const project = await adminDb.project.create({
+			data: {
+				name: "Category owner",
+				primaryCurrency: "USD",
+				visibility: "PUBLIC",
+				createdById: trip.ana.user.id,
+			},
+		});
+		const food = await fixtureDb.category.create({
+			data: { name: "Food", color: "teal", userId: trip.ana.user.id },
+		});
+		const row = (by: string, amount: string, i: number) => ({
+			description: `Owner ${i}`,
+			amount,
+			currency: "USD",
+			date: new Date("2026-03-01T12:00:00.000Z"),
+			categoryId: food.id,
+			paidByType: "user" as const,
+			paidById: by,
+			createdByType: "user" as const,
+			createdById: by,
+			projectId: project.id,
+		});
+		// Ana filed 10.00 under her category; Ben filed 4.00 under it on a split Ana is not on.
+		await adminDb.sharedTransaction.create({ data: row(trip.ana.user.id, "10.00", 0) });
+		await adminDb.sharedTransaction.create({
+			data: {
+				...row(trip.ben.user.id, "4.00", 1),
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: trip.ben.user.id,
+							shareAmount: "4.00",
+						},
+					],
+				},
+			},
+		});
+		const v = await anonymousCaller().publicPageView({ id: project.id });
+		expect(v?.total).toEqual([{ minor: 1400, currency: "USD" }]);
+		const lines = (v?.byCategory ?? []).map((c) => [
+			c.name,
+			c.group[0]?.minor,
+		]);
+		expect(lines).toEqual(
+			expect.arrayContaining([
+				["Food", 1000],
+				[null, 400],
+			]),
+		);
+		expect(lines).toHaveLength(2);
 	});
 
 	it("rounds each row to the minor unit before summing, like a member's page", async () => {
