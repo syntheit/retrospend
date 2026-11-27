@@ -117,6 +117,26 @@ export function differingFields(
 	return COMPARED.filter((k) => !sameColumnValue(k, device[k], server[k]));
 }
 
+/**
+ * Why a row booked at `bookedAt` into `home` cannot be held to the server's:
+ * the device holds no settings, the home currency moved, or the rates changed
+ * after the write was booked. The one owner, for every row that carries a
+ * booked rate (an expense, a leg).
+ */
+export function bookingSkip(
+	live: Reader,
+	bookedAt: number,
+	home: string,
+): "no_settings" | "settings_moved" | "rates_moved" | null {
+	const settings = live.get("settings", SETTINGS_ID);
+	if (!settings) return "no_settings";
+	if (settings.homeCurrency !== home) return "settings_moved";
+	const asOf = ratesAsOf(live);
+	if (asOf !== null && !(Date.parse(asOf) <= bookedAt - CLOCK_SKEW_MS))
+		return "rates_moved";
+	return null;
+}
+
 const skipped = (id: string, code: SkipCode): WriteVerdict => ({
 	id,
 	outcome: "skipped",
@@ -219,13 +239,8 @@ export function compareWrite(
 	if (!pulled) return skipped(id, "gone_already");
 	if (acked.version !== null && pulled.version !== acked.version)
 		return skipped(id, "changed_since");
-	const settings = live.get("settings", SETTINGS_ID);
-	if (!settings) return skipped(id, "no_settings");
-	if (settings.homeCurrency !== after.homeCurrency)
-		return skipped(id, "settings_moved");
-	const asOf = ratesAsOf(live);
-	if (asOf !== null && !(Date.parse(asOf) <= acked.bookedAt - CLOCK_SKEW_MS))
-		return skipped(id, "rates_moved");
+	const moved = bookingSkip(live, acked.bookedAt, after.homeCurrency);
+	if (moved) return skipped(id, moved);
 	try {
 		bookedOf(pulled);
 	} catch {

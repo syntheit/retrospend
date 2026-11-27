@@ -19,7 +19,12 @@
 import type { Reader } from "./port";
 import { differingColumns } from "./wealth-columns";
 import type { WealthChange, WealthTable } from "./wealth-rows";
-import type { AckedWrite, WriteVerdict } from "./write-parity";
+import {
+	type AckedWrite,
+	bookingSkip,
+	type SkipCode,
+	type WriteVerdict,
+} from "./write-parity";
 
 const NOT_COMPARED: Record<
 	Exclude<WealthTable, "snapshots">,
@@ -31,10 +36,11 @@ const NOT_COMPARED: Record<
 	transfers: ["note"],
 };
 
-const skipped = (
-	id: string,
-	code: "changed_since" | "gone_already",
-): WriteVerdict => ({ id, outcome: "skipped", code });
+const skipped = (id: string, code: SkipCode): WriteVerdict => ({
+	id,
+	outcome: "skipped",
+	code,
+});
 
 /** The verdict for one account-family row; null for a snapshot, which is not compared. */
 export function compareWealth(
@@ -51,12 +57,24 @@ export function compareWealth(
 			: { id, outcome: "match" };
 	}
 	if (!pulled) return skipped(id, "gone_already");
+	// An account is versioned only by the write that names it: another entry
+	// through it (a transfer) answers no version, so another device may have
+	// changed it since and there is nothing to hold it to.
 	if (
 		table === "accounts" &&
-		acked.version !== null &&
-		String((pulled as { version: number }).version) !== acked.version
+		(acked.version === null ||
+			String((pulled as { version: number }).version) !== acked.version)
 	)
 		return skipped(id, "changed_since");
+	// A leg is booked at the rates and the home currency the device held.
+	if (table === "legs") {
+		const moved = bookingSkip(
+			live,
+			acked.bookedAt,
+			(change.after as { homeCurrency: string }).homeCurrency,
+		);
+		if (moved) return skipped(id, moved);
+	}
 	const fields = differingColumns(
 		table,
 		change.after,

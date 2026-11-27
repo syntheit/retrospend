@@ -12,6 +12,8 @@ import { bookIn } from "./device/book";
 import { type PendingChange, readOverlaid } from "./device/pending";
 import { BA, rate, seed } from "./expense-create-vectors";
 import type { MemoryStore } from "./memory-store";
+import { SETTINGS_ID } from "./port";
+import { ratesAsOf } from "./rates";
 import { compareEntry, type WriteVerdict } from "./write-parity";
 
 const NOW = Date.parse("2026-11-10T15:00:00.000Z");
@@ -152,6 +154,54 @@ describe("compareEntry of an account entry", () => {
 			id: LEG,
 			outcome: "skipped",
 			code: "gone_already",
+		});
+	});
+
+	it("skips a leg booked on rates the table has since moved past: the server booked on the new ones", async () => {
+		const { store, changes } = await pulledAfterBalanceUpdate();
+		// The last rate sync stamped the table at NOW - 1 day.
+		const asOf = new Date(NOW - 86_400_000).toISOString();
+		await store.transaction((tx) => tx.put("rateSync", { id: "rates", asOf }));
+		expect(ratesAsOf(store)).toBe(asOf);
+		const early = compareEntry(store, changes, {
+			bookedAt: Date.parse(asOf) - 60 * 60_000,
+			version: "4",
+		});
+		expect(outcome(early, LEG)).toEqual({
+			id: LEG,
+			outcome: "skipped",
+			code: "rates_moved",
+		});
+		// Booked after the table's last move, the same leg is held to its columns.
+		expect(outcome(compare(store, changes), LEG)?.outcome).toBe("match");
+	});
+
+	it("skips a leg booked into a home currency the settings no longer have", async () => {
+		const { store, changes } = await pulledAfterBalanceUpdate();
+		const settings = store.get("settings", SETTINGS_ID);
+		if (!settings) throw new Error("no settings");
+		await store.transaction((tx) =>
+			tx.put("settings", { ...settings, homeCurrency: "USD" }),
+		);
+		expect(outcome(compare(store, changes), LEG)).toEqual({
+			id: LEG,
+			outcome: "skipped",
+			code: "settings_moved",
+		});
+	});
+
+	it("skips an account the ack does not name, whatever another device did to it", async () => {
+		const { store, changes } = await pulledAfterBalanceUpdate();
+		const account = store.get("accounts", A);
+		if (!account) throw new Error("no account");
+		await store.transaction((tx) =>
+			tx.put("accounts", { ...account, closedAt: new Date(NOW) }),
+		);
+		// A transfer's answer names no version for the accounts it moves.
+		expect(outcome(compare(store, changes, null), A)).toEqual({
+			id: A,
+			outcome: "skipped",
+			code: "changed_since",
 		});
 	});
 });
