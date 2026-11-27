@@ -17,8 +17,8 @@
  *
  * Run through LocalDb.write or LocalDb.preview.
  */
-import { cappedCounted } from "@retrospend/domain/accounts/places";
 import { dec } from "@retrospend/domain/precise-decimal";
+import { countedAfterDelete } from "@retrospend/domain/transfers/delete-counted";
 import { putAccount } from "./account-kit";
 import { removeLegs } from "./account-legs";
 import type { LegRow } from "./accounts";
@@ -69,33 +69,29 @@ function holdsAll(r: Repos, t: TransferRow, legs: readonly LegRow[]): boolean {
 	return !t.feeExpenseId || r.expenses.get(t.feeExpenseId) !== undefined;
 }
 
-/** The counted units a move took and gave go back, then each account is capped at what it holds. */
+/**
+ * The counted units a move took and gave go back, each account capped at what
+ * it holds (the one owner: countedAfterDelete). An account on both sides gets
+ * both, as the server's two statements do.
+ */
 function restoreCounted(r: Repos, t: TransferRow): void {
-	const from = t.fromAccountId && r.accounts.get(t.fromAccountId)?.account;
-	if (from && dec(t.countedFromUnits).gt(0))
-		putAccount(r, {
-			...from,
-			countedUnits: dec(from.countedUnits).add(t.countedFromUnits).toFixed(),
-		});
-	const to = t.toAccountId && r.accounts.get(t.toAccountId)?.account;
-	if (to && dec(t.countedToUnits).gt(0)) {
-		// The counted units may have moved on since; never below zero.
-		const left = dec(to.countedUnits).sub(t.countedToUnits);
-		putAccount(r, {
-			...to,
-			countedUnits: (left.lt(0) ? dec(0) : left).toFixed(),
-		});
-	}
-	for (const id of [t.fromAccountId, t.toAccountId]) {
+	const ids = [...new Set([t.fromAccountId, t.toAccountId])];
+	for (const id of ids) {
 		const account = id && r.accounts.get(id)?.account;
 		if (!account) continue;
-		const capped = cappedCounted(
-			account.type,
-			dec(account.countedUnits),
-			dec(account.balance),
+		const counted = countedAfterDelete(
+			{
+				type: account.type,
+				countedUnits: dec(account.countedUnits),
+				balance: dec(account.balance),
+			},
+			{
+				give: id === t.fromAccountId ? dec(t.countedFromUnits) : dec(0),
+				take: id === t.toAccountId ? dec(t.countedToUnits) : dec(0),
+			},
 		);
-		if (!capped.eq(dec(account.countedUnits)))
-			putAccount(r, { ...account, countedUnits: capped.toFixed() });
+		if (!counted.eq(dec(account.countedUnits)))
+			putAccount(r, { ...account, countedUnits: counted.toFixed() });
 	}
 }
 

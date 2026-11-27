@@ -5,6 +5,7 @@
  * on the server (src/server/services/__tests__/transfer-conformance.pg.test.ts).
  */
 import type { TransferVector } from "./transfer-vector-types";
+import { countedVectors } from "./transfer-vectors-counted";
 import { gateVectors } from "./transfer-vectors-gates";
 import { moneyVectors } from "./transfer-vectors-money";
 
@@ -13,5 +14,6 @@ export { uuid } from "./transfer-vectors-kit";
 
 export const transferVectors: TransferVector[] = [
 	...moneyVectors,
+	...countedVectors,
 	...gateVectors,
 ];
