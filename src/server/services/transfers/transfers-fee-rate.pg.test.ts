@@ -1,7 +1,7 @@
 /**
  * A transfer's fee charged to an account in a third currency (neither side's):
- * it is valued at the day's rate like the legs, and a fee no rate values leaves
- * the net worth effect unknown, never 0. ARS home, Blue 1 USD = 1,545 ARS,
+ * it is valued at the day's rate like the legs (a fee no rate values is covered
+ * in the domain's rows.test.ts). ARS home, Blue 1 USD = 1,545 ARS,
  * clock pinned (accounts/characterization-fixtures.ts). Currency QQQ is
  * priced here only: 0.9 QQQ per USD on Feb 20, while its account still holds
  * a stale stored rate of 0.5.
