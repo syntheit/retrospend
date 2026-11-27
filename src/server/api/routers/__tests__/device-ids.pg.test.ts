@@ -11,6 +11,10 @@
  *   - Merging "Cafe" into "Food" moves its two expenses, so Food holds 3
  *     (one it had, two it got) and Cafe is gone.
  *   - An account created at 100 and updated to 120 holds 120.
+ *   - A shared expense filed under a project the user belongs to keeps that
+ *     project's id; moving it out sets projectId to null, back in restores it.
+ *   - Importing one row under a device's category stores one expense of
+ *     USD 10 filed under it.
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -22,7 +26,8 @@ import {
 	seedArsRates,
 	TODAY,
 } from "~/server/services/accounts/test-fixtures";
-import { fixtureDb } from "~/test/pg-harness";
+import { addMember } from "~/server/services/project/__tests__/trip-fixture";
+import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 
 vi.mock("next/headers", () => ({
@@ -50,6 +55,20 @@ async function setup() {
 				kind: "EXPENSE",
 			},
 		});
+	// A project a phone made offline: a UUID id, the user its organizer.
+	const project = async () => {
+		const made = await adminDb.project.create({
+			data: {
+				id: randomUUID(),
+				name: "Device trip",
+				primaryCurrency: "ARS",
+				visibility: "PRIVATE",
+				createdById: userId,
+			},
+		});
+		await addMember(made.id, "user", userId, "ORGANIZER");
+		return made;
+	};
 	const account = (balance = "100") =>
 		fixtureDb.assetAccount.create({
 			data: {
@@ -62,7 +81,7 @@ async function setup() {
 				isLiquid: true,
 			},
 		});
-	return { caller, userId, category, account };
+	return { caller, userId, category, account, project };
 }
 
 const expenseForm = (categoryId: string, amount = "10.00") => ({
@@ -217,6 +236,90 @@ describe("an expense under a device's category", () => {
 		expect(await fixtureDb.analyticsCategoryPreference.count({ where })).toBe(
 			0,
 		);
+	});
+});
+
+describe("a device's category in an import", () => {
+	it("an imported row is filed under it", async () => {
+		const { caller, category } = await setup();
+		const food = await category("Food");
+		const title = `Import ${randomUUID()}`;
+		await caller.expense.importExpenses({
+			rows: [
+				{
+					title,
+					amount: 10,
+					currency: "USD",
+					date: TODAY,
+					categoryId: food.id,
+				},
+			],
+		});
+		const rows = await fixtureDb.expense.findMany({
+			where: { categoryId: food.id },
+		});
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({ currency: "USD" });
+		expect(rows[0]?.amount.toFixed(2)).toBe("10.00");
+	});
+});
+
+describe("a shared expense in a device's project", () => {
+	const me = (userId: string) => ({
+		participantType: "user" as const,
+		participantId: userId,
+	});
+	const projectOf = async (id: string) =>
+		(
+			await fixtureDb.sharedTransaction.findUniqueOrThrow({
+				where: { id },
+				select: { projectId: true },
+			})
+		).projectId;
+
+	it("is created, moved out and moved back through the old router", async () => {
+		const { caller, userId, project } = await setup();
+		const trip = await project();
+		const made = await caller.sharedTransaction.create({
+			amount: 30,
+			currency: "ARS",
+			description: "Dinner",
+			date: TODAY,
+			paidBy: me(userId),
+			splitWith: [me(userId)],
+			splitMode: "EQUAL",
+			projectId: trip.id,
+		});
+		const id = made.transaction.id;
+		expect(await projectOf(id)).toBe(trip.id);
+		await caller.sharedTransaction.update({ id, projectId: null });
+		expect(await projectOf(id)).toBeNull();
+		await caller.sharedTransaction.update({ id, projectId: trip.id });
+		expect(await projectOf(id)).toBe(trip.id);
+	});
+
+	it("is created and edited through the composer", async () => {
+		const { caller, userId, project } = await setup();
+		const trip = await project();
+		const id = randomUUID();
+		const form = {
+			id,
+			amount: "30",
+			currency: "ARS",
+			description: "Lunch",
+			date: isoDay(TODAY),
+			paidBy: me(userId),
+			splitWith: [me(userId)],
+			splitMode: "EQUAL" as const,
+		};
+		await caller.entry.shared.create.save({ ...form, projectId: trip.id });
+		expect(await projectOf(id)).toBe(trip.id);
+		await caller.entry.shared.update.save({
+			...form,
+			notes: null,
+			projectId: null,
+		});
+		expect(await projectOf(id)).toBeNull();
 	});
 });
 

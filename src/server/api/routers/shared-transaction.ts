@@ -13,7 +13,7 @@ import { deleteSharedAndRecord } from "~/server/services/shared-expenses/delete-
 import { receiptUrlSchema, splitModeEnum, splitParticipantSchema } from "~/server/services/shared-expenses/input";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import { toFloat } from "@retrospend/domain/precise-decimal";
-import { categoryIdSchema } from "~/lib/schemas/row-ids";
+import { categoryIdSchema, projectIdSchema } from "~/lib/schemas/row-ids";
 
 export const sharedTransactionRouter = createTRPCRouter({
 	create: guestOrProtectedProcedure
@@ -29,7 +29,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 					.array(splitParticipantSchema)
 					.min(1, "A shared expense must have at least 1 participant"),
 				splitMode: splitModeEnum,
-				projectId: z.cuid().optional(),
+				projectId: projectIdSchema.optional(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
 				receiptUrl: receiptUrlSchema.optional(),
 			}),
@@ -57,7 +57,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 					.min(1, "A shared expense must have at least 1 participant")
 					.optional(),
 				splitMode: splitModeEnum.optional(),
-				projectId: z.cuid().nullish(),
+				projectId: projectIdSchema.nullish(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).nullish(),
 				receiptUrl: receiptUrlSchema.nullish(),
 			}),

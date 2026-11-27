@@ -12,7 +12,11 @@ import { join, relative } from "node:path";
 import { idSchema } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { accountIdSchema, categoryIdSchema } from "~/lib/schemas/row-ids";
+import {
+	accountIdSchema,
+	categoryIdSchema,
+	projectIdSchema,
+} from "~/lib/schemas/row-ids";
 import { OTHER_ID_VALIDATORS, type Validators } from "./category-id-validators";
 
 const ROOT = join(__dirname, "../../../..");
@@ -81,7 +85,7 @@ describe("cuid-only id validators", () => {
 	it("none of them is a category, account, asset or template reference", () => {
 		const fields = Object.values(scan().named).flatMap((f) => Object.keys(f));
 		for (const field of fields)
-			expect(field).not.toMatch(/categor|account|asset|template|target/i);
+			expect(field).not.toMatch(/categor|account|asset|template|target|project/i);
 		// The ids named `id` belong to the invite router only: every other
 		// router and input file that takes a category or an account id by
 		// that name uses the shared schemas.
@@ -99,14 +103,23 @@ describe("categoryIdSchema and accountIdSchema", () => {
 	it("z.cuid() refuses a UUID, the shared schemas and v1's idSchema take both", () => {
 		expect(z.cuid().safeParse(uuid).success).toBe(false);
 		expect(z.cuid().safeParse(cuid).success).toBe(true);
-		for (const schema of [categoryIdSchema, accountIdSchema, idSchema]) {
+		for (const schema of [
+			categoryIdSchema,
+			accountIdSchema,
+			projectIdSchema,
+			idSchema,
+		]) {
 			expect(schema.safeParse(uuid).success).toBe(true);
 			expect(schema.safeParse(cuid).success).toBe(true);
 		}
 	});
 
 	it("still refuse what is neither shape", () => {
-		for (const schema of [categoryIdSchema, accountIdSchema]) {
+		for (const schema of [
+			categoryIdSchema,
+			accountIdSchema,
+			projectIdSchema,
+		]) {
 			for (const bad of ["", "not an id", "123", `${uuid}x`, "../x", null])
 				expect(schema.safeParse(bad).success).toBe(false);
 		}

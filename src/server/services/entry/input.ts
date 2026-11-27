@@ -16,7 +16,7 @@ import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
-import { categoryIdSchema } from "~/lib/schemas/row-ids";
+import { categoryIdSchema, projectIdSchema } from "~/lib/schemas/row-ids";
 
 const decimal = z
 	.string()
@@ -126,14 +126,14 @@ export const sharedCreateSchema = z.object({
 	/** A client id: a repeated create (a double click) writes one row. */
 	id: z.uuid().optional(),
 	...sharedFields,
-	projectId: z.cuid().optional(),
+	projectId: projectIdSchema.optional(),
 });
 export const sharedUpdateSchema = z.object({
 	id,
 	...sharedFields,
 	// Sent on every edit, so an emptied note clears it.
 	notes: userTextOrEmpty("shared_expense.notes", 5000).nullable(),
-	projectId: z.cuid().nullable(),
+	projectId: projectIdSchema.nullable(),
 });
 
 /** Days and amounts in the shared service's shape. */
