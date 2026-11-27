@@ -309,6 +309,10 @@ model Category {
   excludeByDefault     Boolean                       @default(false)
   // INCOME categories are for money in only, never for spending or envelopes.
   kind                 CategoryKind                  @default(EXPENSE)
+  // Moves by 1 when color, icon or excludeByDefault changes (a database trigger,
+  // packages/domain/src/category-version.ts) and when updateCategory renames; a
+  // write that names the version it read is refused when this moved.
+  version              Int                           @default(0)
   userId               String
   user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses             Expense[]

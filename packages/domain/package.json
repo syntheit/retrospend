@@ -12,6 +12,7 @@
 		"./activity-rows-store": "./src/activity-rows-store.ts",
 		"./category-icons": "./src/category-icons.ts",
 		"./category-merge/*": "./src/category-merge/*.ts",
+		"./category-version": "./src/category-version.ts",
 		"./category-matcher": "./src/category-matcher.ts",
 		"./category-tone": "./src/category-tone.ts",
 		"./currencies": "./src/currencies.ts",
