@@ -30,11 +30,14 @@ type Created = TransferValue;
 
 const FAMILY = "transfer" as const;
 
+/** The contract's flat id fields become the mutation's own shape. */
 const createInput = (
 	caller: LedgerCaller,
-	input: Input,
+	{ fromLegId, toLegId, feeLegId, feeExpenseId, ...input }: Input,
 ): CreateTransferInput => ({
 	...input,
+	legIds: { from: fromLegId, to: toLegId, fee: feeLegId },
+	feeExpenseId,
 	timeZone: caller.timeZone,
 });
 
@@ -43,6 +46,7 @@ export function transferResult(value: Created) {
 	const { budget } = v;
 	return {
 		id: v.transferId,
+		legs: value.legIds,
 		kind: v.kind,
 		from: v.from,
 		to: v.to,

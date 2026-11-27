@@ -39,6 +39,8 @@ export async function writeCheckpoint(
 		rate: CheckpointRate;
 		date: Date;
 		homeCurrency: string;
+		/** A client-made id for the Not logged leg, used only when one is written. */
+		legId?: string;
 	},
 ): Promise<Checkpoint> {
 	const typed = { type: account.type, balance: account.balance };
@@ -66,6 +68,7 @@ export async function writeCheckpoint(
 		legId = (
 			await tx.accountLeg.create({
 				data: {
+					...(next.legId ? { id: next.legId } : {}),
 					userId,
 					accountId: account.id,
 					currency: plan.leg.currency,

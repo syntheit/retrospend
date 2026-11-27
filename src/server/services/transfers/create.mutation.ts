@@ -54,8 +54,18 @@ export const TRANSFER_FIGURES = [
 ];
 
 export interface CreateTransferInput {
-	/** Set only by the undo of a delete, to bring the same move back. */
+	/** A client-made id (the device's own row), or the undo of a delete bringing the same move back. */
 	readonly id?: string;
+	/**
+	 * Client-made ids for the rows the move creates; each omitted one is made
+	 * here. A taken id fails the whole move (id_taken), nothing written.
+	 */
+	readonly legIds?: {
+		readonly from?: string;
+		readonly to?: string;
+		readonly fee?: string;
+	};
+	readonly feeExpenseId?: string;
 	readonly fromAccountId: string | null;
 	readonly toAccountId: string | null;
 	/** Needed when that side is Not tracked; an account's own currency otherwise. */
@@ -103,6 +113,12 @@ export interface TransferValue {
 	readonly netWorthEffect: Money | null;
 	readonly budget: BudgetEffect & { readonly side: BudgetSideResult };
 	readonly feeExpenseId: string | null;
+	/** The ids of the legs the move wrote (the fee's only when a fee was booked). */
+	readonly legIds: {
+		readonly from: string;
+		readonly to: string;
+		readonly fee: string | null;
+	};
 }
 
 interface Side extends TransferSide {
@@ -161,6 +177,7 @@ type Written = {
 
 const legOf = (tx: Tx, w: Written, leg: TransferLegRow) =>
 	writeLeg(tx, w.userId, {
+		id: leg.id,
 		account: leg.accountId ? (w.accounts.get(leg.accountId) ?? null) : null,
 		currency: leg.currency,
 		amount: leg.amount,
@@ -196,7 +213,13 @@ export async function createTransferIn(
 				amount: input.fee.amount,
 				account: move.feeAccount,
 			},
-			ids: { transfer: transferId, feeExpense: randomUUID() },
+			ids: {
+				transfer: transferId,
+				fromLeg: input.legIds?.from ?? randomUUID(),
+				toLeg: input.legIds?.to ?? randomUUID(),
+				feeExpense: input.feeExpenseId ?? randomUUID(),
+				feeLeg: input.legIds?.fee ?? randomUUID(),
+			},
 		}),
 	);
 	const w: Written = {
@@ -257,6 +280,11 @@ export async function createTransferIn(
 		netWorthEffect: rows.netWorthEffect,
 		budget: { ...effect, side },
 		feeExpenseId: rows.fee?.expense.id ?? null,
+		legIds: {
+			from: rows.legs[0].id,
+			to: rows.legs[1].id,
+			fee: rows.fee?.leg.id ?? null,
+		},
 	};
 }
 

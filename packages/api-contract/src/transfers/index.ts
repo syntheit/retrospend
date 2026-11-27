@@ -32,7 +32,22 @@ export const createTransferSchema = z
 	.object({
 		id: z.uuid().optional().meta({
 			description:
-				"A client-made id. Sending the same id twice is a conflict, not a second move.",
+				"A client-made id. A taken id is 409 id_taken and nothing is written, so the same id twice is a conflict, not a second move.",
+		}),
+		fromLegId: z.uuid().optional().meta({
+			description:
+				"A client-made id for the source's leg. A taken id is 409 id_taken and nothing is written.",
+		}),
+		toLegId: z.uuid().optional().meta({
+			description: "A client-made id for the destination's leg.",
+		}),
+		feeExpenseId: z.uuid().optional().meta({
+			description:
+				"A client-made id for the fee's expense; used only when a fee is booked.",
+		}),
+		feeLegId: z.uuid().optional().meta({
+			description:
+				"A client-made id for the fee's leg; used only when a fee is booked.",
 		}),
 		fromAccountId: idSchema.nullable().meta({
 			description: "Null is Not tracked: money outside your accounts.",
@@ -82,6 +97,15 @@ export const budgetEffectSchema = z
 export const transferResultSchema = z
 	.object({
 		id: idSchema,
+		legs: z
+			.object({
+				from: idSchema,
+				to: idSchema,
+				fee: idSchema.nullable().meta({
+					description: "Null when no fee was booked.",
+				}),
+			})
+			.meta({ description: "The ids of the legs this move wrote." }),
 		kind: transferKindSchema,
 		from: moneySchema,
 		to: moneySchema,
