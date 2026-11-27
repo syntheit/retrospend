@@ -19,10 +19,17 @@
  *
  * Run through LocalDb.write or LocalDb.preview.
  */
+import {
+	createAccountSchema,
+	updateAccountSchema,
+} from "@retrospend/api-contract/accounts";
 import { accountColumnsOf } from "@retrospend/domain/accounts/columns";
 import { moveDay } from "@retrospend/domain/accounts/move-day";
 import type { AssetType } from "@retrospend/domain/accounts/places";
-import { legChangeMessage } from "@retrospend/domain/accounts/refusals";
+import {
+	legChangeMessage,
+	typedFieldsRefusal,
+} from "@retrospend/domain/accounts/refusals";
 import {
 	resolveAccountRate,
 	usdKeepsRateType,
@@ -37,7 +44,7 @@ import {
 	openAccount,
 	putAccount,
 	refuse,
-	refuseExcessDecimals,
+	refuseBadBody,
 	refusingAccount,
 	writeSnapshot,
 	zoneOf,
@@ -93,10 +100,13 @@ const columnsOf = (input: AccountFieldsInput) =>
 		inBudget: input.inBudget ?? null,
 	});
 
-/** The transport's checks on the typed amounts: more decimals than the currency has is refused, never rounded. */
-function refuseTyped(input: AccountFieldsInput) {
-	refuseExcessDecimals(input.minimumPayment, input.currency, "minimumPayment");
-	refuseExcessDecimals(input.balance, input.currency, "balance");
+/** The route's own checks on the body: its schema, then the typed numbers (the domain's order). */
+function refuseTyped(
+	schema: Parameters<typeof refuseBadBody>[0],
+	input: AccountFieldsInput,
+) {
+	refuseBadBody(schema, input);
+	refuse(typedFieldsRefusal(input));
 }
 
 /** The rate an account is stored with on `day`: the table's, a typed one, or USD's own. */
@@ -114,7 +124,7 @@ function rateOf(r: Repos, input: AccountFieldsInput, day: Date) {
 export function createAccount(input: CreateAccountInput): WriteFn<AccountRow> {
 	return (r) =>
 		refusingAccount(async () => {
-			refuseTyped(input);
+			refuseTyped(createAccountSchema, input);
 			const today = moveDay(null, input.now, zoneOf(r, input));
 			const rate = await rateOf(r, input, today);
 			const balance = dec(input.balance);
@@ -156,7 +166,7 @@ export function createAccount(input: CreateAccountInput): WriteFn<AccountRow> {
 export function updateAccount(input: UpdateAccountInput): WriteFn<AccountRow> {
 	return (r) =>
 		refusingAccount(async () => {
-			refuseTyped(input);
+			refuseTyped(updateAccountSchema, input);
 			const zone = zoneOf(r, input);
 			// Resolved once, so the checkpoint and the rate switch share a day.
 			const today = moveDay(null, input.now, zone);

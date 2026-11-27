@@ -2,7 +2,9 @@ import type {
 	createAccountSchema,
 	updateAccountSchema,
 } from "@retrospend/api-contract";
+import { typedFieldsRefusal } from "@retrospend/domain/accounts/refusals";
 import { dec } from "@retrospend/domain/envelope/units";
+import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import {
 	restoreAccount,
@@ -22,7 +24,7 @@ import {
 	takeUndoStash,
 } from "~/server/services/entry/undo-stash";
 import type { MoneyMutation } from "~/server/services/preview/types";
-import { assertMinorUnits, exactAmount } from "../amounts";
+import { exactAmount } from "../amounts";
 import { type AccountItem, accountItemIn } from "./items";
 
 /**
@@ -47,7 +49,10 @@ type Fields = Omit<CreateBody, "id">;
 /** The service's fields from the contract's text ones. Nothing is rounded: too many decimals is a 400. */
 export function toAccountFields(input: Fields): AccountFields {
 	const { currency } = input;
-	assertMinorUnits(input.minimumPayment, currency, "minimumPayment");
+	// The one owner of what a typed number may be and in which order it is checked.
+	const refusal = typedFieldsRefusal(input);
+	if (refusal !== null)
+		throw new TRPCError({ code: "BAD_REQUEST", message: refusal });
 	return {
 		name: input.name,
 		type: input.type,

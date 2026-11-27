@@ -62,6 +62,20 @@ function checkAccount(row: AccountRow, want: Partial<ExpectedAccount>) {
 	if (want.version !== undefined)
 		expectEqual(row.version, want.version, `${what} version`);
 	if (want.name !== undefined) expectEqual(row.name, want.name, `${what} name`);
+	if (want.interestRate !== undefined)
+		expectDecimal(
+			row.interestRate ?? null,
+			want.interestRate,
+			`${what} interestRate`,
+		);
+	if (want.minimumPayment !== undefined)
+		expectDecimal(
+			row.minimumPayment ?? null,
+			want.minimumPayment,
+			`${what} minimumPayment`,
+		);
+	if (want.dueDate !== undefined)
+		expectEqual(row.dueDate ?? null, want.dueDate, `${what} dueDate`);
 }
 
 const need = <T>(row: T | undefined, what: string): T => {
@@ -153,77 +167,94 @@ export async function checkState(
 	}
 }
 
-const sameInstant = (a: Date | null, b: Date | null) =>
+/** One comparison per column of a port row: a column added to the row type fails to compile until it is named here. */
+type Columns<R> = { readonly [K in keyof R]-?: (a: R[K], b: R[K]) => boolean };
+
+const exact = <T>(a: T, b: T) => (a ?? null) === (b ?? null);
+const instant = (a: Date | null, b: Date | null) =>
 	(a?.getTime() ?? null) === (b?.getTime() ?? null);
+const decimal = (a: string | null | undefined, b: string | null | undefined) =>
+	sameDecimal(a ?? null, b ?? null);
+/** Compared elsewhere: rows are matched by id (a snapshot by account and day), so the id is the key. */
+const byKey = () => true;
 
-/** What an account row keeps, minus what a device cannot know the server's value of (see `differingRows`). */
-function differingAccount(device: AccountRow, server: AccountRow): string[] {
-	const same: [string, boolean][] = [
-		["type", device.type === server.type],
-		["currency", device.currency === server.currency],
-		["name", device.name === server.name],
-		["balance", sameDecimal(device.balance, server.balance)],
-		["exchangeRate", sameDecimal(device.exchangeRate, server.exchangeRate)],
-		["exchangeRateType", device.exchangeRateType === server.exchangeRateType],
-		["closedAt", sameInstant(device.closedAt, server.closedAt)],
-		["inBudget", (device.inBudget ?? null) === (server.inBudget ?? null)],
-		["countedUnits", sameDecimal(device.countedUnits, server.countedUnits)],
-		["isLiquid", device.isLiquid === server.isLiquid],
-		[
-			"interestRate",
-			sameDecimal(device.interestRate ?? null, server.interestRate ?? null),
-		],
-		[
-			"minimumPayment",
-			sameDecimal(device.minimumPayment ?? null, server.minimumPayment ?? null),
-		],
-		["dueDate", (device.dueDate ?? null) === (server.dueDate ?? null)],
-		["iconKind", (device.iconKind ?? null) === (server.iconKind ?? null)],
-		["version", device.version === server.version],
-	];
-	return same.flatMap(([name, ok]) => (ok ? [] : [name]));
-}
+const ACCOUNT_COLUMNS: Columns<AccountRow> = {
+	id: byKey,
+	type: exact,
+	currency: exact,
+	name: exact,
+	balance: decimal,
+	exchangeRate: decimal,
+	exchangeRateType: exact,
+	closedAt: instant,
+	inBudget: exact,
+	countedUnits: decimal,
+	isLiquid: exact,
+	interestRate: decimal,
+	minimumPayment: decimal,
+	dueDate: exact,
+	iconKind: exact,
+	version: exact,
+	// The database stamps it; the device writes the instant it booked.
+	createdAt: () => true,
+};
 
-function differingLeg(device: LegRow, server: LegRow): string[] {
-	const same: [string, boolean][] = [
-		["accountId", device.accountId === server.accountId],
-		["currency", device.currency === server.currency],
-		["date", sameInstant(device.date, server.date)],
-		["createdAt", sameInstant(device.createdAt, server.createdAt)],
-		["amount", sameDecimal(device.amount, server.amount)],
-		["source", device.source === server.source],
-		["homeAmount", sameDecimal(device.homeAmount, server.homeAmount)],
-		["homeCurrency", device.homeCurrency === server.homeCurrency],
-		["countedUnits", sameDecimal(device.countedUnits, server.countedUnits)],
-		["transferId", device.transferId === server.transferId],
-		["expenseId", device.expenseId === server.expenseId],
-	];
-	return same.flatMap(([name, ok]) => (ok ? [] : [name]));
-}
+const LEG_COLUMNS: Columns<LegRow> = {
+	id: byKey,
+	accountId: exact,
+	currency: exact,
+	date: instant,
+	createdAt: instant,
+	amount: decimal,
+	source: exact,
+	homeAmount: decimal,
+	homeCurrency: exact,
+	countedUnits: decimal,
+	transferId: exact,
+	expenseId: exact,
+};
 
-function differingSnapshot(device: SnapshotRow, server: SnapshotRow): string[] {
-	const same: [string, boolean][] = [
-		["recordedAt", sameInstant(device.recordedAt, server.recordedAt)],
-		["balance", sameDecimal(device.balance, server.balance)],
-		["currency", device.currency === server.currency],
-		["exchangeRateType", device.exchangeRateType === server.exchangeRateType],
-	];
-	return same.flatMap(([name, ok]) => (ok ? [] : [name]));
-}
+const SNAPSHOT_COLUMNS: Columns<SnapshotRow> = {
+	id: byKey,
+	accountId: byKey,
+	date: byKey,
+	recordedAt: instant,
+	balance: decimal,
+	currency: exact,
+	exchangeRateType: exact,
+};
 
-function differingSwitch(
-	device: RateSwitchRow,
-	server: RateSwitchRow,
+const SWITCH_COLUMNS: Columns<RateSwitchRow> = {
+	id: byKey,
+	accountId: exact,
+	from: instant,
+	type: exact,
+	previousType: exact,
+	createdAt: instant,
+};
+
+/** The names of the columns that differ. */
+function differing<R extends object>(
+	columns: Columns<R>,
+	device: R,
+	server: R,
 ): string[] {
-	const same: [string, boolean][] = [
-		["accountId", device.accountId === server.accountId],
-		["from", sameInstant(device.from, server.from)],
-		["type", device.type === server.type],
-		["previousType", device.previousType === server.previousType],
-		["createdAt", sameInstant(device.createdAt, server.createdAt)],
-	];
-	return same.flatMap(([name, ok]) => (ok ? [] : [name]));
+	return (Object.keys(columns) as (keyof R & string)[]).filter(
+		(k) =>
+			!(columns[k] as (a: unknown, b: unknown) => boolean)(
+				device[k],
+				server[k],
+			),
+	);
 }
+
+const differingAccount = (d: AccountRow, s: AccountRow) =>
+	differing(ACCOUNT_COLUMNS, d, s);
+const differingLeg = (d: LegRow, s: LegRow) => differing(LEG_COLUMNS, d, s);
+const differingSnapshot = (d: SnapshotRow, s: SnapshotRow) =>
+	differing(SNAPSHOT_COLUMNS, d, s);
+const differingSwitch = (d: RateSwitchRow, s: RateSwitchRow) =>
+	differing(SWITCH_COLUMNS, d, s);
 
 /**
  * The differences between the device's rows and the server's after the same

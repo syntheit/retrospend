@@ -6,12 +6,14 @@
  * the device never shows its own figure, so it does not.
  */
 
+import { setRateTypeSchema } from "@retrospend/api-contract/accounts";
 import { moveDay } from "@retrospend/domain/accounts/move-day";
 import { rateSwitchPlan } from "@retrospend/domain/accounts/rate-switch-plan";
 import {
 	type Moment,
 	openAccount,
 	putAccount,
+	refuseBadBody,
 	refusingAccount,
 	zoneOf,
 } from "./account-kit";
@@ -72,5 +74,9 @@ export async function switchRateIn(
 
 /** The write function for a rate type switch; pass it to LocalDb.write or LocalDb.preview. */
 export function setRateType(input: SetRateTypeInput): WriteFn<RateSwitchRow> {
-	return (r) => refusingAccount(() => switchRateIn(r, input));
+	return (r) =>
+		refusingAccount(() => {
+			refuseBadBody(setRateTypeSchema, { ...input, id: input.accountId });
+			return switchRateIn(r, input);
+		});
 }

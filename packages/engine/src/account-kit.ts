@@ -14,7 +14,6 @@ import {
 	ACCOUNT_NOT_FOUND,
 	AccountRefusal,
 	ASSET_NOT_FOUND,
-	excessDecimals,
 } from "@retrospend/domain/accounts/refusals";
 import {
 	type FindAccountRate,
@@ -63,16 +62,34 @@ export async function refusingAccount<T>(
 	}
 }
 
+/** The shape of a zod schema this file reads: a body that does not fit it is refused. */
+interface BodySchema {
+	safeParse(input: unknown):
+		| { readonly success: true }
+		| {
+				readonly success: false;
+				readonly error: { readonly issues: readonly { message: string }[] };
+		  };
+}
+
+/**
+ * Checks a body against the v1 route's own schema (api-contract: the digits
+ * a balance may have, a rate's decimals, a percent, an id), before anything
+ * else, as the route does. The refusal is the schema's first issue, which is
+ * what the route names first in its answer.
+ */
+export function refuseBadBody(schema: BodySchema, input: unknown) {
+	const parsed = schema.safeParse(input);
+	if (!parsed.success)
+		throw new AccountRefusal(
+			"badRequest",
+			parsed.error.issues[0]?.message ?? "Invalid input",
+		);
+}
+
 export const refuse = (message: string | null) => {
 	if (message !== null) throw new AccountRefusal("badRequest", message);
 };
-
-/** An amount the person typed with more decimals than the currency has: refused, never rounded (the v1 transport's check). */
-export const refuseExcessDecimals = (
-	text: string | null | undefined,
-	currency: string,
-	field: string,
-) => refuse(excessDecimals(text, currency, field));
 
 /** An account of the person, open or closed. */
 export function findAccount(r: Repos, id: string): AccountRow {

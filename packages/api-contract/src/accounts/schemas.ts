@@ -3,7 +3,7 @@ import { nonNegativeAmount } from "../budget/basics";
 import { currencyCodeSchema, moneySchema } from "../common/money";
 import { userText } from "../common/user-text";
 import { idSchema, timestampSchema } from "../core";
-import { daySchema } from "../ledger";
+import { daySchema } from "../common/day";
 
 export const ACCOUNT_TYPES = [
 	"CASH",

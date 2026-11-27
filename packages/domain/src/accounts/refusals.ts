@@ -6,6 +6,7 @@
  * errors.
  */
 import { currencyDecimals } from "../money";
+import { dec } from "../precise-decimal";
 import { isLiability } from "./places";
 
 export type AccountRefusalKind = "notFound" | "badRequest";
@@ -69,4 +70,70 @@ export function excessDecimals(
 	return fraction.length > decimals
 		? `${field} ${text} has more decimals than ${currency} allows (${decimals})`
 		: null;
+}
+
+/** The most significant digits a typed amount may have: the services still hold one as a double. */
+const MAX_SIGNIFICANT_DIGITS = 15;
+
+/**
+ * An amount typed as text that is refused when a double cannot hold it exactly
+ * (more than 15 significant digits), after the decimals check. The message to
+ * refuse with, or null. The server's exactAmount and the device read this.
+ */
+export function amountRefusal(
+	text: string,
+	currency: string,
+	field = "amount",
+): string | null {
+	const decimals = excessDecimals(text, currency, field);
+	if (decimals !== null) return decimals;
+	const [whole = "", fraction = ""] = text.split(".");
+	return `${whole}${fraction}`.replace(/^0+/, "").length >
+		MAX_SIGNIFICANT_DIGITS
+		? `${field} ${text} has too many digits to split exactly`
+		: null;
+}
+
+/** A typed rate a double would change is refused, never stored altered. */
+export function rateRefusal(text: string, field: string): string | null {
+	return dec(String(Number(text))).eq(dec(text))
+		? null
+		: `${field} ${text} has too many digits to keep exactly`;
+}
+
+export interface TypedFields {
+	readonly currency: string;
+	readonly balance: string;
+	readonly exchangeRate?: string | null;
+	readonly interestRate?: string | null;
+	readonly minimumPayment?: string | null;
+}
+
+/**
+ * What an account create or edit refuses about its typed numbers, in the
+ * order the v1 route checks them (the minimum payment's decimals, the
+ * balance, the typed rate, the interest, the minimum payment's digits).
+ */
+export function typedFieldsRefusal(f: TypedFields): string | null {
+	return (
+		excessDecimals(f.minimumPayment, f.currency, "minimumPayment") ??
+		amountRefusal(f.balance, f.currency, "balance") ??
+		(f.exchangeRate ? rateRefusal(f.exchangeRate, "exchangeRate") : null) ??
+		(f.interestRate ? rateRefusal(f.interestRate, "interestRate") : null) ??
+		(f.minimumPayment
+			? amountRefusal(f.minimumPayment, f.currency, "minimumPayment")
+			: null)
+	);
+}
+
+/** What Update balance refuses about its typed numbers: the balance's decimals, then a typed rate. */
+export function balanceFieldsRefusal(f: {
+	readonly currency: string;
+	readonly balance: string;
+	readonly exchangeRate?: string | null;
+}): string | null {
+	return (
+		excessDecimals(f.balance, f.currency, "balance") ??
+		(f.exchangeRate ? rateRefusal(f.exchangeRate, "exchangeRate") : null)
+	);
 }

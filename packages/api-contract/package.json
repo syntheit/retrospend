@@ -7,6 +7,7 @@
 	"sideEffects": false,
 	"exports": {
 		".": "./src/index.ts",
+		"./accounts": "./src/accounts/schemas.ts",
 		"./budget": "./src/budget/schemas.ts",
 		"./common": "./src/common/index.ts",
 		"./errors": "./src/common/errors.ts",

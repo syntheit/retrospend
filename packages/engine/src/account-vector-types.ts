@@ -30,6 +30,9 @@ export interface ExpectedAccount {
 	currency: string;
 	version: number;
 	name: string;
+	interestRate: string | null;
+	minimumPayment: string | null;
+	dueDate: number | null;
 }
 
 export interface ExpectedLeg {

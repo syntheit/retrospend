@@ -12,6 +12,7 @@
  * - Reopening a balance that is not zero needs a rate to value it; with none
  *   the write is a MissingRateError and writes nothing, never a USD value of 0.
  */
+import { accountStateParamsSchema } from "@retrospend/api-contract/accounts";
 import {
 	reopenRate,
 	resolveAccountRate,
@@ -26,6 +27,7 @@ import {
 	findRateOf,
 	ownAccount,
 	putAccount,
+	refuseBadBody,
 	refusingAccount,
 	writeSnapshot,
 } from "./account-kit";
@@ -49,6 +51,7 @@ const metaOf = (a: AccountRow) => ({
 export function closeAccount(input: AccountStateInput): WriteFn<AccountRow> {
 	return (r) =>
 		refusingAccount(() => {
+			refuseBadBody(accountStateParamsSchema, input);
 			const asset = ownAccount(r, input.id);
 			if (asset.closedAt) return asset;
 			const closed = putAccount(r, {
@@ -74,6 +77,7 @@ export function closeAccount(input: AccountStateInput): WriteFn<AccountRow> {
 export function reopenAccount(input: AccountStateInput): WriteFn<AccountRow> {
 	return (r) =>
 		refusingAccount(async () => {
+			refuseBadBody(accountStateParamsSchema, input);
 			const today = snapshotDay({ rule: "utc", now: input.now });
 			const asset = ownAccount(r, input.id);
 			if (!asset.closedAt) return asset;

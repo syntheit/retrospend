@@ -114,11 +114,23 @@ function requestOf(op: AccountStep["op"]): Sent {
 	}
 }
 
-/** The words a refusal carries: the problem's detail, which is the service's message. */
+/**
+ * The words a refusal carries: the problem's detail (the service's message),
+ * or, for a body the schema refuses, the first issue the answer lists.
+ */
 async function detailOf(res: Response) {
 	const text = await res.text();
-	const body = JSON.parse(text) as { detail?: string; code?: string };
-	return { status: res.status, code: body.code, detail: body.detail, text };
+	const body = JSON.parse(text) as {
+		detail?: string;
+		code?: string;
+		errors?: { message: string }[];
+	};
+	return {
+		status: res.status,
+		code: body.code,
+		detail: body.detail ?? body.errors?.[0]?.message,
+		text,
+	};
 }
 
 async function seedServer(vector: AccountVector) {

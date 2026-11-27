@@ -28,11 +28,17 @@
  */
 import type { AccountVector } from "./account-vector-types";
 import { editVectors } from "./account-vectors-edits";
+import { lifecycleVectors } from "./account-vectors-lifecycle";
 import { moneyVectors } from "./account-vectors-money";
+import { refusalVectors } from "./account-vectors-refusals";
+import { typedVectors } from "./account-vectors-typed";
 
 export * from "./account-vector-types";
 
 export const accountVectors: AccountVector[] = [
+	...lifecycleVectors,
 	...moneyVectors,
 	...editVectors,
+	...typedVectors,
+	...refusalVectors,
 ];

@@ -13,7 +13,9 @@
  * - A zero balance needs no rate for a leg (there is none); a difference with
  *   no rate is MissingRateError, never booked at 1.
  */
+import { updateBalanceSchema } from "@retrospend/api-contract/accounts";
 import { moveDay } from "@retrospend/domain/accounts/move-day";
+import { balanceFieldsRefusal } from "@retrospend/domain/accounts/refusals";
 import {
 	resolveAccountRate,
 	usdKeepsRateType,
@@ -25,7 +27,8 @@ import {
 	findRateOf,
 	type Moment,
 	openAccount,
-	refuseExcessDecimals,
+	refuse,
+	refuseBadBody,
 	refusingAccount,
 	zoneOf,
 } from "./account-kit";
@@ -61,12 +64,18 @@ export function updateBalance(
 	return (r) =>
 		refusingAccount(async () => {
 			const zone = zoneOf(r, input);
-			// The typed amount is checked against the account's currency before it
-			// is checked for being open, as the v1 route reads it.
-			refuseExcessDecimals(
-				input.balance,
-				findAccount(r, input.accountId).currency,
-				"balance",
+			// The body's shape first, then the typed numbers against the account's
+			// currency before it is checked for being open, as the v1 route reads it.
+			refuseBadBody(updateBalanceSchema, {
+				...input,
+				id: input.accountId,
+			});
+			refuse(
+				balanceFieldsRefusal({
+					currency: findAccount(r, input.accountId).currency,
+					balance: input.balance,
+					exchangeRate: input.exchangeRate,
+				}),
 			);
 			const account = openAccount(r, input.accountId);
 			const today = moveDay(null, input.now, zone);

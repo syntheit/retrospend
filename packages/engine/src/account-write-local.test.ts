@@ -12,7 +12,11 @@ import { describe, expect, it } from "vitest";
 import { ACCOUNT_UPDATE_BALANCE, updateBalance } from "./account-balance-local";
 import { seededAccountStore } from "./account-conformance";
 import { ACCOUNT_SET_RATE_TYPE, setRateType } from "./account-rate-local";
-import { ACCOUNT_CLOSE, closeAccount } from "./account-state-local";
+import {
+	ACCOUNT_CLOSE,
+	closeAccount,
+	reopenAccount,
+} from "./account-state-local";
 import { uuid } from "./account-vectors";
 import {
 	ACCOUNT_CREATE,
@@ -120,8 +124,8 @@ describe("rates", () => {
 	// A BRL account at a typed rate: 1 USD = 5.5 BRL, used as typed whatever the
 	// table says (it has no BRL). Changing the typed rate to 5.6 is an edit of
 	// the account (version 1); the balance 100 -> 110 is a Not logged +10 booked
-	// at the home rate of BRL: 10 / 5.6 USD x 1,545 = 2,759.8214... ARS, kept
-	// to 8 decimals half to even: 2759.82142857.
+	// at the home rate of BRL: 10 x 1,545 / 5.6 = 2,758.92857142857... ARS, kept
+	// to 8 decimals half to even: 2758.92857143.
 	it("a typed custom rate is used as typed and moves the version when it changes", async () => {
 		const { db, store } = await open();
 		await db.write(
@@ -160,7 +164,10 @@ describe("rates", () => {
 			exchangeRate: "5.6",
 			version: 1,
 		});
-		expect(store.get("legs", uuid(2))?.amount).toBe("10");
+		expect(store.get("legs", uuid(2))).toMatchObject({
+			amount: "10",
+			homeAmount: "2758.92857143",
+		});
 		expect(store.list("rateSwitches")).toEqual([]);
 	});
 
@@ -310,11 +317,52 @@ describe("the zone", () => {
 });
 
 describe("close and reopen", () => {
+	it("an empty id is the route's validation, not a missing account", async () => {
+		const { db } = await open();
+		for (const write of [closeAccount, reopenAccount])
+			await expect(
+				db.write(ACCOUNT_CLOSE, write({ id: "", now: NOW })),
+			).rejects.toThrow(InvalidInputError);
+	});
+
 	it("an account the person does not have is not found", async () => {
 		const { db } = await open();
 		await expect(
 			db.write(ACCOUNT_CLOSE, closeAccount({ id: uuid(7), now: NOW })),
 		).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe("typed numbers", () => {
+	// An edit alone reaches the route's checks: a payment of 3 decimals in USD.
+	it("an edit refuses a minimum payment with more decimals than the currency", async () => {
+		const { db, store } = await created();
+		const before = store.list("accounts");
+		await expect(
+			db.write(
+				ACCOUNT_UPDATE,
+				updateAccount({
+					...wise,
+					minimumPayment: "1.234",
+					legId: uuid(8),
+					rateTypeId: uuid(9),
+					now: LATER,
+				}),
+			),
+		).rejects.toThrow(
+			"minimumPayment 1.234 has more decimals than USD allows (2)",
+		);
+		expect(store.list("accounts")).toEqual(before);
+	});
+
+	it("a create refuses a balance the route's schema refuses", async () => {
+		const { db } = await open();
+		await expect(
+			db.write(
+				ACCOUNT_CREATE,
+				createAccount({ ...wise, balance: "123456789012", now: NOW }),
+			),
+		).rejects.toThrow("Use digits and at most 8 decimals, like 1234.56");
 	});
 });
 
