@@ -126,7 +126,7 @@ export function differingFields(
 export function bookingSkip(
 	live: Reader,
 	bookedAt: number,
-	home: string,
+	home: string | null,
 ): "no_settings" | "settings_moved" | "rates_moved" | null {
 	const settings = live.get("settings", SETTINGS_ID);
 	if (!settings) return "no_settings";

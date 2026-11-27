@@ -405,7 +405,6 @@ describe("a transfer sent over the real routes", () => {
 		const sent = await dispatchWealth(
 			api,
 			{
-				clientId: randomUUID(),
 				entity: "transfers",
 				kind: "delete",
 				targetId: body.id,
