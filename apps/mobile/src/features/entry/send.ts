@@ -390,17 +390,29 @@ export interface Created {
 
 export const NO_TOKEN = "";
 
+/**
+ * The entry's payload as the wire takes it: the account's name, the transfer's
+ * or the template's title, kept in the payload for the Sync issues row, is not
+ * part of any body. The one owner of that strip.
+ */
+function withoutTitle<E extends Pick<OutboxEntry, "payload">>(entry: E): E {
+	const { title: _title, ...body } = (entry.payload ?? {}) as Record<
+		string,
+		unknown
+	>;
+	return { ...entry, payload: body };
+}
+
 /** An edit of a template (PATCH), checked against the template version the entry was based on. */
 async function editTemplate(
 	api: RetrospendClient,
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
-	// `title` is kept for the Sync issues row and never sent.
-	const { title: _title, ...patch } = entry.payload as Omit<
+	const patch = withoutTitle(entry).payload as Omit<
 		Body<typeof api.recurring.update>,
 		"id" | "expectedUpdatedAt"
-	> & { title?: string };
+	>;
 	const written = await api.recurring.update(
 		{
 			...patch,
@@ -453,7 +465,8 @@ async function dispatch(
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
-	if (isWealthEntry(entry)) return dispatchWealth(api, entry, options);
+	if (isWealthEntry(entry))
+		return dispatchWealth(api, withoutTitle(entry), options);
 	switch (entry.kind) {
 		case "create":
 			return create(api, entry, options);
@@ -574,7 +587,7 @@ async function create(
 			return {
 				undo: (
 					await api.transfers.create(
-						entry.payload as Body<typeof api.transfers.create>,
+						withoutTitle(entry).payload as Body<typeof api.transfers.create>,
 						options,
 					)
 				).undo,
@@ -582,7 +595,7 @@ async function create(
 		case "recurring":
 			return createTemplate(api, entry, options);
 		case "accounts":
-			return dispatchWealth(api, entry, options);
+			return dispatchWealth(api, withoutTitle(entry), options);
 	}
 }
 

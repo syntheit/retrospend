@@ -12,6 +12,7 @@ import {
 	exclusive,
 	flushThenOutcome,
 } from "@/features/entry/queue";
+import type { UndoRef } from "@/features/entry/send";
 
 // A person's account write or transfer under the dev flag, when the server
 // says it takes them (features.wealthWrites): the device books it over the
@@ -32,7 +33,12 @@ export interface WealthDevice {
 
 /** Where a wealth write ended up. Nothing is queued for `online`, `busy`, `blocked` and `unreadable`. */
 export type WealthAnswer =
-	| { settled: "synced" | "queued" | "parked"; clientId: string }
+	/** The server has it; the token undoes it (null when it answered without one). */
+	| { settled: "synced"; clientId: string; undo: UndoRef | null }
+	/** Waiting on this phone for a connection. */
+	| { settled: "queued"; clientId: string }
+	/** The server refused it: it stays under Couldn't sync. */
+	| { settled: "parked"; clientId: string }
 	/** Not booked on the device: write it online. */
 	| { settled: "online" }
 	/** An earlier write to this row began a send: it may be on the server. */
@@ -68,7 +74,9 @@ async function sendOnce(
 		transport: transportFor(device.api),
 		clientId,
 	});
-	return { settled: sent.status, clientId };
+	return sent.status === "synced"
+		? { settled: "synced", clientId, undo: sent.undo }
+		: { settled: sent.status, clientId };
 }
 
 /**
@@ -82,6 +90,7 @@ async function queueCreate(
 		AccountOp | TransferOp,
 		{ kind: "accountCreate" | "transferCreate" }
 	>,
+	title: string | undefined,
 ): Promise<WealthAnswer> {
 	const { outbox, writes } = device;
 	const id = op.body.id;
@@ -97,7 +106,7 @@ async function queueCreate(
 				kind: "create",
 				targetId: id,
 				baseVersion: null,
-				payload: op.body,
+				payload: title === undefined ? op.body : { ...op.body, title },
 				device: deviceOf(booked),
 			});
 			await writes.refresh().catch(() => undefined);
@@ -113,16 +122,30 @@ export function createAccountOnDevice(
 	body: Extract<AccountOp, { kind: "accountCreate" }>["body"],
 ): Promise<WealthAnswer> {
 	if (!device.wealthWrites) return Promise.resolve({ settled: "online" });
-	return queueCreate(device, "accounts", { kind: "accountCreate", body });
+	return queueCreate(
+		device,
+		"accounts",
+		{ kind: "accountCreate", body },
+		undefined,
+	);
 }
 
-/** A new transfer or exchange, booked with its leg and fee ids and queued under its own id. */
+/**
+ * A new transfer or exchange, booked with its leg and fee ids and queued under
+ * its own id. `title` is kept for the Sync issues row and never sent.
+ */
 export function createTransferOnDevice(
 	device: WealthDevice,
 	body: Extract<TransferOp, { kind: "transferCreate" }>["body"],
+	title?: string,
 ): Promise<WealthAnswer> {
 	if (!device.wealthWrites) return Promise.resolve({ settled: "online" });
-	return queueCreate(device, "transfers", { kind: "transferCreate", body });
+	return queueCreate(
+		device,
+		"transfers",
+		{ kind: "transferCreate", body },
+		title,
+	);
 }
 
 /**
@@ -151,8 +174,10 @@ export async function writeAccountOnDevice(input: {
 	op: Exclude<AccountOp, { kind: "accountCreate" }>;
 	/** What the screen read; null when it read none (offline with no copy), and the device's own is used. Required, so a sheet cannot forget it. */
 	opened: SeenAccount | null;
+	/** The account's name, kept for the Sync issues row and never sent. */
+	title?: string;
 }): Promise<WealthAnswer> {
-	const { device, op, opened } = input;
+	const { device, op, opened, title } = input;
 	if (!device.wealthWrites) return { settled: "online" };
 	const { outbox, writes } = device;
 	const id = op.body.id;
@@ -196,6 +221,7 @@ export async function writeAccountOnDevice(input: {
 				payload: {
 					...op.body,
 					...(expectedBalance !== undefined ? { expectedBalance } : {}),
+					...(title !== undefined ? { title } : {}),
 				},
 				device: deviceOf(booked),
 			});
@@ -219,6 +245,45 @@ export async function transferHasWrites(
 	try {
 		const { open, acked } = await outbox.snapshot();
 		return targetsWithEntries([...open, ...acked], [id]).length > 0;
+	} catch {
+		return true;
+	}
+}
+
+/**
+ * Whether a write about account `id` waits on this phone, is parked, or was
+ * sent and no pull has shown back yet: an entry for the account, or a
+ * transfer queued from or to it. Its delete (which stays online and stashes
+ * the account with its transfers) refuses until then ("Sync first"). Fails
+ * closed.
+ */
+export async function accountHasWrites(
+	outbox: Outbox | null,
+	id: string,
+): Promise<boolean> {
+	if (!outbox) return true;
+	try {
+		const { open, acked } = await outbox.snapshot();
+		const entries = [...open, ...acked];
+		// A transfer is named by its own id: it reaches the account by the ends
+		// its body names, or by the account row its booking changed (a delete).
+		const touching = entries.some((e) => {
+			const body = (e.payload ?? {}) as {
+				fromAccountId?: unknown;
+				toAccountId?: unknown;
+			};
+			return (
+				body.fromAccountId === id ||
+				body.toAccountId === id ||
+				(e.device?.changes ?? []).some(
+					(c) => c.table === "accounts" && c.id === id,
+				)
+			);
+		});
+		return (
+			targetsWithEntries(entries, [id], touching ? new Set([id]) : undefined)
+				.length > 0
+		);
 	} catch {
 		return true;
 	}

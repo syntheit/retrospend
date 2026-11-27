@@ -16,6 +16,7 @@ import { type RebaseOffer, useParkedEntries } from "./parked";
 import { type ParkedEntry, rebases } from "./parked-entry";
 import { changeLines } from "./preview";
 import {
+	PARKED_ACCOUNT_CHANGED,
 	PARKED_STAMP,
 	RECURRING_ALREADY_POSTED,
 	RECURRING_CHANGED,
@@ -26,6 +27,7 @@ const lineOf = (entry: ParkedEntry) =>
 	entry.gone
 		? "sync.deleted"
 		: entry.reason === PARKED_STAMP ||
+				entry.reason === PARKED_ACCOUNT_CHANGED ||
 				entry.reason === RECURRING_CHANGED ||
 				entry.reason === RECURRING_ALREADY_POSTED
 			? "sync.changed"

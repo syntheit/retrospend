@@ -14,6 +14,7 @@ import type {
 	WriteOp,
 } from "@retrospend/engine/device";
 import {
+	accountSeenOf,
 	createDeviceEngine as createCoreEngine,
 	type DeviceEngine,
 	type DeviceEngineOptions,
@@ -128,6 +129,12 @@ export interface DeviceWrites {
 	): Promise<boolean>;
 	/** The account as a pull left it (its version and stored balance), or null when it is not there. */
 	storedAccount(id: string): Promise<AccountSeen | null>;
+	/**
+	 * The account as the device sees it: the pulled row with the phone's own
+	 * unsent writes laid over it, for a sheet that shows or names the balance.
+	 * Null when the store is not a whole copy or the account is not there.
+	 */
+	overlayAccount(id: string): Promise<AccountSeen | null>;
 	/** The recurring template as a pull that began after pull `pull` left it; null while none has finished. */
 	templateSince(
 		id: string,
@@ -212,6 +219,8 @@ export function writesFor(api: RetrospendClient): DeviceWrites | null {
 		storedRebase: (id) => engine.storedRebase(id),
 		absentSince: (id, pull, table) => engine.absentSince(id, pull, table),
 		storedAccount: (id) => engine.storedAccount(id),
+		overlayAccount: (id) =>
+			engine.readWithPending((view) => accountSeenOf(view, id)),
 		templateSince: (id, pull, dueAt, expenseId) =>
 			engine.templateSince(id, pull, dueAt, expenseId),
 		refresh: () => pending?.refresh() ?? Promise.resolve(),

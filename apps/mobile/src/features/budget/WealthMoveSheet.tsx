@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { newClientId } from "@/data/ids";
 import { glyphOf, isLiability } from "@/features/wealth/accounts";
+import { createTransferOnDevice } from "@/features/wealth/deviceWealth";
+import {
+	useWealthDevice,
+	useWealthEnd,
+} from "@/features/wealth/useWealthDevice";
+import {
+	PREVIEW_LEG_ID,
+	PREVIEW_SWITCH_ID,
+	previewWealth,
+} from "@/features/wealth/wealthPreview";
 import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { useWriteForm } from "@/features/write/WriteForm";
@@ -28,6 +39,11 @@ import {
 /** "Not tracked" stands in the budget accounts by this id. */
 const NONE = "none";
 
+/** Only the preview compare reads these ids: the booking is thrown away. */
+const PREVIEW_MOVE_ID = "preview-move";
+const PREVIEW_FEE_ID = "preview-fee";
+const PREVIEW_FEE_LEG_ID = "preview-fee-leg";
+
 /**
  * Move money between an envelope and Wealth, in the transfer's shape (the
  * same as Move money): the amount as the big figure, the two ends as one line
@@ -39,6 +55,14 @@ const NONE = "none";
  * transfer's own write, so the server previews the accounts, the envelope and
  * Not planned yet before Save, and Undo deletes the move with its budget
  * side. Across currencies the server converts at the reference rate.
+ *
+ * Under the dev flag, when the server takes Wealth writes from the phone, a
+ * move the device can book whole is queued through the outbox (Undo takes it
+ * out of the outbox, or through the server once sent). A move that crosses the
+ * budget line, a budget the device has not read and a move without a rate stay
+ * online exactly as without the flag; so does Move in (counting). Save stays
+ * off while the dry run cannot be had: a move here crosses the budget line
+ * whenever a budget exists, which is the server's to write.
  */
 export function WealthMoveSheet({
 	data,
@@ -155,32 +179,72 @@ function WealthMoveForm({
 	const envelopeName =
 		envelopePlaces.find((p) => p.id === envelope)?.name ?? "";
 
+	const device = useWealthDevice(true);
+	const end = useWealthEnd(counting ? "income" : "transfers");
+	const shown = minor !== null ? money({ minor, currency }) : "";
+	const toast = counting
+		? t("toastCounted", { name: wealth?.name ?? "" })
+		: direction === "to"
+			? t("toast", {
+					amount: shown,
+					name: envelopeName,
+					account: wealth?.name ?? "",
+				})
+			: t("toastMoved", { amount: shown });
 	const { flow, ready, submit } = useWriteForm({
 		input: body,
 		idempotencyKey: body?.id ?? null,
 		family: counting ? "income" : "transfers",
-		preview: (api, b) =>
-			"accountId" in b
-				? api.income.previewMoveIn(b)
-				: api.transfers.previewCreate(b),
+		preview: (api, b) => {
+			if ("accountId" in b) return api.income.previewMoveIn(b);
+			if (!device) return api.transfers.previewCreate(b);
+			const dry = previewWealth(
+				device,
+				{
+					kind: "transferCreate",
+					body: {
+						...b,
+						id: b.id ?? PREVIEW_MOVE_ID,
+						fromLegId: PREVIEW_LEG_ID,
+						toLegId: PREVIEW_SWITCH_ID,
+						feeExpenseId: PREVIEW_FEE_ID,
+						feeLegId: PREVIEW_FEE_LEG_ID,
+					},
+				},
+				(options) => api.transfers.previewCreate(b, options),
+			);
+			return dry;
+		},
 		write: async (api, b, key) => {
 			const options = { context: { idempotencyKey: key } };
-			return "accountId" in b
-				? await api.income.moveIn(b, options)
-				: await api.transfers.create(b, options);
+			if ("accountId" in b) return await api.income.moveIn(b, options);
+			if (device) {
+				const queued = await createTransferOnDevice(
+					device,
+					{
+						...b,
+						id: b.id ?? key,
+						fromLegId: newClientId(),
+						toLegId: newClientId(),
+						feeExpenseId: newClientId(),
+						feeLegId: newClientId(),
+					},
+					wealth?.name ?? "",
+				);
+				if (queued.settled !== "online") return queued;
+			}
+			return await api.transfers.create(b, options);
 		},
-		message: () => {
-			const shown = minor !== null ? money({ minor, currency }) : "";
-			return counting
-				? t("toastCounted", { name: wealth?.name ?? "" })
-				: direction === "to"
-					? t("toast", {
-							amount: shown,
-							name: envelopeName,
-							account: wealth?.name ?? "",
-						})
-					: t("toastMoved", { amount: shown });
-		},
+		message: () => toast,
+		done: device
+			? (out) =>
+					end(out, {
+						device,
+						title: wealth?.name ?? "",
+						message: toast,
+						onChanged: onDone,
+					})
+			: undefined,
 		onClose,
 		onDone,
 	});

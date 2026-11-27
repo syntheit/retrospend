@@ -79,6 +79,7 @@ export type { PosterPlansInput, PosterTemplatePlan } from "./poster-plan";
 export type { ServerPreview } from "./preview-compare";
 export {
 	type AccountSeen,
+	accountSeenOf,
 	type Rebase,
 	type TemplateSeen,
 	templateSeenOf,

@@ -90,6 +90,7 @@ async function phone(rows: Record<string, unknown>[]) {
 		pullsBegun: () => engine.pullsBegun,
 		storedRebase: (id) => engine.storedRebase(id),
 		storedAccount: (id) => engine.storedAccount(id),
+		overlayAccount: async () => null,
 		absentSince: (id, pull) => engine.absentSince(id, pull),
 		templateSince: (id, pull, dueAt, expenseId) =>
 			engine.templateSince(id, pull, dueAt, expenseId),

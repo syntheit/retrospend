@@ -67,10 +67,13 @@ function safeMinor(amount: string, currency: string): ParkedEntry["amount"] {
 
 export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 	const body = (entry.payload ?? {}) as Record<string, unknown>;
-	const currency = typeof body.currency === "string" ? body.currency : "";
+	// A transfer names what leaves the source (`fromAmount`, `fromCurrency`).
+	const currencyText = body.currency ?? body.fromCurrency;
+	const currency = typeof currencyText === "string" ? currencyText : "";
+	const amountText = body.amount ?? body.fromAmount;
 	const amount =
-		typeof body.amount === "string" && currency
-			? safeMinor(body.amount, currency)
+		typeof amountText === "string" && currency
+			? safeMinor(amountText, currency)
 			: (bookedAmount(entry) ?? bookedConfirmAmount(entry));
 	// A template create names itself `name`; an edit of one keeps `title` for this row.
 	const title = body.title ?? body.name ?? body.description;
@@ -141,9 +144,14 @@ const ACCOUNT_KINDS: readonly OutboxKind[] = [
 	"rateType",
 ];
 
-/** Why an account write was parked, that saving it again over the pulled account can change. */
+/**
+ * Why an account write was parked, that saving it again over the pulled
+ * account can change. A taken leg or rate switch id is one: the statement is
+ * saved again under fresh ids.
+ */
 const REBASED_ACCOUNT = [
 	PARKED_ACCOUNT_CHANGED,
+	PARKED_ID_TAKEN,
 	PARKED_STAMP,
 	PARKED_CHAIN_LOST,
 	PARKED_NO_STAMP,

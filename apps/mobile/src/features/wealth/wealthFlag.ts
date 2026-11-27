@@ -30,3 +30,18 @@ export async function wealthWritesOn(
 		}
 	}
 }
+
+/**
+ * What the server said last, with no request: a sheet that opens offline
+ * decides at once instead of waiting on a server it cannot reach. Off when it
+ * never said.
+ */
+export async function cachedWealthWrites(
+	cache: Pick<ReadCache, "read">,
+): Promise<boolean> {
+	try {
+		return (await cache.read<boolean>(NAME, SCHEMA))?.data === true;
+	} catch {
+		return false;
+	}
+}

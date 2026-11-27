@@ -13,6 +13,13 @@ export type CreateAccountBody = Parameters<Client["create"]>[0];
 export type UpdateAccountBody = Parameters<Client["update"]>[0];
 export type AccountType = Account["type"];
 
+/** What the form builds always names its id and Liquid, which the device's booking needs. */
+export type NamedCreateBody = CreateAccountBody & {
+	id: string;
+	isLiquid: boolean;
+};
+export type NamedUpdateBody = UpdateAccountBody & { isLiquid: boolean };
+
 /** The types a person can pick, in the order the web lists them. */
 export const ACCOUNT_TYPES: readonly AccountType[] = [
 	"CASH",
@@ -118,7 +125,7 @@ function fields(form: AccountForm, balanceMinor: number) {
 export function createBody(
 	form: AccountForm,
 	id: string,
-): CreateAccountBody | null {
+): NamedCreateBody | null {
 	if (formProblem(form) !== null || form.minor === null) return null;
 	return { id, ...fields(form, form.minor) };
 }
@@ -126,7 +133,7 @@ export function createBody(
 export function updateBody(
 	form: AccountForm,
 	id: string,
-): UpdateAccountBody | null {
+): NamedUpdateBody | null {
 	if (formProblem(form) !== null || form.minor === null) return null;
 	return { id, ...fields(form, form.minor) };
 }

@@ -6,6 +6,7 @@ import { createMemoryStore } from "@/data/store";
 import { flushEntries, undoSaved } from "@/features/entry/queue";
 import { apiTransport, forgetUndoTokens } from "@/features/entry/send";
 import {
+	accountHasWrites,
 	createAccountOnDevice,
 	createTransferOnDevice,
 	deleteTransferOnDevice,
@@ -579,5 +580,67 @@ describe("Undo of a device-booked wealth write", () => {
 		);
 		// The acked write is taken out of the compare: it was undone, not different.
 		expect(await outbox.acked()).toEqual([]);
+	});
+});
+
+describe("what Sync issues and the toast need of the queue", () => {
+	it("keeps the account's name in the queued entry only: the booking is of the op without it", async () => {
+		const updateBalance = jest.fn(async () => {
+			throw network();
+		});
+		const book = jest.fn(async () => booked());
+		const { device, outbox } = deviceWith(
+			{ accounts: { updateBalance } },
+			book,
+		);
+		await writeAccountOnDevice({
+			device,
+			op: balanceOp,
+			opened: seen(4),
+			title: "Wise",
+		});
+		expect((await outbox.all())[0]?.payload).toMatchObject({ title: "Wise" });
+		expect(book).toHaveBeenCalledWith(balanceOp);
+	});
+
+	it("a synced answer carries the server's undo token (null when it answered none)", async () => {
+		const updateBalance = jest.fn(async () => ({
+			undo: "the-token",
+			result: { version: 7 },
+		}));
+		const { device } = deviceWith({ accounts: { updateBalance } }, async () =>
+			booked(),
+		);
+		const out = await writeAccountOnDevice({
+			device,
+			op: balanceOp,
+			opened: seen(4),
+		});
+		expect(out).toMatchObject({
+			settled: "synced",
+			undo: { entity: "accounts", token: "the-token" },
+		});
+	});
+
+	it("accountHasWrites sees an entry for the account and a transfer to or from it, and fails closed", async () => {
+		const outbox = createOutbox(createMemoryStore(), "scope");
+		expect(await accountHasWrites(outbox, A)).toBe(false);
+		expect(await accountHasWrites(null, A)).toBe(true);
+		await outbox.enqueue({
+			clientId: "t1",
+			entity: "transfers",
+			kind: "create",
+			targetId: "t1",
+			baseVersion: null,
+			payload: { fromAccountId: A, toAccountId: null },
+		});
+		expect(await accountHasWrites(outbox, A)).toBe(true);
+		expect(await accountHasWrites(outbox, "other")).toBe(false);
+		const broken = {
+			snapshot: async () => {
+				throw new Error("disk");
+			},
+		} as never;
+		expect(await accountHasWrites(broken, A)).toBe(true);
 	});
 });

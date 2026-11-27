@@ -48,6 +48,7 @@ function writesOf(
 		pullsBegun: () => 5,
 		storedRebase: async () => null,
 		storedAccount: async () => null,
+		overlayAccount: async () => null,
 		absentSince: jest.fn(async () => false),
 		refresh: async () => undefined,
 		...over,
