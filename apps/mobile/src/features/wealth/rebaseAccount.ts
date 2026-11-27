@@ -149,13 +149,16 @@ export function commitAccountRebase(input: {
 		if (old?.state !== "conflict") return null;
 		const next = newClientId();
 		const booked = await writes.book(plan.op);
+		// The account's name stays on the row Sync issues shows.
+		const title = (old.payload as { title?: unknown } | null)?.title;
 		await outbox.replace(clientId, {
 			clientId: next,
 			entity: old.entity,
 			kind: old.kind,
 			targetId: old.targetId,
 			baseVersion: String(plan.version),
-			payload: plan.payload,
+			payload:
+				typeof title === "string" ? { ...plan.payload, title } : plan.payload,
 			...(booked ? { device: deviceOf(booked) } : {}),
 		});
 		await writes.refresh().catch(() => undefined);

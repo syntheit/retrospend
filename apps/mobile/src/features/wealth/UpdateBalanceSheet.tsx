@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
+import { newClientId } from "@/data/ids";
 import { useRateLine } from "@/features/currencies/useRateLine";
 import { AmountEntry } from "@/features/entry/AmountEntry";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useOfflineDryRun } from "@/features/recurring/useSettle";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
 import { KeypadForm } from "@/features/write/KeypadForm";
@@ -22,9 +24,20 @@ import { Sheet, type SheetDetent, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { glyphOf, isLiability } from "./accounts";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
+import { writeAccountOnDevice } from "./deviceWealth";
 import { RateTypeChips } from "./RateTypeChips";
 import { rateTypeChanged, rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
+import {
+	useOpenedAccount,
+	useWealthDevice,
+	useWealthEnd,
+} from "./useWealthDevice";
+import {
+	PREVIEW_LEG_ID,
+	PREVIEW_SWITCH_ID,
+	previewWealth,
+} from "./wealthPreview";
 
 /**
  * Update balance rests at large only. Its body is the account, the amount and
@@ -43,9 +56,17 @@ export const UPDATE_BALANCE_DETENTS: SheetDetent[] = ["large"];
  * the difference and records it as Not logged (not income, not spending); the
  * dry run shows the account's new balance, net worth and that difference
  * before Update is on. The toast undoes it.
+ *
+ * Under the dev flag, when the server takes Wealth writes from the phone, the
+ * sheet shows the balance the device holds (this phone's own unsent writes
+ * included) and the write is booked on the device and queued with the version
+ * and balance the sheet showed: offline it waits in the outbox, a change made
+ * on another device parks it, and Undo takes it out of the outbox or through
+ * the server once sent. The server's dry run is still what the sheet shows.
+ * With either missing it writes online as ever.
  */
 export function UpdateBalanceSheet({
-	account,
+	account: listed,
 	visible,
 	home,
 	catalog,
@@ -60,6 +81,11 @@ export function UpdateBalanceSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.update");
+	const tOffline = useTranslations("mobile.composer.changes");
+	const device = useWealthDevice(visible);
+	const { shown: account, opened } = useOpenedAccount(device, listed, visible);
+	const { offline, track } = useOfflineDryRun();
+	const end = useWealthEnd("accounts");
 	const tp = useTranslations("mobile.budget.preview");
 	const ts = useTranslations("mobile.settle");
 	const tm = useTranslations("mobile.money");
@@ -109,23 +135,69 @@ export function UpdateBalanceSheet({
 		setRateType(saved);
 		setPadOpen(true);
 	});
+	const toast = t("toast", {
+		name: account.name,
+		amount: money({ minor: minor ?? 0, currency }),
+	});
 	const { flow, ready, submit } = useWriteForm({
 		input,
 		active: visible,
 		family: "accounts",
-		preview: (api, body) => api.accounts.previewUpdateBalance(body),
-		write: (api, body, key) =>
-			api.accounts.updateBalance(body, { context: { idempotencyKey: key } }),
+		preview: (api, body) =>
+			device
+				? track(
+						previewWealth(
+							device,
+							{
+								kind: "accountBalance",
+								body: {
+									...body,
+									legId: PREVIEW_LEG_ID,
+									rateTypeId: PREVIEW_SWITCH_ID,
+								},
+							},
+							(options) => api.accounts.previewUpdateBalance(body, options),
+						),
+					)
+				: api.accounts.previewUpdateBalance(body),
+		write: async (api, body, key) => {
+			if (device) {
+				const queued = await writeAccountOnDevice({
+					device,
+					op: {
+						kind: "accountBalance",
+						body: { ...body, legId: newClientId(), rateTypeId: newClientId() },
+					},
+					opened,
+					title: account.name,
+				});
+				if (queued.settled !== "online") return queued;
+			}
+			return api.accounts.updateBalance(body, {
+				context: { idempotencyKey: key },
+			});
+		},
 		canSave: (diff) => switching || !isUnchanged(balanceRows(diff)),
-		message: () =>
-			t("toast", {
-				name: account.name,
-				amount: money({ minor: minor ?? 0, currency }),
-			}),
+		message: () => toast,
+		done: device
+			? (out) =>
+					end(out, {
+						device,
+						title: account.name,
+						message: toast,
+						onChanged: onDone,
+					})
+			: undefined,
+		queuesOffline: device !== null && offline,
 		onClose,
 		onDone,
 	});
 
+	// Offline the write waits on the phone: said once, in place of the lines.
+	const offlineNote =
+		device && offline && flow.status === "failed"
+			? tOffline("offline")
+			: undefined;
 	const rows = flow.preview ? balanceRows(flow.preview) : null;
 	const lines = flow.preview
 		? figureLines(flow.preview, [ACCOUNT_BALANCE])
@@ -282,7 +354,8 @@ export function UpdateBalanceSheet({
 						<>
 							<ChangeList
 								changes={changes}
-								status={flow.status}
+								message={offlineNote}
+								status={offlineNote ? "idle" : flow.status}
 								stays={(lines?.stays ?? []).map((id) => label(id).inline)}
 								unavailable={(lines?.unavailable ?? []).map(
 									(id) => label(id).inline,

@@ -1429,7 +1429,8 @@
 			"submit": "Konto löschen",
 			"deleting": "Wird gelöscht",
 			"toast": "{name} gelöscht",
-			"error": "Das ließ sich nicht löschen. Versuche es erneut."
+			"error": "Das ließ sich nicht löschen. Versuche es erneut.",
+			"syncFirst": "Zuerst synchronisieren: Einige Änderungen sind noch nicht synchronisiert."
 		}
 	},
 	"money": {

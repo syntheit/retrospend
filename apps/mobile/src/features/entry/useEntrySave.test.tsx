@@ -512,6 +512,7 @@ describe("Save an edit", () => {
 			pullsBegun: () => 1,
 			storedRebase: async () => null,
 			storedAccount: async () => null,
+			overlayAccount: async () => null,
 			absentSince: async () => false,
 			refresh: async () => undefined,
 		});

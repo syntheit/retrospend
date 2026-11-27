@@ -67,10 +67,13 @@ function safeMinor(amount: string, currency: string): ParkedEntry["amount"] {
 
 export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
 	const body = (entry.payload ?? {}) as Record<string, unknown>;
-	const currency = typeof body.currency === "string" ? body.currency : "";
+	// A transfer names what leaves the source (`fromAmount`, `fromCurrency`).
+	const currencyText = body.currency ?? body.fromCurrency;
+	const currency = typeof currencyText === "string" ? currencyText : "";
+	const amountText = body.amount ?? body.fromAmount;
 	const amount =
-		typeof body.amount === "string" && currency
-			? safeMinor(body.amount, currency)
+		typeof amountText === "string" && currency
+			? safeMinor(amountText, currency)
 			: (bookedAmount(entry) ?? bookedConfirmAmount(entry));
 	// A template create names itself `name`; an edit of one keeps `title` for this row.
 	const title = body.title ?? body.name ?? body.description;

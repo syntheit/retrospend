@@ -1429,7 +1429,8 @@
 			"submit": "Delete account",
 			"deleting": "Deleting",
 			"toast": "Deleted {name}",
-			"error": "Couldn't delete. Try again."
+			"error": "Couldn't delete. Try again.",
+			"syncFirst": "Sync first: some changes haven't synced yet."
 		}
 	},
 	"money": {

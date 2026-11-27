@@ -7,10 +7,10 @@ import { useSheetRead } from "@/features/budget/useSheetRead";
 import { useCurrencyChoices } from "@/features/entry/currencyChoices";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useOfflineDryRun } from "@/features/recurring/useSettle";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField, FixedCurrency } from "@/ui/AmountField";
@@ -23,18 +23,29 @@ import {
 	ACCOUNT_TYPES,
 	type AccountForm,
 	aprInvalid,
-	type CreateAccountBody,
 	createBody,
 	dueDayOptions,
 	emptyForm,
 	formOf,
-	type UpdateAccountBody,
+	type NamedCreateBody,
+	type NamedUpdateBody,
 	updateBody,
 } from "./accountBody";
 import { isLiability } from "./accounts";
+import { createAccountOnDevice, writeAccountOnDevice } from "./deviceWealth";
 import { RateTypeChips } from "./RateTypeChips";
 import { rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
+import {
+	useOpenedAccount,
+	useWealthDevice,
+	useWealthEnd,
+} from "./useWealthDevice";
+import {
+	PREVIEW_LEG_ID,
+	PREVIEW_SWITCH_ID,
+	previewWealth,
+} from "./wealthPreview";
 
 /** USD is the rate table's base; any other foreign currency needs a stored rate. */
 export function isRated(
@@ -52,9 +63,17 @@ export function isRated(
  * Liquid. The dry run shows what net worth would do before Save is on; the
  * toast undoes it. An existing account's balance changes with Update balance,
  * not here.
+ *
+ * Under the dev flag, when the server takes Wealth writes from the phone, Save
+ * is booked on the device and queued instead: offline it waits in the outbox
+ * (an edit starts from the screen's own copy when the fresh read cannot be
+ * had, and is checked against its version and balance at send), and Undo
+ * takes it out of the outbox or through the server once sent. The server's
+ * dry run is still what the sheet shows. With either missing it writes online
+ * as ever.
  */
 export function AccountSheet({
-	account,
+	account: listed,
 	visible,
 	home,
 	catalog,
@@ -70,13 +89,16 @@ export function AccountSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.account");
+	const tOffline = useTranslations("mobile.composer.changes");
 	const tw = useTranslations("mobile.wealth");
 	const api = useApi();
-	const announce = useUndoToast("accounts");
+	const device = useWealthDevice(visible);
+	const { offline, track } = useOfflineDryRun();
+	const end = useWealthEnd("accounts");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const { space } = useTheme();
-	const editing = account !== null;
+	const editing = listed !== null;
 	const choices = useCurrencyChoices(home);
 	const [form, setForm] = useState<AccountForm>(emptyForm(home));
 	const [draft, setDraft] = useState("");
@@ -90,30 +112,40 @@ export function AccountSheet({
 	// Save stays off until that read is in.
 	const read = useSheetRead(
 		visible && editing,
-		(client) => client.accounts.get({ id: account?.id ?? "" }),
-		account?.id ?? "",
+		(client) => client.accounts.get({ id: listed?.id ?? "" }),
+		listed?.id ?? "",
 	);
-	const fresh = read.status === "ready" ? read.data : null;
-	const loaded = !editing || fresh !== null;
+	// Offline with the device, the screen's own copy stands in for the read: the
+	// write is checked against its version and balance at send.
+	const source: Account | null =
+		read.status === "ready"
+			? read.data
+			: device && read.status === "error"
+				? listed
+				: null;
+	const { shown, opened } = useOpenedAccount(device, source, visible);
+	const loaded = !editing || shown !== null;
+	const base = shown
+		? `${shown.id}:${shown.version}:${shown.balance.minor}`
+		: "";
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts from the account (or empty) with a fresh id
+	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts from the account (or empty) with a fresh id; `base` says the account moved
 	useEffect(() => {
 		if (!visible || !loaded) return;
-		const source = fresh;
-		accountId.current = source ? source.id : newClientId();
-		setForm(source ? formOf(source) : emptyForm(home));
+		accountId.current = shown ? shown.id : newClientId();
+		setForm(shown ? formOf(shown) : emptyForm(home));
 		setDraft("");
 		setMinimumDraft(
-			source?.minimumPayment
+			shown?.minimumPayment
 				? draftFromMinor(
-						source.minimumPayment.minor,
+						shown.minimumPayment.minor,
 						locale,
-						source.minimumPayment.currency,
+						shown.minimumPayment.currency,
 					)
 				: "",
 		);
 		reset();
-	}, [visible, fresh]);
+	}, [visible, base]);
 
 	const entered = readAmount(draft, locale, form.currency);
 	const typedMinor = minorOf(entered, true);
@@ -142,22 +174,53 @@ export function AccountSheet({
 	const flow = useMoneyWrite({
 		input: visible ? body : null,
 		idempotencyKey: body ? idFor("write") : null,
-		preview: (b) =>
-			api
-				? editing
-					? api.accounts.previewUpdate(b as UpdateAccountBody)
-					: api.accounts.previewCreate(b as CreateAccountBody)
-				: noSession(),
-		write: (b, key) =>
-			api
-				? editing
-					? api.accounts.update(b as UpdateAccountBody, {
-							context: { idempotencyKey: key },
+		preview: (b) => {
+			if (!api) return noSession();
+			const run = (options?: { signal: AbortSignal }) =>
+				editing
+					? api.accounts.previewUpdate(b as NamedUpdateBody, options)
+					: api.accounts.previewCreate(b as NamedCreateBody, options);
+			if (!device) return run();
+			const op = editing
+				? ({
+						kind: "accountUpdate",
+						body: {
+							...(b as NamedUpdateBody),
+							legId: PREVIEW_LEG_ID,
+							rateTypeId: PREVIEW_SWITCH_ID,
+						},
+					} as const)
+				: ({ kind: "accountCreate", body: b as NamedCreateBody } as const);
+			return track(previewWealth(device, op, run));
+		},
+		write: async (b, key) => {
+			if (!api) return noSession();
+			if (device) {
+				const queued = editing
+					? await writeAccountOnDevice({
+							device,
+							op: {
+								kind: "accountUpdate",
+								body: {
+									...(b as NamedUpdateBody),
+									legId: newClientId(),
+									rateTypeId: newClientId(),
+								},
+							},
+							opened,
+							title: form.name.trim(),
 						})
-					: api.accounts.create(b as CreateAccountBody, {
-							context: { idempotencyKey: key },
-						})
-				: noSession(),
+					: await createAccountOnDevice(device, b as NamedCreateBody);
+				if (queued.settled !== "online") return queued;
+			}
+			return editing
+				? api.accounts.update(b as NamedUpdateBody, {
+						context: { idempotencyKey: key },
+					})
+				: api.accounts.create(b as NamedCreateBody, {
+						context: { idempotencyKey: key },
+					});
+		},
 	});
 
 	const set = (patch: Partial<AccountForm>) =>
@@ -166,16 +229,21 @@ export function AccountSheet({
 	async function submit() {
 		const out = await flow.commit();
 		if (!out) return;
-		announce({
+		end(out, {
+			device,
+			title: form.name.trim(),
 			message: t(editing ? "savedToast" : "addedToast", {
 				name: form.name.trim(),
 			}),
-			token: out.undo,
 			onChanged: onDone,
 		});
 		onClose();
 	}
 
+	const offlineNote =
+		device && offline && flow.status === "failed"
+			? tOffline("offline")
+			: undefined;
 	const lead =
 		!editing && typedMinor !== null
 			? [
@@ -201,6 +269,7 @@ export function AccountSheet({
 						rated ? (
 							<PreviewChanges
 								lead={lead}
+								message={offlineNote}
 								preview={flow.preview}
 								status={flow.status}
 							/>
@@ -212,7 +281,7 @@ export function AccountSheet({
 					}
 					failed={flow.commitFailed}
 					onSubmit={submit}
-					ready={flow.status === "ready"}
+					ready={flow.status === "ready" || offlineNote !== undefined}
 					submitLabel={editing ? t("save") : t("add")}
 				>
 					<TextField
@@ -252,7 +321,7 @@ export function AccountSheet({
 							)}
 						</View>
 					</View>
-					{editing && read.status === "error" ? (
+					{editing && read.status === "error" && !device ? (
 						<Note tone="attention">{t("loadError")}</Note>
 					) : null}
 					{editing ? (

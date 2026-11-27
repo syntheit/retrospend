@@ -123,6 +123,7 @@ function writesOf(h: Harness): DeviceWrites {
 			h.absentSince(id, since),
 		),
 		storedAccount: async () => null,
+		overlayAccount: async () => null,
 		templateSince: async () => null,
 		refresh: async () => undefined,
 	} as DeviceWrites;

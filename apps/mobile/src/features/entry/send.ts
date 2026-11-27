@@ -444,6 +444,19 @@ async function change(
 }
 
 /**
+ * An account or transfer entry as the wire takes it: the account's name (or
+ * the transfer's label), kept in the payload for the Sync issues row, is not
+ * part of any body.
+ */
+function withoutTitle<E extends Pick<OutboxEntry, "payload">>(entry: E): E {
+	const { title: _title, ...body } = (entry.payload ?? {}) as Record<
+		string,
+		unknown
+	>;
+	return { ...entry, payload: body };
+}
+
+/**
  * Each kind goes to its own call, so a confirm or skip can never go out as a
  * PUT of an expense under a template's id. A kind this sender does not know,
  * or one aimed at an entity that has no such call, throws before any request.
@@ -453,7 +466,8 @@ async function dispatch(
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
-	if (isWealthEntry(entry)) return dispatchWealth(api, entry, options);
+	if (isWealthEntry(entry))
+		return dispatchWealth(api, withoutTitle(entry), options);
 	switch (entry.kind) {
 		case "create":
 			return create(api, entry, options);
@@ -574,7 +588,7 @@ async function create(
 			return {
 				undo: (
 					await api.transfers.create(
-						entry.payload as Body<typeof api.transfers.create>,
+						withoutTitle(entry).payload as Body<typeof api.transfers.create>,
 						options,
 					)
 				).undo,
@@ -582,7 +596,7 @@ async function create(
 		case "recurring":
 			return createTemplate(api, entry, options);
 		case "accounts":
-			return dispatchWealth(api, entry, options);
+			return dispatchWealth(api, withoutTitle(entry), options);
 	}
 }
 

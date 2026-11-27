@@ -1429,7 +1429,8 @@
 			"submit": "Excluir conta",
 			"deleting": "Excluindo",
 			"toast": "{name} excluída",
-			"error": "Não foi possível excluir. Tente de novo."
+			"error": "Não foi possível excluir. Tente de novo.",
+			"syncFirst": "Sincronize primeiro: algumas alterações ainda não foram sincronizadas."
 		}
 	},
 	"money": {

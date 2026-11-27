@@ -1429,7 +1429,8 @@
 			"submit": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"toast": "{name} eliminada",
-			"error": "No se pudo eliminar. Inténtalo de nuevo."
+			"error": "No se pudo eliminar. Inténtalo de nuevo.",
+			"syncFirst": "Sincroniza primero: algunos cambios aún no se sincronizaron."
 		}
 	},
 	"money": {
