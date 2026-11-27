@@ -88,7 +88,7 @@ afterAll(async () => {
 interface Sent {
 	method: string;
 	path: string;
-	body: Record<string, unknown>;
+	body: object;
 }
 
 /** The v1 request an op is. The bodies are the engine's: the same fields the route takes. */
