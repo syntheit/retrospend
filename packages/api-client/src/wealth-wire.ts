@@ -26,6 +26,13 @@ export interface WealthCallOptions {
 export interface WealthAnswer {
 	undo: string;
 	version?: string | null;
+	/**
+	 * Row ids the entry's booking holds that the server did not write: an edit
+	 * (PUT) is answered which of its leg and switch ids it used, and one it did
+	 * not use names a row that does not exist. The device drops those rows from
+	 * what it holds for the compare.
+	 */
+	unwritten?: readonly string[];
 }
 
 type Body<T> = T extends (input: infer I, ...rest: never[]) => unknown
@@ -98,7 +105,17 @@ export async function dispatchWealth(
 				},
 				options,
 			);
-			return answer(written.undo, written.result.version);
+			const unused = [
+				["legId", written.result.legId],
+				["rateTypeId", written.result.rateTypeId],
+			].flatMap(([name, used]) => {
+				const sent = payload[name as string];
+				return typeof sent === "string" && used === null ? [sent] : [];
+			});
+			return {
+				...answer(written.undo, written.result.version),
+				...(unused.length > 0 ? { unwritten: unused } : {}),
+			};
 		}
 		case "close":
 		case "reopen": {

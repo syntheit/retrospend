@@ -308,6 +308,7 @@ export function createEntrySender(
 				undo: token,
 				version,
 				expenseVersion,
+				unwritten,
 			} = await transport.dispatch(entry, {
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
@@ -328,6 +329,7 @@ export function createEntrySender(
 				status: "sent",
 				...(version !== undefined ? { version } : {}),
 				...(expenseVersion !== undefined ? { expenseVersion } : {}),
+				...(unwritten !== undefined ? { unwritten } : {}),
 			};
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
@@ -382,6 +384,8 @@ export interface Created {
 	 * version, as before.
 	 */
 	expenseVersion?: string;
+	/** Row ids the booking holds that the server did not write (see `WealthAnswer`). */
+	unwritten?: readonly string[];
 }
 
 export const NO_TOKEN = "";

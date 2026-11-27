@@ -126,18 +126,31 @@ export function createTransferOnDevice(
 }
 
 /**
+ * What the screen showed of the account when the person opened the sheet: its
+ * version and its stored balance (what it holds, or what is owed on a
+ * liability). The write is checked against these, not against the device's
+ * copy at Save, so a pull that lands another device's transfer while the
+ * sheet is open makes the write park instead of overwriting it.
+ */
+export interface SeenAccount {
+	version: number;
+	balance: string;
+}
+
+/**
  * An edit, close, reopen, balance update or rate type switch of an account,
  * chained after the account's last waiting entry or based on `opened`, the
  * version the screen read (the device's own copy when the screen has none).
  * With neither it is "unreadable": a write sent with no version would
- * overwrite unchecked. The stored balance it names is the device's own copy,
- * as the overlay holds it, so a write over an unsent one names what that one
- * will leave.
+ * overwrite unchecked. The stored balance it names is the one the screen
+ * showed; behind an unsent write it is the overlay's, which names what that
+ * write will leave.
  */
 export async function writeAccountOnDevice(input: {
 	device: WealthDevice;
 	op: Exclude<AccountOp, { kind: "accountCreate" }>;
-	opened: number | null;
+	/** What the screen read; null when it read none (offline with no copy), and the device's own is used. Required, so a sheet cannot forget it. */
+	opened: SeenAccount | null;
 }): Promise<WealthAnswer> {
 	const { device, op, opened } = input;
 	if (!device.wealthWrites) return { settled: "online" };
@@ -151,16 +164,19 @@ export async function writeAccountOnDevice(input: {
 				return { settled: gate.status === "parked" ? "blocked" : "busy" };
 			const booked = await writes.book(op);
 			if (!booked) return { settled: "online" };
-			const version = opened ?? booked.accountBase?.version ?? null;
+			const version = opened?.version ?? booked.accountBase?.version ?? null;
 			const base = chainBase(
 				gate.earlier,
 				version === null ? null : String(version),
 			);
 			if (!base) return { settled: "unreadable" };
-			const expectedBalance =
-				NAMES_BALANCE.has(op.kind) && booked.accountBase
-					? booked.accountBase.balance
-					: undefined;
+			// Behind an unsent write the balance the person saw is not the one
+			// the server will hold: the overlay's, which that write leaves.
+			const expectedBalance = !NAMES_BALANCE.has(op.kind)
+				? undefined
+				: gate.earlier
+					? booked.accountBase?.balance
+					: (opened?.balance ?? booked.accountBase?.balance);
 			const clientId = newClientId();
 			await outbox.enqueue({
 				clientId,

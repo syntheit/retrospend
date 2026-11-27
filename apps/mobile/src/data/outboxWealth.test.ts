@@ -195,4 +195,20 @@ describe("account entries in the outbox", () => {
 		const [second] = await outbox.all();
 		expect(second?.device?.changes[0]?.before).toEqual(legRow);
 	});
+
+	it("an ack that names rows the server did not write drops them from the acked entry, and keeps the rest", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(
+			entry(
+				"u1",
+				"update",
+				"0",
+				accountBooking(accountRow(), accountRow({ version: 1 })),
+			),
+		);
+		await outbox.markSent("u1", { version: "1", pull: 1, unwritten: ["l1"] });
+		const [acked] = await outbox.acked();
+		expect(acked?.device?.changes.map((c) => c.table)).toEqual(["accounts"]);
+		expect(acked?.ack.version).toBe("1");
+	});
 });

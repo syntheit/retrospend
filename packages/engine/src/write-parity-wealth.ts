@@ -60,10 +60,10 @@ export function compareWealth(
 	// An account is versioned only by the write that names it: another entry
 	// through it (a transfer) answers no version, so another device may have
 	// changed it since and there is nothing to hold it to.
+	// A null version (the ack names none) never equals the pulled one.
 	if (
 		table === "accounts" &&
-		(acked.version === null ||
-			String((pulled as { version: number }).version) !== acked.version)
+		String((pulled as { version: number }).version) !== acked.version
 	)
 		return skipped(id, "changed_since");
 	// A leg is booked at the rates and the home currency the device held.

@@ -12,7 +12,11 @@ import {
 	type WealthDevice,
 	writeAccountOnDevice,
 } from "./deviceWealth";
-import { commitAccountRebase, planAccountRebase } from "./rebaseAccount";
+import {
+	accountOffer,
+	commitAccountRebase,
+	planAccountRebase,
+} from "./rebaseAccount";
 
 // A person's account write and transfer under the dev flag: booked on the
 // device, queued with the version it was based on and the stored balance it
@@ -62,6 +66,9 @@ function deviceWith(
 	return { device, outbox, writes };
 }
 
+/** What the sheet showed when it opened: the version and the stored balance. */
+const seen = (version: number, balance = "1000") => ({ version, balance });
+
 const balanceOp = {
 	kind: "accountBalance" as const,
 	body: { id: A, balance: "1200", legId: "l1", rateTypeId: "r1" },
@@ -78,7 +85,7 @@ describe("without the server's flag", () => {
 		const book = jest.fn(async () => booked());
 		const { device, outbox } = deviceWith({}, book, false);
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(4) }),
 		).toEqual({ settled: "online" });
 		expect(
 			await createAccountOnDevice(device, {
@@ -101,7 +108,7 @@ describe("without the server's flag", () => {
 });
 
 describe("an account write under the flag", () => {
-	it("books, queues with the screen's version and the device's stored balance, and sends it", async () => {
+	it("books, queues with the version and stored balance the screen showed, and sends it", async () => {
 		const updateBalance = jest.fn(async () => ({
 			undo: "tok",
 			result: { version: 7 },
@@ -113,13 +120,14 @@ describe("an account write under the flag", () => {
 		const out = await writeAccountOnDevice({
 			device,
 			op: balanceOp,
-			opened: 5,
+			opened: seen(5, "900"),
 		});
 		expect(out).toMatchObject({ settled: "synced" });
 		expect(updateBalance).toHaveBeenCalledWith(
 			{
 				...balanceOp.body,
-				expectedBalance: "1000",
+				// What the sheet showed, not what the device holds at Save (1,000).
+				expectedBalance: "900",
 				expectedVersion: 5,
 			},
 			expect.anything(),
@@ -129,6 +137,37 @@ describe("an account write under the flag", () => {
 		const [acked] = await outbox.acked();
 		expect(acked?.ack.version).toBe("7");
 		expect(writes.refresh).toHaveBeenCalled();
+	});
+
+	it("a PUT the server answered without the leg the device booked leaves that leg out of the acked entry", async () => {
+		const update = jest.fn(async () => ({
+			undo: "tok",
+			result: { version: 6, legId: null, rateTypeId: null },
+		}));
+		const { device, outbox } = deviceWith({ accounts: { update } }, async () =>
+			booked({
+				changes: [
+					{ table: "legs", id: "l1", before: null, after: {} as never },
+					{ table: "accounts", id: A, before: null, after: {} as never },
+				],
+			}),
+		);
+		const op = {
+			kind: "accountUpdate" as const,
+			body: {
+				id: A,
+				name: "Wise",
+				type: "CASH",
+				currency: "USD",
+				balance: "1000",
+				isLiquid: true,
+				legId: "l1",
+				rateTypeId: "r1",
+			},
+		};
+		await writeAccountOnDevice({ device, op: op as never, opened: seen(4) });
+		const [acked] = await outbox.acked();
+		expect(acked?.device?.changes.map((c) => c.id)).toEqual([A]);
 	});
 
 	it("takes the device's own version when the screen read none", async () => {
@@ -160,7 +199,7 @@ describe("an account write under the flag", () => {
 	it("is online when the device could not book it", async () => {
 		const { device, outbox } = deviceWith({}, async () => null);
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(4) }),
 		).toEqual({ settled: "online" });
 		expect(await outbox.all()).toEqual([]);
 	});
@@ -174,11 +213,11 @@ describe("an account write under the flag", () => {
 			async () => booked(),
 		);
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(4) }),
 		).toMatchObject({ settled: "queued" });
 		// The send began and no answer is known: it may be on the server, so nothing stacks on it.
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(4) }),
 		).toEqual({ settled: "busy" });
 		expect(await outbox.all()).toHaveLength(1);
 	});
@@ -192,7 +231,7 @@ describe("an account write under the flag", () => {
 		const api = { accounts: { updateBalance } };
 		const { device, outbox } = deviceWith(api, async () => booked());
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(4) }),
 		).toMatchObject({ settled: "queued" });
 		online = true;
 		await outbox.requeue((await outbox.all())[0]?.clientId as string);
@@ -227,7 +266,7 @@ describe("an account write under the flag", () => {
 		const out = await writeAccountOnDevice({
 			device,
 			op: { kind: "accountReopen", body: { id: A } },
-			opened: 4,
+			opened: seen(4),
 		});
 		expect(out).toMatchObject({ settled: "synced" });
 		expect(close).toHaveBeenCalledWith(
@@ -250,7 +289,7 @@ describe("an account write under the flag", () => {
 			async () => booked(),
 		);
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 3 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(3) }),
 		).toMatchObject({ settled: "parked" });
 		const [entry] = await outbox.all();
 		expect(entry).toMatchObject({
@@ -277,7 +316,7 @@ describe("an account write under the flag", () => {
 			}),
 		});
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(4) }),
 		).toMatchObject({ settled: "parked" });
 		// Another device's change reaches the phone: the account is at version 6.
 		pulledVersion = 6;
@@ -294,6 +333,100 @@ describe("an account write under the flag", () => {
 		expect((await outbox.acked())[0]?.ack.version).toBe("7");
 	});
 
+	it("parks when a transfer landed while the sheet was open, and Try again previews against the account as pulled", async () => {
+		// The sheet showed 1,000. A +200 transfer reached the device, so the
+		// overlay holds 1,200 at Save; the server holds 1,200 too.
+		const updateBalance = jest.fn(async (body: { expectedBalance: string }) => {
+			if (body.expectedBalance !== "1200")
+				throw problem(409, "account_changed");
+			return { undo: "tok", result: { version: 7 } };
+		});
+		const previewUpdateBalance = jest.fn(async () => ({ changes: [] }));
+		const { device, outbox, writes } = deviceWith(
+			{ accounts: { updateBalance, previewUpdateBalance } },
+			async () => booked({ accountBase: { version: 4, balance: "1200" } }),
+		);
+		Object.assign(writes, {
+			storedAccount: async () => ({
+				version: 4,
+				balance: "1200",
+				closed: false,
+			}),
+		});
+		const typed = {
+			...balanceOp,
+			body: { ...balanceOp.body, balance: "1500" },
+		};
+		expect(
+			await writeAccountOnDevice({
+				device,
+				op: typed,
+				opened: seen(4, "1000"),
+			}),
+		).toMatchObject({ settled: "parked" });
+		expect(updateBalance).toHaveBeenCalledWith(
+			expect.objectContaining({ balance: "1500", expectedBalance: "1000" }),
+			expect.anything(),
+		);
+		const [entry] = await outbox.all();
+		expect(entry).toMatchObject({
+			state: "conflict",
+			lastError: "account_changed",
+		});
+		const clientId = entry?.clientId as string;
+		const plan = await planAccountRebase({ outbox, writes, clientId });
+		expect(plan?.payload).toMatchObject({
+			balance: "1500",
+			expectedBalance: "1200",
+		});
+		await accountOffer({
+			outbox,
+			api: device.api,
+			writes,
+			clientId,
+			kind: "balance",
+			options: { signal: new AbortController().signal },
+			done: async () => true,
+		});
+		expect(previewUpdateBalance).toHaveBeenCalledWith(
+			expect.objectContaining({
+				balance: "1500",
+				expectedBalance: "1200",
+				expectedVersion: 4,
+			}),
+			expect.anything(),
+		);
+	});
+
+	it("behind an unsent write, names the balance that write leaves, not the one the sheet showed", async () => {
+		const close = jest.fn(async () => ({ undo: null, result: { version: 5 } }));
+		const updateBalance = jest.fn(async () => ({
+			undo: null,
+			result: { version: 5 },
+		}));
+		const { device, outbox } = deviceWith(
+			{ accounts: { close, updateBalance } },
+			async () => booked({ accountBase: { version: 4, balance: "1200" } }),
+		);
+		await outbox.enqueue({
+			clientId: "first",
+			entity: "accounts",
+			kind: "close",
+			targetId: A,
+			baseVersion: "4",
+			payload: { id: A },
+		});
+		await writeAccountOnDevice({
+			device,
+			op: balanceOp,
+			opened: seen(4, "1000"),
+		});
+		expect(updateBalance).toHaveBeenCalledWith(
+			expect.objectContaining({ expectedBalance: "1200" }),
+			expect.anything(),
+		);
+	});
+
 	it("refuses to stack on a parked write to the account", async () => {
 		const updateBalance = jest.fn(async () => {
 			throw problem(409, "account_changed");
@@ -301,9 +434,9 @@ describe("an account write under the flag", () => {
 		const { device } = deviceWith({ accounts: { updateBalance } }, async () =>
 			booked(),
 		);
-		await writeAccountOnDevice({ device, op: balanceOp, opened: 3 });
+		await writeAccountOnDevice({ device, op: balanceOp, opened: seen(3) });
 		expect(
-			await writeAccountOnDevice({ device, op: balanceOp, opened: 3 }),
+			await writeAccountOnDevice({ device, op: balanceOp, opened: seen(3) }),
 		).toEqual({ settled: "blocked" });
 	});
 });
@@ -390,7 +523,7 @@ describe("Undo of a device-booked wealth write", () => {
 		const sent = await writeAccountOnDevice({
 			device,
 			op: balanceOp,
-			opened: 4,
+			opened: seen(4),
 		});
 		if (sent.settled !== "synced") throw new Error("not synced");
 		const out = await undoSaved({

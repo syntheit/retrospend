@@ -198,6 +198,42 @@ describe("the wire itself", () => {
 	});
 });
 
+describe("what a PUT answers about the ids it was given", () => {
+	const putEntry = (payload: Record<string, unknown>) =>
+		entry({ kind: "update", payload: { name: "Wise", ...payload } });
+	const answered = (legId: string | null, rateTypeId: string | null) =>
+		jest.fn(async () => ({
+			undo: "t",
+			result: { version: 6, legId, rateTypeId },
+		}));
+
+	it("names the ids it sent that the server did not write, as rows the device holds but the server has not", async () => {
+		const update = answered(null, SWITCH);
+		const sent = await send(
+			{ accounts: { update } },
+			putEntry({ legId: LEG, rateTypeId: SWITCH }),
+		);
+		expect(sent).toEqual({ status: "sent", version: "6", unwritten: [LEG] });
+		const both = await send(
+			{ accounts: { update: answered(null, null) } },
+			putEntry({ legId: LEG, rateTypeId: SWITCH }),
+		);
+		expect(both).toMatchObject({ unwritten: [LEG, SWITCH] });
+	});
+
+	it("names nothing when the server used every id it was sent, or none was sent", async () => {
+		expect(
+			await send(
+				{ accounts: { update: answered(LEG, SWITCH) } },
+				putEntry({ legId: LEG, rateTypeId: SWITCH }),
+			),
+		).toEqual({ status: "sent", version: "6" });
+		expect(
+			await send({ accounts: { update: answered(null, null) } }, putEntry({})),
+		).toEqual({ status: "sent", version: "6" });
+	});
+});
+
 describe("sending a transfer delete", () => {
 	it("deletes by id under the entry's key with no stamp, and sends nothing for a version", async () => {
 		const del = jest.fn(async () => ({ undo: "tok" }));

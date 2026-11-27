@@ -134,6 +134,8 @@ export interface Ack {
 	pull?: number;
 	/** The booked expense's `updatedAt` from a recurring confirm's answer, when it named one. */
 	expenseVersion?: string;
+	/** Row ids of the entry's booking that the server did not write: they leave the acked entry's rows. */
+	unwritten?: readonly string[];
 }
 
 export interface Outbox {
@@ -349,8 +351,18 @@ export function createOutbox(
 			ackPulls.set(clientId, answer.pull ?? Number.POSITIVE_INFINITY);
 			// The sealed request has done its work once the server answered.
 			const { sealed: _sealed, ...kept } = entry;
+			// A row the server did not write is no row to hold the pull to.
+			const gone = new Set(answer.unwritten ?? []);
+			const device =
+				gone.size > 0
+					? {
+							...entry.device,
+							changes: entry.device.changes.filter((c) => !gone.has(c.id)),
+						}
+					: entry.device;
 			const record = {
 				...kept,
+				device,
 				ack: {
 					version: version ?? null,
 					...(answer.expenseVersion !== undefined
