@@ -101,6 +101,16 @@ describe("compareEntry of an account entry", () => {
 		});
 	});
 
+	it("does not hold the instant each side stamped on a leg it wrote", async () => {
+		const { store, changes } = await pulledAfterBalanceUpdate();
+		const leg = store.get("legs", LEG);
+		if (!leg) throw new Error("no leg");
+		await store.transaction((tx) =>
+			tx.put("legs", { ...leg, createdAt: new Date(NOW + 1234) }),
+		);
+		expect(outcome(compare(store, changes), LEG)?.outcome).toBe("match");
+	});
+
 	it("holds decimals by value: 200.00000000 is the leg's 200", async () => {
 		const { store, changes } = await pulledAfterBalanceUpdate();
 		const leg = store.get("legs", LEG);

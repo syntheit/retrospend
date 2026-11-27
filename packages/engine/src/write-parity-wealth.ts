@@ -12,6 +12,7 @@
  * - snapshots: the server names its own id and every later write of the day
  *   replaces the row, so there is no row to hold by id.
  * - a rate switch's `previousType`: the next switch repoints it.
+ * - a leg's and a switch's `createdAt`: each side stamps the instant it wrote.
  * - the name and the note: the device keeps no text.
  */
 
@@ -25,8 +26,8 @@ const NOT_COMPARED: Record<
 	readonly string[]
 > = {
 	accounts: ["balance", "countedUnits", "name", "version", "createdAt"],
-	legs: [],
-	rateSwitches: ["previousType"],
+	legs: ["createdAt"],
+	rateSwitches: ["previousType", "createdAt"],
 	transfers: ["note"],
 };
 
