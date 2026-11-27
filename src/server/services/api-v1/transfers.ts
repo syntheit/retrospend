@@ -8,7 +8,10 @@ import {
 	createTransfer,
 	type TransferValue,
 } from "~/server/services/transfers/create.mutation";
-import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
+import {
+	type DeletedTransfer,
+	deleteTransfer,
+} from "~/server/services/transfers/delete.mutation";
 import type { Caller } from "./caller";
 import {
 	accountChangeDto,
@@ -78,12 +81,18 @@ export async function createTransferWrite(caller: LedgerCaller, input: Input) {
 export const previewCreateTransfer = (caller: LedgerCaller, input: Input) =>
 	previewWrite(caller, createTransfer, createInput(caller, input));
 
+/** The undo of a delete: the recreate plus the stored budget side and fee fields (transfers/stash.ts). */
+const restoreInput = (value: DeletedTransfer): CreateTransferInput => ({
+	...value.recreate,
+	restore: value.restore,
+});
+
 export async function removeTransfer(caller: LedgerCaller, id: string) {
 	const value = await applyWrite(caller, deleteTransfer, { transferId: id });
 	return {
 		id: value.transferId,
 		accounts: value.accounts.map(accountChangeDto),
-		undo: undoFor(caller, FAMILY, "transfer.create", value.recreate),
+		undo: undoFor(caller, FAMILY, "transfer.create", restoreInput(value)),
 	};
 }
 
@@ -103,7 +112,7 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 				return {
 					id: value.transferId,
 					accounts: value.accounts.map(accountChangeDto),
-					redo: undoFor(caller, FAMILY, "transfer.create", value.recreate),
+					redo: undoFor(caller, FAMILY, "transfer.create", restoreInput(value)),
 				};
 			},
 		};

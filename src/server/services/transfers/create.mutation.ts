@@ -36,6 +36,7 @@ import {
 } from "../accounts/ledger";
 import { asBadRequest } from "../rate-types";
 import { type BudgetSideResult, recordBudgetSide } from "./budget-side";
+import { restoreTransferStash, type TransferStash } from "./stash";
 
 type Tx = Prisma.TransactionClient;
 
@@ -76,6 +77,11 @@ export interface CreateTransferInput {
 	readonly envelopeId?: string | null;
 	/** Entering the budget: the envelope it goes into (null = To assign). */
 	readonly putIn?: string | null;
+	/**
+	 * Set only by the undo of a delete (signed in its token, never in a plain
+	 * request): the budget side and fee fields as they were stored.
+	 */
+	readonly restore?: TransferStash | null;
 	readonly timeZone?: string;
 }
 
@@ -230,6 +236,13 @@ export async function createTransferIn(
 		envelopeId: (leaves ? input.envelopeId : input.putIn) ?? null,
 		accountId: rows.budgetAccountId,
 	});
+	if (input.restore)
+		await restoreTransferStash(
+			tx,
+			userId,
+			{ transferId, feeExpenseId: rows.fee?.expense.id ?? null },
+			input.restore,
+		);
 	const { transfer } = rows;
 	return {
 		transferId,

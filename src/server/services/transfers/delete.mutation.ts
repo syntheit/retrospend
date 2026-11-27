@@ -1,7 +1,8 @@
 /**
  * transfer.delete, the undo of transfer.create: the move, its legs, its fee
  * expense and the counted units it moved (D4) all go back. Its own undo is
- * transfer.create with `recreate`, the same id, the amounts as typed and the envelope its budget side used.
+ * transfer.create with `recreate`, the same id, the amounts as typed and the envelope its budget side used. The v1 token adds
+ * `restore`, the stored budget side and fee fields (stash.ts).
  */
 
 import { dec } from "@retrospend/domain/envelope/units";
@@ -11,6 +12,7 @@ import type { Prisma } from "~prisma";
 import { type AccountChange, reverseLegs } from "../accounts/ledger";
 import { recordedBudgetEnvelope } from "./budget-side";
 import { type CreateTransferInput, TRANSFER_FIGURES } from "./create.mutation";
+import { stashTransfer, type TransferStash } from "./stash";
 
 type Tx = Prisma.TransactionClient;
 
@@ -23,6 +25,8 @@ export interface DeletedTransfer {
 	readonly accounts: readonly AccountChange[];
 	/** transfer.create with this input brings the move back as it was. */
 	readonly recreate: CreateTransferInput;
+	/** The budget side and fee fields as stored; the v1 undo token carries them with `recreate`. */
+	readonly restore: TransferStash;
 }
 
 async function recreateInput(
@@ -71,6 +75,7 @@ export async function deleteTransferIn(
 		throw new TRPCError({ code: "NOT_FOUND", message: "Transfer not found" });
 	}
 	const recreate = await recreateInput(tx, transfer);
+	const restore = await stashTransfer(tx, userId, transfer);
 	const accounts = await reverseLegs(tx, { transferId: transfer.id });
 	if (transfer.fromAccountId && transfer.countedFromUnits.gt(0)) {
 		await tx.assetAccount.update({
@@ -94,7 +99,7 @@ export async function deleteTransferIn(
 			where: { id: transfer.feeExpenseId, userId },
 		});
 	}
-	return { transferId: transfer.id, accounts, recreate };
+	return { transferId: transfer.id, accounts, recreate, restore };
 }
 
 export const deleteTransfer: MoneyMutation<
