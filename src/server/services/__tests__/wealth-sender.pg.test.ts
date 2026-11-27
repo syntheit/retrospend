@@ -106,7 +106,7 @@ async function queued(
 	const booked: BookedWrite = await readOverlaid(store, [], 0, (tx) =>
 		bookIn(tx, op, {}, bookedAt),
 	);
-	const body = (op as { body: Record<string, unknown> }).body;
+	const body = (op as unknown as { body: Record<string, unknown> }).body;
 	const entry = {
 		clientId: randomUUID(),
 		entity: "accounts",

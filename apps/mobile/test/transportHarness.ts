@@ -366,9 +366,15 @@ export function vaultHarness(): Harness {
 				// The fake vault writes expenses only; a recurring entry is refused
 				// until the sealed recurring sender exists.
 				dispatch: (entry, call) => {
-					if (entry.kind === "confirm" || entry.kind === "skip")
-						throw new Error("The fake vault has no recurring writes");
-					return sender.dispatch(entry, call);
+					if (
+						entry.kind !== "create" &&
+						entry.kind !== "update" &&
+						entry.kind !== "delete"
+					)
+						throw new Error(
+							"The fake vault has no recurring or account writes",
+						);
+					return sender.dispatch({ ...entry, kind: entry.kind }, call);
 				},
 			};
 		},
