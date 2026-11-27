@@ -283,6 +283,12 @@ export async function engineStoreOf(
 				dueDate: a.dueDate,
 				closedAt: a.closedAt,
 				createdAt: a.createdAt,
+				name: a.name,
+				inBudget: a.inBudget,
+				countedUnits: a.countedUnits.toFixed(),
+				isLiquid: a.isLiquid,
+				iconKind: a.iconKind,
+				version: a.version,
 			})),
 			legs: legs.map((l) => ({
 				id: l.id,
@@ -294,6 +300,9 @@ export async function engineStoreOf(
 				source: l.source,
 				homeAmount: text(l.homeAmount),
 				homeCurrency: l.homeCurrency,
+				countedUnits: l.countedUnits.toFixed(),
+				transferId: l.transferId,
+				expenseId: l.expenseId,
 			})),
 			snapshots: snapshots.map((s) => ({
 				id: s.id,
@@ -421,6 +430,7 @@ export async function engineStoreOf(
 				envelopeId: w.envelopeId,
 				date: w.date,
 				amount: w.amount.toFixed(),
+				transferId: w.transferId,
 			})),
 			payoffPlans: book.plans.map((p) => ({
 				id: p.id,
@@ -432,11 +442,17 @@ export async function engineStoreOf(
 			})),
 			transfers: transfers.map((t) => ({
 				id: t.id,
+				kind: t.kind,
 				date: t.date,
+				fromAccountId: t.fromAccountId,
+				fromAmount: t.fromAmount.toFixed(),
 				toAccountId: t.toAccountId,
 				toAmount: t.toAmount.toFixed(),
 				toCurrency: t.toCurrency,
 				feeExpenseId: t.feeExpenseId,
+				countedFromUnits: t.countedFromUnits.toFixed(),
+				countedToUnits: t.countedToUnits.toFixed(),
+				note: t.note,
 			})),
 		},
 	});

@@ -1,7 +1,9 @@
 import { join } from "node:path";
 import {
 	MemoryStore,
+	type PullApi,
 	type PullCursors,
+	pullAll,
 	SINGLE_ROW_IDS,
 	sameValue,
 	TABLE_NAMES,
@@ -14,6 +16,7 @@ import {
 	createPersistence,
 	loadEngineDb,
 	SCHEMA_VERSION,
+	UPGRADES,
 	WRITE_FAILURE_LIMIT,
 } from "./persist";
 
@@ -399,5 +402,293 @@ describe("loading speed", () => {
 		// quadratic load, not a slow machine.
 		expect(loadMs).toBeLessThan(5000);
 		second.persistence.close();
+	});
+});
+
+describe("a file from before the Wealth fields", () => {
+	const REPULLED = [
+		"accounts",
+		"legs",
+		"transfers",
+		"wealthTransfers",
+	] as const;
+	/** What a version 3 file held: these rows without the fields version 4 added. */
+	const NARROW: Readonly<Record<string, readonly string[]>> = {
+		accounts: [
+			"name",
+			"inBudget",
+			"countedUnits",
+			"isLiquid",
+			"iconKind",
+			"version",
+		],
+		legs: ["countedUnits", "transferId", "expenseId"],
+		transfers: [
+			"kind",
+			"fromAccountId",
+			"fromAmount",
+			"countedFromUnits",
+			"countedToUnits",
+			"note",
+		],
+		wealthTransfers: ["transferId"],
+	};
+	const narrow = (table: TableName, id: string) => {
+		const row: Record<string, unknown> = { ...fixtureRow(table, id) };
+		for (const field of NARROW[table] ?? []) delete row[field];
+		return row;
+	};
+	const ENTITIES = [
+		"categories",
+		"recurringTemplates",
+		"expenses",
+		"accounts",
+		"snapshots",
+		"legs",
+		"rateSwitches",
+		"budgetBooks",
+		"envelopeGroups",
+		"envelopes",
+		"envelopeCategories",
+		"budgetMovements",
+		"bookPeriods",
+		"monthCloses",
+		"wealthTransfers",
+		"payoffPlans",
+		"transfers",
+	] as const;
+	const SAVED: PullCursors = Object.fromEntries(
+		ENTITIES.map((e) => [e, `saved-${e}`]),
+	);
+
+	/** A finished pull's file, as the build before this one left it. */
+	const versionThreeFile = async () => {
+		const first = boot(file());
+		await first.store.transaction((tx) => {
+			for (const entity of ENTITIES)
+				tx.put(entity, narrow(entity, "r1") as never);
+			// A row the server deleted while the file slept: no tombstone will come for it.
+			tx.put("accounts", narrow("accounts", "ghost") as never);
+		});
+		first.cursors.current = { ...SAVED };
+		first.persistence.finishPull();
+		first.persistence.close();
+		const driver = nodeDriver(file());
+		driver.run("UPDATE meta SET value = '3' WHERE key = 'schemaVersion'");
+		driver.close();
+	};
+
+	it("names version 3 as the one step to the current version, with exactly these four entities", () => {
+		expect(UPGRADES).toEqual([{ from: "3", to: "4", repull: [...REPULLED] }]);
+		expect(SCHEMA_VERSION).toBe("4");
+	});
+
+	it("keeps every other row and cursor, drops those four entities' rows and cursors, and is not complete", async () => {
+		await versionThreeFile();
+		const after = boot(file());
+		expect(after.loaded.wiped).toBe(false);
+		expect(after.loaded.complete).toBe(false);
+		const expected = Object.fromEntries(
+			ENTITIES.filter((e) => !(REPULLED as readonly string[]).includes(e)).map(
+				(e) => [e, `saved-${e}`],
+			),
+		);
+		expect(after.loaded.cursors).toEqual(expected);
+		for (const table of TABLE_NAMES) {
+			const kept = (REPULLED as readonly string[]).includes(table) ? 0 : 1;
+			const held = after.store.list(table).length;
+			if (ENTITIES.includes(table as (typeof ENTITIES)[number]))
+				expect({ table, held }).toEqual({ table, held: kept });
+		}
+		expect(
+			after.driver.all<{ value: string }>(
+				"SELECT value FROM meta WHERE key = 'schemaVersion'",
+			)[0]?.value,
+		).toBe("4");
+		after.persistence.close();
+	});
+
+	it("pulls those four again with no cursor, the rest from their cursors, and ends with complete rows and no ghost", async () => {
+		await versionThreeFile();
+		const after = boot(file());
+		const asked: string[] = [];
+		const route =
+			(name: string, items: unknown[] = []) =>
+			async (q: { since?: string }) => {
+				asked.push(`${name}(${q.since ?? "-"})`);
+				return { items, tombstones: [], cursor: `new-${name}`, hasMore: false };
+			};
+		const iso = "2026-03-01T00:00:00.000Z";
+		const api = {
+			sync: {
+				settings: async () => ({
+					homeCurrency: "ARS",
+					timeZone: "America/Argentina/Buenos_Aires",
+					startDay: 1,
+					hiddenProjectIds: [],
+					defaultRateTypes: {},
+				}),
+				shares: async () => ({}),
+				categories: route("categories"),
+				recurringTemplates: route("recurringTemplates"),
+				expenses: route("expenses"),
+				accounts: route("accounts", [
+					{
+						id: "r1",
+						type: "CASH",
+						currency: "ARS",
+						balance: "50000",
+						exchangeRate: null,
+						exchangeRateType: null,
+						interestRate: null,
+						minimumPayment: null,
+						dueDate: null,
+						closedAt: null,
+						createdAt: iso,
+						name: "Wallet",
+						inBudget: true,
+						countedUnits: "2.5",
+						isLiquid: false,
+						iconKind: "BRAND",
+						version: 4,
+					},
+				]),
+				accountSnapshots: route("accountSnapshots"),
+				accountLegs: route("accountLegs", [
+					{
+						id: "r1",
+						accountId: "r1",
+						currency: "ARS",
+						date: iso,
+						createdAt: iso,
+						amount: "-10",
+						source: "TRANSFER",
+						homeAmount: null,
+						homeCurrency: null,
+						countedUnits: "1.5",
+						transferId: "r1",
+						expenseId: "e9",
+					},
+				]),
+				accountRateTypes: route("accountRateTypes"),
+				budgetBooks: route("budgetBooks"),
+				envelopeGroups: route("envelopeGroups"),
+				envelopes: route("envelopes"),
+				envelopeCategories: route("envelopeCategories"),
+				budgetMovements: route("budgetMovements"),
+				bookPeriods: route("bookPeriods"),
+				monthCloses: route("monthCloses"),
+				wealthTransfers: route("wealthTransfers", [
+					{
+						id: "r1",
+						bookId: "book-1",
+						direction: "TO_WEALTH",
+						envelopeId: null,
+						date: iso,
+						amount: "5000",
+						transferId: "r1",
+					},
+				]),
+				payoffPlans: route("payoffPlans"),
+				transfers: route("transfers", [
+					{
+						id: "r1",
+						kind: "EXCHANGE",
+						date: iso,
+						fromAccountId: "r1",
+						fromAmount: "20000",
+						toAccountId: "r1",
+						toAmount: "20",
+						toCurrency: "USD",
+						feeExpenseId: null,
+						countedFromUnits: "0",
+						countedToUnits: "0",
+						note: "trip",
+					},
+				]),
+			},
+			currencies: { dailyRates: async () => ({ asOf: null, rates: [] }) },
+		} as unknown as PullApi;
+		const before = after.store.list("expenses");
+
+		await pullAll(after.store, api, after.cursors.current, { shares: false });
+
+		for (const entity of ENTITIES) {
+			const name =
+				entity === "snapshots"
+					? "accountSnapshots"
+					: entity === "legs"
+						? "accountLegs"
+						: entity === "rateSwitches"
+							? "accountRateTypes"
+							: entity;
+			const since = (REPULLED as readonly string[]).includes(entity)
+				? "-"
+				: `saved-${entity}`;
+			expect(asked).toContain(`${name}(${since})`);
+		}
+		expect(after.store.list("accounts").map((r) => r.id)).toEqual(["r1"]);
+		expect(after.store.get("accounts", "r1")).toMatchObject({
+			name: "Wallet",
+			inBudget: true,
+			countedUnits: "2.5",
+			isLiquid: false,
+			iconKind: "BRAND",
+			version: 4,
+		});
+		expect(after.store.get("legs", "r1")).toMatchObject({
+			countedUnits: "1.5",
+			transferId: "r1",
+			expenseId: "e9",
+		});
+		expect(after.store.get("transfers", "r1")).toMatchObject({
+			kind: "EXCHANGE",
+			fromAccountId: "r1",
+			fromAmount: "20000",
+			countedFromUnits: "0",
+			countedToUnits: "0",
+			note: "trip",
+		});
+		expect(after.store.get("wealthTransfers", "r1")?.transferId).toBe("r1");
+		// The untouched entities' rows are the ones the file held.
+		expect(after.store.list("expenses")).toEqual(before);
+		after.persistence.close();
+	});
+
+	it("a file at the current version is not touched", async () => {
+		const first = boot(file());
+		await first.store.transaction((tx) =>
+			tx.put("accounts", fixtureRow("accounts", "r1")),
+		);
+		first.cursors.current = { ...SAVED };
+		first.persistence.finishPull();
+		first.persistence.close();
+		const second = boot(file());
+		expect(second.loaded.cursors).toEqual(SAVED);
+		expect(second.loaded.complete).toBe(true);
+		expect(second.store.list("accounts")).toHaveLength(1);
+		second.persistence.close();
+	});
+
+	it("a version 3 file of another owner is emptied, not upgraded", async () => {
+		await versionThreeFile();
+		const driver = nodeDriver(file());
+		driver.run("UPDATE meta SET value = 'someone-else' WHERE key = 'origin'");
+		driver.close();
+		const after = boot(file());
+		expect(after.loaded.wiped).toBe(true);
+		expect(after.loaded.rowCount).toBe(0);
+		after.persistence.close();
+	});
+
+	it("a version 3 file with unreadable cursors is emptied, not upgraded", async () => {
+		await versionThreeFile();
+		const driver = nodeDriver(file());
+		driver.run("UPDATE meta SET value = '[1]' WHERE key = 'cursors'");
+		driver.close();
+		const after = boot(file());
+		expect(after.loaded.wiped).toBe(true);
+		expect(after.loaded.rowCount).toBe(0);
+		after.persistence.close();
 	});
 });

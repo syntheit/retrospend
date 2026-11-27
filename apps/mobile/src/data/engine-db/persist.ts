@@ -1,6 +1,7 @@
 import {
 	type PullCursors,
 	SINGLE_ROW_IDS,
+	type SyncEntity,
 	TABLE_NAMES,
 	type TableName,
 } from "@retrospend/engine";
@@ -25,7 +26,30 @@ import { decodeRow, encodeRow, SerializeError } from "./serialize";
 // figures from rows that a pull was still filling.
 
 // 3: templates carry `version`, `websiteUrl` and `paymentSource`; older files are wiped and pulled again.
-export const SCHEMA_VERSION = "3";
+// 4: accounts, legs, transfers and wealthTransfers carry the fields the Wealth writes read; a version 3 file keeps everything else and pulls those four again (UPGRADES).
+export const SCHEMA_VERSION = "4";
+
+/**
+ * A file at `from` that gains fields on some entities only: it is not wiped.
+ * The rows and cursors of `repull` are dropped (never a row that lacks the new
+ * fields, and never a row the server deleted while the file slept, which a
+ * pull with no cursor sends no tombstone for) and the pull-complete flag is
+ * cleared, so nothing reads the store until a pull has filled them again. Every
+ * other entity keeps its rows and its cursor and pulls only what changed.
+ */
+interface Upgrade {
+	readonly from: string;
+	readonly to: string;
+	readonly repull: readonly SyncEntity[];
+}
+
+export const UPGRADES: readonly Upgrade[] = [
+	{
+		from: "3",
+		to: "4",
+		repull: ["accounts", "legs", "transfers", "wealthTransfers"],
+	},
+];
 
 /** Failed writes in one session after which the disk copy is given up. */
 export const WRITE_FAILURE_LIMIT = 3;
@@ -116,6 +140,41 @@ function readAll(driver: SqlDriver, owner: string): LoadedEngine {
 	};
 }
 
+/** Moves a file along `UPGRADES` to the current version; `readAll` then judges it as any other (an owner that is not ours still empties it). */
+function upgrade(driver: SqlDriver) {
+	// One pass per step at most: a step that did not move the version ends the loop.
+	for (let i = 0; i <= UPGRADES.length; i += 1) {
+		const meta = new Map(
+			driver
+				.all<{ key: string; value: string }>("SELECT key, value FROM meta")
+				.map((r) => [r.key, r.value]),
+		);
+		const step = UPGRADES.find((u) => u.from === meta.get("schemaVersion"));
+		if (!step) return;
+		// Parsed before anything is written: a bad cursors value throws here and
+		// the file is wiped like any other that cannot be trusted.
+		const saved = meta.get("cursors");
+		const cursors: Record<string, unknown> =
+			saved === undefined ? {} : JSON.parse(saved);
+		if (
+			typeof cursors !== "object" ||
+			cursors === null ||
+			Array.isArray(cursors)
+		)
+			throw new Untrusted("cursors");
+		for (const entity of step.repull) delete cursors[entity];
+		driver.transaction(() => {
+			driver.run(
+				`DELETE FROM rows WHERE tbl IN (${step.repull.map(() => "?").join(", ")})`,
+				step.repull,
+			);
+			driver.run(UPSERT_META, ["cursors", JSON.stringify(cursors)]);
+			driver.run(DELETE_META, ["pullComplete"]);
+			driver.run(UPSERT_META, ["schemaVersion", step.to]);
+		});
+	}
+}
+
 function reset(driver: SqlDriver, owner: string) {
 	driver.transaction(() => {
 		driver.exec("DELETE FROM rows; DELETE FROM meta;");
@@ -147,6 +206,7 @@ export function loadEngineDb(driver: SqlDriver, owner: string): LoadedEngine {
 		};
 	}
 	try {
+		upgrade(driver);
 		return readAll(driver, owner);
 	} catch (error) {
 		// A SQL failure is not the data being wrong: let it reach the caller.

@@ -20,6 +20,7 @@ import type { StoredRateRow } from "@retrospend/domain/money";
 import type { RecurringTemplateRow } from "@retrospend/domain/recurring-view";
 import type { SpentExpenseRow, SpentShareRow } from "@retrospend/domain/spent";
 import type {
+	AccountDetail,
 	AccountTerms,
 	BookPeriodRow,
 	BudgetBookRow,
@@ -29,6 +30,7 @@ import type {
 	EnvelopeGroupRow,
 	EnvelopeRow,
 	ExpenseBookDetail,
+	LegDetail,
 	MonthCloseRow,
 	PayoffPlanRow,
 	TransferRow,
@@ -149,9 +151,9 @@ export interface TableRows {
 		ExpenseDetail &
 		ExpenseBookDetail;
 	shares: ShareRow;
-	legs: LegRow;
+	legs: LegRow & LegDetail;
 	snapshots: SnapshotRow & WithId;
-	accounts: AccountRow & AccountTerms;
+	accounts: AccountRow & AccountTerms & AccountDetail;
 	rateSwitches: RateSwitchRow & WithId;
 	rates: Readonly<StoredRateRow> & WithId;
 	rateSync: RateSyncRow;

@@ -108,6 +108,8 @@ export interface WealthTransferRow extends WithId {
 	readonly date: Date;
 	/** In the book's currency. */
 	readonly amount: string;
+	/** The transfer that made it; deleting that transfer deletes this row. */
+	readonly transferId: string | null;
 }
 
 export interface PayoffPlanRow extends WithId {
@@ -122,11 +124,21 @@ export interface PayoffPlanRow extends WithId {
 
 /** A move between accounts, as far as a bill reads it: what was paid to an account, and the fee expense. */
 export interface TransferRow extends WithId {
+	/** TRANSFER, EXCHANGE, CARD_PAYMENT, WITHDRAWAL or DEBT_PAYMENT. */
+	readonly kind: string;
 	readonly date: Date;
+	/** Null is Not tracked. */
+	readonly fromAccountId: string | null;
+	readonly fromAmount: string;
 	readonly toAccountId: string | null;
 	readonly toAmount: string;
 	readonly toCurrency: string;
 	readonly feeExpenseId: string | null;
+	/** Counted units the move took from the source and gave the destination. */
+	readonly countedFromUnits: string;
+	readonly countedToUnits: string;
+	/** User text: sealed on the server, never kept outside the store (wealth-rows.ts). */
+	readonly note: string | null;
 }
 
 /** A value the server froze for one of the person's own expenses, by the key it depends on. */
@@ -182,6 +194,35 @@ export interface ExpenseBookDetail {
 	readonly recurringTemplateId?: string | null;
 	/** Charged to this envelope whatever its category (a debt payment's interest). */
 	readonly budgetEnvelopeId?: string | null;
+}
+
+/**
+ * What an account keeps for the Wealth writes, beyond what the figures and a
+ * bill read. All of it comes from the sync wire; a store pulled before it
+ * existed re-pulls the accounts (SCHEMA_VERSION 4 on the phone), so a row a
+ * pull made always has every field.
+ */
+export interface AccountDetail {
+	/** User text: sealed on the server, never kept outside the store (wealth-rows.ts). */
+	readonly name: string;
+	/** Null is the default for its kind and currency. */
+	readonly inBudget: boolean | null;
+	readonly countedUnits: string;
+	readonly isLiquid: boolean;
+	/** BRAND, MONOGRAM or IMAGE; null with no icon value is the default glyph. */
+	readonly iconKind: string | null;
+	/**
+	 * The server's account version, the base an account write sends as
+	 * `expectedVersion`. Not `updatedAt`, which is only the "Updated" date.
+	 */
+	readonly version: number;
+}
+
+/** What a leg keeps for the Wealth writes: the counted units it moved and the transfer or expense that made it. */
+export interface LegDetail {
+	readonly countedUnits: string;
+	readonly transferId: string | null;
+	readonly expenseId: string | null;
 }
 
 /** The terms of a liability a bill and the payoff plan read, beyond what the account figures read. Optional like `ExpenseBookDetail`. */

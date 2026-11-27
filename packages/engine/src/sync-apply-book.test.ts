@@ -111,6 +111,7 @@ const WIRE: { [E in keyof WireOf]?: Partial<WireOf[E]> } = {
 		envelopeId: null,
 		date: "2026-03-10T00:00:00.000Z",
 		amount: "5000",
+		transferId: "tr-1",
 	},
 	payoffPlans: {
 		id: "pp-1",
@@ -122,11 +123,17 @@ const WIRE: { [E in keyof WireOf]?: Partial<WireOf[E]> } = {
 	},
 	transfers: {
 		id: "tr-1",
+		kind: "CARD_PAYMENT",
 		date: "2026-03-12T00:00:00.000Z",
+		fromAccountId: "a-cash",
+		fromAmount: "20000",
 		toAccountId: "a-card",
 		toAmount: "20000",
 		toCurrency: "ARS",
 		feeExpenseId: "x-fee",
+		countedFromUnits: "0",
+		countedToUnits: "0",
+		note: null,
 	},
 };
 
@@ -209,6 +216,7 @@ describe("applySyncPage, the book family", () => {
 			amount: "5000",
 			date: new Date("2026-03-10T00:00:00.000Z"),
 			envelopeId: null,
+			transferId: "tr-1",
 		});
 		expect(store.get("payoffPlans", "pp-1")).toMatchObject({
 			extraMonthly: "10000",
@@ -216,11 +224,17 @@ describe("applySyncPage, the book family", () => {
 		});
 		expect(store.get("transfers", "tr-1")).toEqual({
 			id: "tr-1",
+			kind: "CARD_PAYMENT",
 			date: new Date("2026-03-12T00:00:00.000Z"),
+			fromAccountId: "a-cash",
+			fromAmount: "20000",
 			toAccountId: "a-card",
 			toAmount: "20000",
 			toCurrency: "ARS",
 			feeExpenseId: "x-fee",
+			countedFromUnits: "0",
+			countedToUnits: "0",
+			note: null,
 		});
 	});
 
@@ -470,6 +484,12 @@ describe("expense and account fields the budget reads", () => {
 			dueDate: 10,
 			closedAt: null,
 			createdAt: "2026-01-01T00:00:00.000Z",
+			name: "Card",
+			inBudget: null,
+			countedUnits: "0",
+			isLiquid: false,
+			iconKind: null,
+			version: 0,
 		} as const;
 		const store = new MemoryStore();
 		await store.transaction((tx) =>
