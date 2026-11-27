@@ -391,9 +391,10 @@ describe("Update balance under the dev flag", () => {
 		});
 	});
 
-	it("when the server's copy is ahead of the device's, shows and names the screen's balance and version", async () => {
+	it("when another device moved only the balance (the version stays), shows and names the screen's balance", async () => {
 		const { accounts, writes } = setup();
-		// Another device moved 1,000 to 1,200 (version 6); the engine still holds version 5.
+		// A transfer on another device moved 1,000 to 1,200 and left version 5
+		// alone; the engine pulled version 5 with 1,000 and has no unsent write.
 		writes.storedAccount.mockResolvedValue({
 			version: 5,
 			balance: "1000.00",
@@ -404,14 +405,13 @@ describe("Update balance under the dev flag", () => {
 			balance: "1000.00",
 			closed: false,
 		});
-		const onDone = jest.fn();
 		const tree = await mount(
 			<UpdateBalanceSheet
-				account={{ ...account, version: 6, balance: ars(120_000) } as Account}
+				account={{ ...account, version: 5, balance: ars(120_000) } as Account}
 				catalog={catalog}
 				home="ARS"
 				onClose={jest.fn()}
-				onDone={onDone}
+				onDone={jest.fn()}
 				visible
 			/>,
 		);
@@ -421,7 +421,7 @@ describe("Update balance under the dev flag", () => {
 		await typeBalance(tree);
 		await pressAsync(tree, "Update balance");
 		expect(accounts.updateBalance.mock.calls[0]?.[0]).toMatchObject({
-			expectedVersion: 6,
+			expectedVersion: 5,
 			expectedBalance: "1200.00",
 		});
 	});

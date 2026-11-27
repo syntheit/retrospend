@@ -72,7 +72,8 @@ export function useOpenedAccount<A extends Account | null>(
 ): OpenedAccount<A> {
 	const [stored, setStored] = useState<{
 		id: string;
-		version: number;
+		/** The pulled row the overlay was laid over. */
+		pulled: { version: number; balance: string };
 		balance: string;
 	} | null>(null);
 	// The device is made again on every render: only whether there is one counts.
@@ -90,14 +91,20 @@ export function useOpenedAccount<A extends Account | null>(
 		const writes = latest.current?.writes;
 		if (!active || !has || !writes || id === null) return;
 		let live = true;
-		// The overlay's balance goes with the version it was laid over: the
-		// pulled one. Only when that is the screen's own version do the two
-		// agree; when the screen is ahead (another device moved the account and
-		// the engine has not pulled it yet) the screen's balance and version stand.
+		// The overlay's balance goes with the pulled row it was laid over. Only
+		// when that row is the screen's own (the same version and the same
+		// stored balance) do the two agree. A balance moves without the version
+		// (a transfer, an income leg), so both are compared: when the screen is
+		// ahead (another device moved the account and the engine has not pulled
+		// it yet) the screen's balance and version stand.
 		Promise.all([writes.storedAccount(id), writes.overlayAccount(id)])
 			.then(([pulled, overlay]) => {
 				if (live && pulled && overlay)
-					setStored({ id, version: pulled.version, balance: overlay.balance });
+					setStored({
+						id,
+						pulled: { version: pulled.version, balance: pulled.balance },
+						balance: overlay.balance,
+					});
 			})
 			.catch(() => undefined);
 		return () => {
@@ -109,7 +116,7 @@ export function useOpenedAccount<A extends Account | null>(
 		const { currency } = account.balance;
 		const own = wireAmount(account.balance.minor, currency);
 		const balance =
-			stored?.id === account.id && stored.version === account.version
+			stored?.id === account.id && sameRow(stored.pulled, account)
 				? stored.balance
 				: own;
 		const opened = { version: account.version, balance };
@@ -130,6 +137,22 @@ export function useOpenedAccount<A extends Account | null>(
 			} as OpenedAccount<A>;
 		}
 	}, [account, stored]);
+}
+
+/** Whether the pulled row is the one the screen shows: the same version and, numerically, the same stored balance. */
+function sameRow(
+	pulled: { version: number; balance: string },
+	account: Account,
+): boolean {
+	if (pulled.version !== account.version) return false;
+	try {
+		return (
+			toMinor(pulled.balance, account.balance.currency) ===
+			account.balance.minor
+		);
+	} catch {
+		return false;
+	}
 }
 
 /**

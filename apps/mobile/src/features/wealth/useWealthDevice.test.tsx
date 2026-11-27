@@ -171,17 +171,37 @@ describe("useOpenedAccount", () => {
 		expect(result.current.shown).toBe(account);
 	});
 
-	it("keeps the screen's balance and version when the screen is ahead of what the device pulled", async () => {
-		// The list says version 4 and 1,000; the engine pulled version 3 and
-		// holds an unsent write over it: its balance belongs to another version.
+	it("keeps the screen's balance and version when only the balance moved elsewhere (the version stays)", async () => {
+		// The list says version 4 and 1,000; the engine pulled version 4 with
+		// 900 (another device moved the balance, which never moves the version)
+		// and holds an unsent write over it.
 		engine.storedAccount.mockResolvedValue({
-			version: 3,
+			version: 4,
 			balance: "900.00",
 			closed: false,
 		});
 		engine.overlayAccount.mockResolvedValue({
-			version: 3,
+			version: 4,
 			balance: "950.00",
+			closed: false,
+		});
+		const { result } = await renderHook(() =>
+			useOpenedAccount(deviceOf(), account, true),
+		);
+		await flush();
+		expect(result.current.shown).toBe(account);
+		expect(result.current.opened).toEqual({ version: 4, balance: "1000.00" });
+	});
+
+	it("keeps the screen's balance and version when a field edit elsewhere bumped the version", async () => {
+		engine.storedAccount.mockResolvedValue({
+			version: 3,
+			balance: "1000.00",
+			closed: false,
+		});
+		engine.overlayAccount.mockResolvedValue({
+			version: 3,
+			balance: "1050.00",
 			closed: false,
 		});
 		const { result } = await renderHook(() =>
