@@ -39,3 +39,38 @@ export const accountWithoutText = (row: AccountRow) =>
 /** The row as the device may hold it outside the store: every column except the note. */
 export const transferWithoutText = (row: TransferRow) =>
 	without(row, TRANSFER_TEXT_COLUMNS) as TextFreeTransferRow;
+
+/** The tables an account or transfer write changes (a transfer's fee expense is an expense change, not one of these). */
+export type WealthTable =
+	| "accounts"
+	| "legs"
+	| "snapshots"
+	| "rateSwitches"
+	| "transfers";
+
+export const WEALTH_TABLES: readonly string[] = [
+	"accounts",
+	"legs",
+	"snapshots",
+	"rateSwitches",
+	"transfers",
+] satisfies WealthTable[];
+
+export const isWealthTable = (table: string): table is WealthTable =>
+	WEALTH_TABLES.includes(table);
+
+type RowOf<T extends WealthTable> = T extends "accounts"
+	? TextFreeAccountRow
+	: T extends "transfers"
+		? TextFreeTransferRow
+		: TableRows[T];
+
+/** One account-family row an entry changed, as the device booked it: an account without its name, a transfer without its note. */
+export type WealthChange = {
+	[T in WealthTable]: {
+		readonly table: T;
+		readonly id: string;
+		readonly before: RowOf<T> | null;
+		readonly after: RowOf<T> | null;
+	};
+}[WealthTable];

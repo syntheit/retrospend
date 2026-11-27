@@ -140,7 +140,7 @@ describe("the note is the person's text", () => {
 		const booked = await store.transaction((tx) =>
 			bookIn(tx, op, {}, NOW.getTime()),
 		);
-		const kept = (booked.wealth ?? []).filter((w) => w.table === "transfers");
+		const kept = booked.changes.filter((w) => w.table === "transfers");
 		expect(kept).toHaveLength(1);
 		expect(JSON.stringify(kept)).not.toContain("Rent split");
 		expect(kept[0]?.after).not.toHaveProperty("note");
@@ -152,11 +152,18 @@ describe("the note is the person's text", () => {
 		const booked = await store.transaction((tx) =>
 			bookIn(tx, op, {}, NOW.getTime()),
 		);
-		expect(booked.changes.map((c) => [c.table, c.id])).toEqual([
-			["expenses", t1.expense],
-		]);
+		expect(
+			booked.changes
+				.filter((c) => c.table === "expenses")
+				.map((c) => [c.table, c.id]),
+		).toEqual([["expenses", t1.expense]]);
 		expect(JSON.stringify(booked.changes)).not.toContain("Fee");
-		expect((booked.wealth ?? []).map((w) => w.table).sort()).toEqual([
+		expect(
+			booked.changes
+				.filter((c) => c.table !== "expenses")
+				.map((w) => w.table)
+				.sort(),
+		).toEqual([
 			"accounts",
 			"accounts",
 			"legs",

@@ -32,6 +32,7 @@ import { bookedOf } from "./local-expense-create";
 import { type Reader, SETTINGS_ID } from "./port";
 import { ratesAsOf } from "./rates";
 import type { TemplateRow, TextFreeTemplateRow } from "./templates";
+import { compareWealth } from "./write-parity-wealth";
 
 export type SkipCode =
 	| "no_rate"
@@ -267,15 +268,16 @@ export function compareTemplate(
 		: { id, outcome: "differs", fields };
 }
 
-/** `compareWrite` or `compareTemplate` for any row an entry changed. */
+/** `compareWrite`, `compareTemplate` or `compareWealth` for any row an entry changed; null for a row that is not compared. */
 export function compareChange(
 	live: Reader,
 	change: PendingChange,
 	acked: AckedWrite,
-): WriteVerdict {
-	return change.table === "expenses"
-		? compareWrite(live, change, acked)
-		: compareTemplate(live, change, acked);
+): WriteVerdict | null {
+	if (change.table === "expenses") return compareWrite(live, change, acked);
+	if (change.table === "recurringTemplates")
+		return compareTemplate(live, change, acked);
+	return compareWealth(live, change, acked);
 }
 
 /**
@@ -291,8 +293,8 @@ export function compareEntry(
 	acked: AckedWrite,
 ): WriteVerdict[] {
 	const named = ackedTableOf(changes);
-	return changes.map((c) =>
-		compareChange(live, c, {
+	return changes.flatMap((c) => {
+		const verdict = compareChange(live, c, {
 			bookedAt: acked.bookedAt,
 			version:
 				c.table === named
@@ -300,6 +302,7 @@ export function compareEntry(
 					: c.table === "expenses"
 						? (acked.expenseVersion ?? null)
 						: null,
-		}),
-	);
+		});
+		return verdict ? [verdict] : [];
+	});
 }

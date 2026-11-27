@@ -10,7 +10,7 @@ import { readOverlaid } from "./pending";
 // An account write booked on the device. Home ARS in Buenos Aires, blue 1,545.
 // Booking a balance update of the USD account "a" from 1,000 to 1,200 at blue
 // changes the account (1,200), adds the Not logged leg (+200, 309,000 ARS) and
-// replaces the day's snapshot. The rows are `wealth`, never `changes`, an
+// replaces the day's snapshot. The rows are `changes` like any write's, an
 // account's name is never kept in them, and `accountBase` is the version and
 // stored balance the send names as expectedVersion and expectedBalance.
 const NOW = Date.parse("2026-11-10T15:00:00.000Z");
@@ -48,11 +48,10 @@ const balance: WriteOp = {
 };
 
 describe("bookIn of an account write", () => {
-	it("keeps the account-family rows apart from the expense and template changes", async () => {
+	it("keeps the account-family rows as the changes of the entry, in the order they changed", async () => {
 		const booked = await book(balance);
-		expect(booked.changes).toEqual([]);
 		expect(booked.unbooked).toBeUndefined();
-		expect(booked.wealth?.map((c) => [c.table, c.id])).toEqual([
+		expect(booked.changes.map((c) => [c.table, c.id])).toEqual([
 			["legs", uuid(2)],
 			["snapshots", `${A}:2026-11-10`],
 			["accounts", A],
@@ -61,7 +60,7 @@ describe("bookIn of an account write", () => {
 
 	it("never keeps the account's name", async () => {
 		const booked = await book(balance);
-		const account = booked.wealth?.find((c) => c.table === "accounts");
+		const account = booked.changes.find((c) => c.table === "accounts");
 		expect(account?.before).not.toHaveProperty("name");
 		expect(account?.after).not.toHaveProperty("name");
 		expect(account?.after).toMatchObject({ balance: "1200" });
@@ -87,7 +86,7 @@ describe("bookIn of an account write", () => {
 			},
 		});
 		expect(booked.accountBase).toBeUndefined();
-		const account = booked.wealth?.find((c) => c.table === "accounts");
+		const account = booked.changes.find((c) => c.table === "accounts");
 		expect(account).toMatchObject({ before: null, id: uuid(9) });
 	});
 
@@ -104,7 +103,6 @@ describe("bookIn of an account write", () => {
 			},
 		});
 		expect(booked).toMatchObject({ changes: [], unbooked: "no_rate" });
-		expect(booked.wealth).toBeUndefined();
 	});
 
 	it("refuses an account that is not there, as a refusal the server decides", async () => {
@@ -122,7 +120,7 @@ describe("bookIn of an account write", () => {
 		const booked = await readOverlaid(store, [], 0, (tx) =>
 			bookIn(tx, balance, {}, NOW),
 		);
-		expect(booked.wealth).toHaveLength(3);
+		expect(booked.changes).toHaveLength(3);
 		expect(store.get("accounts", A)?.balance).toBe("1000");
 		expect(store.list("legs")).toEqual([]);
 	});
