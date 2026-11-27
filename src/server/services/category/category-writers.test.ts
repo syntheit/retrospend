@@ -134,7 +134,7 @@ describe("category writers", () => {
 		expect(found).toEqual(named);
 	});
 
-	it("only updateCategory sets the version on an update, and only insertCategory carries one in", () => {
+	it("only the writers VERSION_SETTERS names set the version: updateCategory, a restore's insert, the default-category script", () => {
 		// A write that names the version: an assignment, an increment or another
 		// atomic operation, the insert's pass-through, or raw SQL setting the column.
 		const WRITE =
