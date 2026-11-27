@@ -3,7 +3,7 @@ import type { BookedWrite } from "@retrospend/engine/device";
 import type { DeviceWrites } from "@/data/device-engine";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
-import { flushEntries } from "@/features/entry/queue";
+import { flushEntries, undoSaved } from "@/features/entry/queue";
 import { apiTransport, forgetUndoTokens } from "@/features/entry/send";
 import {
 	createAccountOnDevice,
@@ -349,5 +349,62 @@ describe("a transfer under the flag", () => {
 			settled: "synced",
 		});
 		expect(del).toHaveBeenCalledWith({ id: A }, expect.anything());
+	});
+});
+
+describe("Undo of a device-booked wealth write", () => {
+	it("before it was sent is a discard: no request, the entry is gone", async () => {
+		const undo = jest.fn();
+		const { device, outbox } = deviceWith({ accounts: { undo } }, async () =>
+			booked(),
+		);
+		await outbox.enqueue({
+			clientId: "unsent",
+			entity: "accounts",
+			kind: "balance",
+			targetId: A,
+			baseVersion: "4",
+			payload: {},
+		});
+		const out = await undoSaved({
+			outbox,
+			api: device.api,
+			clientId: "unsent",
+			transport: apiTransport(device.api),
+		});
+		expect(out).toBe("undone");
+		expect(undo).not.toHaveBeenCalled();
+		expect(await outbox.all()).toEqual([]);
+	});
+
+	it("after it was sent goes through the server's undo token, never by replaying rows", async () => {
+		const updateBalance = jest.fn(async () => ({
+			undo: "the-token",
+			result: { version: 7 },
+		}));
+		const undo = jest.fn(async () => ({}));
+		const { device, outbox } = deviceWith(
+			{ accounts: { updateBalance, undo } },
+			async () => booked(),
+		);
+		const sent = await writeAccountOnDevice({
+			device,
+			op: balanceOp,
+			opened: 4,
+		});
+		if (sent.settled !== "synced") throw new Error("not synced");
+		const out = await undoSaved({
+			outbox,
+			api: device.api,
+			clientId: sent.clientId,
+			transport: apiTransport(device.api),
+		});
+		expect(out).toBe("undone");
+		expect(undo).toHaveBeenCalledWith(
+			{ token: "the-token" },
+			expect.anything(),
+		);
+		// The acked write is taken out of the compare: it was undone, not different.
+		expect(await outbox.acked()).toEqual([]);
 	});
 });
