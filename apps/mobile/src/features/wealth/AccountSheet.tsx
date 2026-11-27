@@ -27,12 +27,10 @@ import {
 	dueDayOptions,
 	emptyForm,
 	formOf,
-	type NamedCreateBody,
-	type NamedUpdateBody,
 	updateBody,
 } from "./accountBody";
+import { previewAccountForm, writeAccountForm } from "./accountDeviceWrites";
 import { isLiability } from "./accounts";
-import { createAccountOnDevice, writeAccountOnDevice } from "./deviceWealth";
 import { RateTypeChips } from "./RateTypeChips";
 import { rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
@@ -41,11 +39,6 @@ import {
 	useWealthDevice,
 	useWealthEnd,
 } from "./useWealthDevice";
-import {
-	PREVIEW_LEG_ID,
-	PREVIEW_SWITCH_ID,
-	previewWealth,
-} from "./wealthPreview";
 
 /** USD is the rate table's base; any other foreign currency needs a stored rate. */
 export function isRated(
@@ -174,53 +167,22 @@ export function AccountSheet({
 	const flow = useMoneyWrite({
 		input: visible ? body : null,
 		idempotencyKey: body ? idFor("write") : null,
-		preview: (b) => {
-			if (!api) return noSession();
-			const run = (options?: { signal: AbortSignal }) =>
-				editing
-					? api.accounts.previewUpdate(b as NamedUpdateBody, options)
-					: api.accounts.previewCreate(b as NamedCreateBody, options);
-			if (!device) return run();
-			const op = editing
-				? ({
-						kind: "accountUpdate",
-						body: {
-							...(b as NamedUpdateBody),
-							legId: PREVIEW_LEG_ID,
-							rateTypeId: PREVIEW_SWITCH_ID,
-						},
-					} as const)
-				: ({ kind: "accountCreate", body: b as NamedCreateBody } as const);
-			return track(previewWealth(device, op, run));
-		},
-		write: async (b, key) => {
-			if (!api) return noSession();
-			if (device) {
-				const queued = editing
-					? await writeAccountOnDevice({
-							device,
-							op: {
-								kind: "accountUpdate",
-								body: {
-									...(b as NamedUpdateBody),
-									legId: newClientId(),
-									rateTypeId: newClientId(),
-								},
-							},
-							opened,
-							title: form.name.trim(),
-						})
-					: await createAccountOnDevice(device, b as NamedCreateBody);
-				if (queued.settled !== "online") return queued;
-			}
-			return editing
-				? api.accounts.update(b as NamedUpdateBody, {
-						context: { idempotencyKey: key },
+		preview: (b) =>
+			api
+				? previewAccountForm({ api, device, editing, body: b, track })
+				: noSession(),
+		write: (b, key) =>
+			api
+				? writeAccountForm({
+						api,
+						device,
+						editing,
+						body: b,
+						key,
+						opened,
+						name: form.name.trim(),
 					})
-				: api.accounts.create(b as NamedCreateBody, {
-						context: { idempotencyKey: key },
-					});
-		},
+				: noSession(),
 	});
 
 	const set = (patch: Partial<AccountForm>) =>

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { newClientId } from "@/data/ids";
 import { useRateLine } from "@/features/currencies/useRateLine";
 import { AmountEntry } from "@/features/entry/AmountEntry";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -22,9 +21,9 @@ import { IconTile } from "@/ui/IconTile";
 import { useRateTypeLabel } from "@/ui/Money";
 import { Sheet, type SheetDetent, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
+import { previewBalance, writeBalance } from "./accountDeviceWrites";
 import { glyphOf, isLiability } from "./accounts";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
-import { writeAccountOnDevice } from "./deviceWealth";
 import { RateTypeChips } from "./RateTypeChips";
 import { rateTypeChanged, rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
@@ -33,11 +32,6 @@ import {
 	useWealthDevice,
 	useWealthEnd,
 } from "./useWealthDevice";
-import {
-	PREVIEW_LEG_ID,
-	PREVIEW_SWITCH_ID,
-	previewWealth,
-} from "./wealthPreview";
 
 /**
  * Update balance rests at large only. Its body is the account, the amount and
@@ -143,40 +137,16 @@ export function UpdateBalanceSheet({
 		input,
 		active: visible,
 		family: "accounts",
-		preview: (api, body) =>
-			device
-				? track(
-						previewWealth(
-							device,
-							{
-								kind: "accountBalance",
-								body: {
-									...body,
-									legId: PREVIEW_LEG_ID,
-									rateTypeId: PREVIEW_SWITCH_ID,
-								},
-							},
-							(options) => api.accounts.previewUpdateBalance(body, options),
-						),
-					)
-				: api.accounts.previewUpdateBalance(body),
-		write: async (api, body, key) => {
-			if (device) {
-				const queued = await writeAccountOnDevice({
-					device,
-					op: {
-						kind: "accountBalance",
-						body: { ...body, legId: newClientId(), rateTypeId: newClientId() },
-					},
-					opened,
-					title: account.name,
-				});
-				if (queued.settled !== "online") return queued;
-			}
-			return api.accounts.updateBalance(body, {
-				context: { idempotencyKey: key },
-			});
-		},
+		preview: (api, body) => previewBalance({ api, device, body, track }),
+		write: (api, body, key) =>
+			writeBalance({
+				api,
+				device,
+				body,
+				key,
+				opened,
+				name: account.name,
+			}),
 		canSave: (diff) => switching || !isUnchanged(balanceRows(diff)),
 		message: () => toast,
 		done: device
