@@ -146,6 +146,8 @@ describe("category writers", () => {
 		]);
 		const found: Record<string, number> = {};
 		for (const { rel, text } of FILES) {
+			// The inventory itself describes the writes in prose.
+			if (rel === "src/server/services/category/category-writers.ts") continue;
 			if (!writerFiles.has(rel) && !/categor/i.test(rel)) continue;
 			// Comments explain; they write nothing.
 			const code = text
