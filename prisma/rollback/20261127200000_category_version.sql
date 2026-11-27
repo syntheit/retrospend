@@ -9,7 +9,10 @@
 -- It drops the trigger, its function and the "version" column, and deletes only
 -- this migration's row from "_prisma_migrations", so that starting this release
 -- again applies the migration again (a roll forward; versions restart at 0).
--- The older image never reads the column. It touches nothing of
+-- The older image never reads the column. It does refuse the v3 undo stash
+-- this release writes, so Undo of a category delete or merge made on this
+-- release answers an invalid undo after the rollback (nothing is changed). It
+-- touches nothing of
 -- 20261126100000_stamps_always_move or 20261127100000_account_version. Checked
 -- by src/test/migrations/category-version.pg.test.ts.
 -- Idempotent: running it twice changes nothing more.
