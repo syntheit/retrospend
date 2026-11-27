@@ -42,6 +42,9 @@ export interface UpdateBalanceInput {
 	readonly rateType?: string | null;
 	/** The rate as typed, for the custom type. */
 	readonly exchangeRate?: number | null;
+	/** Client-made ids for the rows the update writes; used only when one is written. */
+	readonly legId?: string;
+	readonly rateTypeId?: string;
 	readonly timeZone?: string;
 }
 
@@ -81,6 +84,7 @@ export async function updateBalanceIn(
 		rate.rateType !== account.exchangeRateType
 			? await switchRateType(tx, userId, {
 					accountId: account.id,
+					rateTypeId: input.rateTypeId,
 					rateType: rate.rateType,
 					from: today.toISOString().slice(0, 10),
 					timeZone: input.timeZone,
@@ -95,6 +99,7 @@ export async function updateBalanceIn(
 			rate,
 			date: today,
 			homeCurrency: await homeCurrencyOf(tx, userId),
+			legId: input.legId,
 		},
 	);
 	return {

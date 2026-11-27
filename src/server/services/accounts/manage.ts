@@ -166,6 +166,8 @@ export async function editAccountIn(
 	id: string,
 	input: AccountFields,
 	timeZone?: string,
+	/** Client-made ids for the checkpoint leg and the rate switch, used only when written. */
+	ids?: { readonly legId?: string; readonly rateTypeId?: string },
 ) {
 	// Resolved once, so the checkpoint and a nested rate switch share a day.
 	const zone = await userTimeZone(tx, userId, timeZone);
@@ -177,6 +179,7 @@ export async function editAccountIn(
 	if (rate.rateType !== existing.exchangeRateType) {
 		await switchRateType(tx, userId, {
 			accountId: id,
+			rateTypeId: ids?.rateTypeId,
 			rateType: rate.rateType,
 			timeZone: zone,
 		});
@@ -187,6 +190,7 @@ export async function editAccountIn(
 		rate,
 		date: today,
 		homeCurrency: await homeCurrencyOf(tx, userId),
+		legId: ids?.legId,
 	});
 	return tx.assetAccount.findUniqueOrThrow({ where: { id } });
 }

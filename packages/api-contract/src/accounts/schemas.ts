@@ -111,9 +111,21 @@ export const expectedBalanceSchema = balanceTextSchema.optional().meta({
 		"The stored `balance` you last read (what you hold, or what you owe on a liability). Compared as a number, so 1000 equals 1000.00. If the balance moved since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
 });
 
+/** Client-made ids for the rows an account write can create; each is used only when that row is written. */
+const legIdSchema = z.uuid().optional().meta({
+	description:
+		"A client-made id for the Not logged leg, used only when the balance changes. A taken id is 409 id_taken and nothing is written.",
+});
+const rateTypeIdSchema = z.uuid().optional().meta({
+	description:
+		"A client-made id for the rate switch row, used only when the rate type changes. A taken id is 409 id_taken and nothing is written.",
+});
+
 export const updateAccountSchema = accountFieldsSchema
 	.extend({
 		id: idSchema,
+		legId: legIdSchema,
+		rateTypeId: rateTypeIdSchema,
 		expectedVersion: expectedVersionSchema,
 		expectedBalance: expectedBalanceSchema,
 	})
@@ -393,6 +405,8 @@ export const updateBalanceSchema = z
 			description: "A new rate type switches from today.",
 		}),
 		exchangeRate: accountRateTextSchema.nullish(),
+		legId: legIdSchema,
+		rateTypeId: rateTypeIdSchema,
 		expectedBalance: expectedBalanceSchema,
 		expectedVersion: expectedVersionSchema,
 	})
@@ -433,6 +447,7 @@ export const setRateTypeSchema = z
 			description: "Null is the default pick.",
 		}),
 		from: daySchema.nullish().meta({ description: "Today when omitted." }),
+		rateTypeId: rateTypeIdSchema,
 		expectedVersion: expectedVersionSchema,
 	})
 	.meta({ id: "SetAccountRateType" });

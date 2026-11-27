@@ -48,6 +48,8 @@ export interface AccountChange {
 }
 
 export interface LegInput {
+	/** A client-made id; omitted, the database makes one. */
+	readonly id?: string;
 	/** Null = Not tracked (N75). */
 	readonly account: AccountRow | null;
 	readonly currency: string;
@@ -138,6 +140,7 @@ export async function writeLeg(
 	}
 	await tx.accountLeg.create({
 		data: {
+			...(leg.id ? { id: leg.id } : {}),
 			userId,
 			accountId: account?.id ?? null,
 			currency: leg.currency,

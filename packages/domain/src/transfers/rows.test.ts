@@ -63,9 +63,17 @@ const rows = (
 		homeCurrency: "ARS",
 		date: day,
 		timeZone: "America/Argentina/Buenos_Aires",
-		ids: { transfer: "t-1", feeExpense: "fee-1" },
+		ids: IDS,
 		...extra,
 	});
+
+const IDS = {
+	transfer: "t-1",
+	fromLeg: "leg-from",
+	toLeg: "leg-to",
+	feeExpense: "fee-1",
+	feeLeg: "leg-fee",
+};
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 
@@ -218,6 +226,20 @@ describe("the places", () => {
 	});
 });
 
+describe("the ids", () => {
+	it("each row is named by the id the caller gave: two legs, the fee expense and the FEE leg", () => {
+		const r = rows(savings, wallet, "100000", { fee: { amount: "150" } });
+		expect(r.transfer.id).toBe("t-1");
+		expect(r.legs.map((l) => l.id)).toEqual(["leg-from", "leg-to"]);
+		expect(r.fee?.expense.id).toBe("fee-1");
+		expect(r.fee?.leg).toMatchObject({
+			id: "leg-fee",
+			source: "FEE",
+			expenseId: "fee-1",
+		});
+	});
+});
+
 describe("the fee", () => {
 	it("is an OUT expense in the viewer's zone and a FEE leg on the source", () => {
 		const r = rows(savings, wallet, "100000", { fee: { amount: "150" } });
@@ -307,7 +329,7 @@ describe("counted units (D4)", () => {
 			pick,
 			homeCurrency: "ARS",
 			date: day,
-			ids: { transfer: "t-1", feeExpense: "fee-1" },
+			ids: IDS,
 		});
 
 	it("counted units leave the source and follow the money to another place outside the budget", () => {
@@ -347,7 +369,7 @@ describe("counted units (D4)", () => {
 			pick,
 			homeCurrency: "ARS",
 			date: day,
-			ids: { transfer: "t-1", feeExpense: "fee-1" },
+			ids: IDS,
 		});
 		expect(r.budget).toEqual({ effect: "counted" });
 		expect(r.budgetAccountId).toBe("wise");

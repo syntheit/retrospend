@@ -37,6 +37,8 @@ async function currencyOf(tx: Tx, userId: string, accountId: string) {
 
 export type BalanceBody = ExpectedAccountState & {
 	id: string;
+	legId?: string;
+	rateTypeId?: string;
 	balance: string;
 	rateType?: string | null;
 	exchangeRate?: string | null;
@@ -72,6 +74,8 @@ export const updateBalanceMutation: MoneyMutation<
 				exchangeRate: input.exchangeRate
 					? exactRate(input.exchangeRate, "exchangeRate")
 					: null,
+				legId: input.legId,
+				rateTypeId: input.rateTypeId,
 				timeZone: input.timeZone,
 			},
 			actor,
@@ -138,6 +142,7 @@ export const revertBalanceMutation: MoneyMutation<
 
 export type RateTypeBody = ExpectedAccountState & {
 	id: string;
+	rateTypeId?: string;
 	rateType: string | null;
 	from?: string | null;
 	timeZone: string;
@@ -155,6 +160,7 @@ export const setRateTypeMutation: MoneyMutation<
 			tx,
 			{
 				accountId: input.id,
+				rateTypeId: input.rateTypeId,
 				rateType: input.rateType,
 				from: input.from,
 				timeZone: input.timeZone,

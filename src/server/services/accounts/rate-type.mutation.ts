@@ -27,6 +27,8 @@ export const RATE_TYPE_FIGURES = [
 
 export interface SetRateTypeInput {
 	readonly accountId: string;
+	/** A client-made id for the switch row; a taken id is id_taken. */
+	readonly rateTypeId?: string;
 	/** official, blue, mep, card...; null = the default pick. */
 	readonly rateType: string | null;
 	/** YYYY-MM-DD the type applies from; today when omitted. */
@@ -91,6 +93,7 @@ export async function switchRateType(
 	});
 	const row = await tx.assetRateType.create({
 		data: {
+			...(input.rateTypeId ? { id: input.rateTypeId } : {}),
 			userId,
 			accountId: account.id,
 			...plan.insert,

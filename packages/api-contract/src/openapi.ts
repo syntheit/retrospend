@@ -30,8 +30,9 @@ type JsonObject = Record<string, unknown>;
  * 1.12.0: POST /recurring/{id}/confirm returns expenseUpdatedAt, the booked expense's updatedAt (null for recurring income).
  * 1.13.0: POST /recurring/{id}/confirm and its preview take auto: true, which books the period as the server's auto-post does (recurring income too, as the entry only) and refuses unless the template still pays automatically with a fixed amount; GET /server-info features.autoConfirm says the server takes it.
  * 1.14.0: accounts carry `version` (GET /accounts, the account writes' answers, the sync account row); PUT /accounts/{id}, POST /accounts/{id}/close, /reopen, /rate-type and /balance and their previews take expectedVersion, and PUT /accounts/{id} and /balance also expectedBalance, the stored balance the caller saw (409 account_changed).
+ * 1.15.0: POST /transfers and its preview take fromLegId, toLegId, feeExpenseId and feeLegId, and answer `legs` (the ids of the legs written); POST /accounts/{id}/balance, /rate-type and PUT /accounts/{id} and their previews take legId and rateTypeId. All are client-made uuids: the row is written under the id, and a taken id is 409 id_taken with nothing written.
  */
-export const CONTRACT_VERSION = "1.14.0";
+export const CONTRACT_VERSION = "1.15.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

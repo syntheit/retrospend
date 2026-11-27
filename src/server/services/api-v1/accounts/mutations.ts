@@ -135,7 +135,7 @@ export const updateAccountMutation: MoneyMutation<
 	id: "account.update",
 	touches: FIGURES,
 	scope: (input) => ({ accountId: input.id }),
-	run: async (tx, { id, timeZone, ...fields }, actor) => {
+	run: async (tx, { id, timeZone, legId, rateTypeId, ...fields }, actor) => {
 		const before = await tx.assetAccount.findFirst({
 			where: { id, userId: actor.userId },
 		});
@@ -145,6 +145,7 @@ export const updateAccountMutation: MoneyMutation<
 			id,
 			toAccountFields(fields),
 			timeZone,
+			{ legId, rateTypeId },
 		);
 		// An old balance with more digits than a number holds cannot be put back exactly.
 		const previous = before ? { id, ...fieldsOf(before) } : null;

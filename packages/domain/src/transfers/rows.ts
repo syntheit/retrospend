@@ -80,8 +80,20 @@ export interface TransferRowsInput {
 		readonly amount: string;
 		readonly account?: TransferAccount | null;
 	} | null;
-	/** Client-generated ids; the fee's is used only when a fee is booked. */
-	readonly ids: { readonly transfer: string; readonly feeExpense: string };
+	/**
+	 * Client-generated ids for every row the move creates: the fee's expense
+	 * and FEE leg are used only when a fee is booked.
+	 */
+	readonly ids: TransferRowIds;
+}
+
+export interface TransferRowIds {
+	readonly transfer: string;
+	/** The source side's TRANSFER leg, then the destination's. */
+	readonly fromLeg: string;
+	readonly toLeg: string;
+	readonly feeExpense: string;
+	readonly feeLeg: string;
 }
 
 export interface TransferRowValues {
@@ -101,6 +113,7 @@ export interface TransferRowValues {
 }
 
 export interface TransferLegRow {
+	readonly id: string;
 	/** Null is Not tracked: the leg moves nothing. */
 	readonly accountId: string | null;
 	readonly currency: string;
@@ -276,6 +289,7 @@ function feeRows(
 				date: rowDateOf(input.date, input.timeZone),
 			},
 			leg: {
+				id: input.ids.feeLeg,
 				accountId: place.account?.id ?? null,
 				currency: place.currency,
 				amount: amount.neg(),
@@ -349,10 +363,12 @@ export function transferRows(input: TransferRowsInput): TransferRows {
 	const netWorth =
 		booked && feeHome ? booked.fromHome.add(booked.toHome).add(feeHome) : null;
 	const leg = (
+		id: string,
 		place: Place,
 		amount: Decimal,
 		valued: typeof fromHome,
 	): TransferLegRow => ({
+		id,
 		accountId: place.account?.id ?? null,
 		currency: place.currency,
 		amount,
@@ -378,7 +394,10 @@ export function transferRows(input: TransferRowsInput): TransferRows {
 			countedToUnits: plan.countedToUnits.toString(),
 			note: input.note ?? null,
 		},
-		legs: [leg(from, fromAmount.neg(), fromHome), leg(to, toAmount, toHome)],
+		legs: [
+			leg(input.ids.fromLeg, from, fromAmount.neg(), fromHome),
+			leg(input.ids.toLeg, to, toAmount, toHome),
+		],
 		fee: fee?.rows ?? null,
 		countedMoves: countedMovesOf(from, to, plan),
 		rate: derivedRate(planInput),
