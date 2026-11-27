@@ -64,26 +64,27 @@ function stateOf(aggregates: readonly AccountAggregate[]): LegState {
 	};
 }
 
-/**
- * Inserts `legs` in order, each as the trigger sees it: its account's balance
- * and counted units move, and so does every snapshot of that account the leg
- * reaches. A leg with no account (Not tracked) moves nothing. An account the
- * store does not hold throws NotFoundError before anything is written.
- */
-export function insertLegs(accounts: Accounts, legs: readonly LegRow[]): void {
+/** The accounts a set of legs touches, as the store holds them; one the store lacks throws NotFoundError before anything is written. */
+function aggregatesOf(
+	accounts: Accounts,
+	legs: readonly LegRow[],
+): AccountAggregate[] {
 	const ids = [
 		...new Set(legs.flatMap((l) => (l.accountId ? [l.accountId] : []))),
 	];
-	const aggregates = ids.map((id) => {
+	return ids.map((id) => {
 		const found = accounts.get(id);
 		if (!found) throw new NotFoundError(`accounts ${id} does not exist`);
 		return found;
 	});
-	const next = applyLegs(
-		stateOf(aggregates),
-		legs.map((leg): LegChange => ({ op: "insert", leg: legOf(leg) })),
-	);
-	for (const leg of legs) accounts.addLeg(leg);
+}
+
+/** Writes back the balance, counted units and snapshot balances `next` moved. */
+function writeBack(
+	accounts: Accounts,
+	aggregates: readonly AccountAggregate[],
+	next: LegState,
+): void {
 	for (const { account, snapshots } of aggregates) {
 		const moved = next.accounts.get(account.id);
 		const balance = moved && dec(moved.balance);
@@ -106,4 +107,35 @@ export function insertLegs(accounts: Accounts, legs: readonly LegRow[]): void {
 				accounts.putSnapshot({ ...snapshot, balance: moved.toFixed() });
 		}
 	}
+}
+
+/**
+ * Inserts `legs` in order, each as the trigger sees it: its account's balance
+ * and counted units move, and so does every snapshot of that account the leg
+ * reaches. A leg with no account (Not tracked) moves nothing. An account the
+ * store does not hold throws NotFoundError before anything is written.
+ */
+export function insertLegs(accounts: Accounts, legs: readonly LegRow[]): void {
+	const aggregates = aggregatesOf(accounts, legs);
+	const next = applyLegs(
+		stateOf(aggregates),
+		legs.map((leg): LegChange => ({ op: "insert", leg: legOf(leg) })),
+	);
+	for (const leg of legs) accounts.addLeg(leg);
+	writeBack(accounts, aggregates, next);
+}
+
+/**
+ * Takes `legs` away in order, as the trigger sees a delete: the balance, the
+ * counted units and the snapshots each one moved go back. The legs are the
+ * store's own rows (a transfer's, found by its id).
+ */
+export function removeLegs(accounts: Accounts, legs: readonly LegRow[]): void {
+	const aggregates = aggregatesOf(accounts, legs);
+	const next = applyLegs(
+		stateOf(aggregates),
+		legs.map((leg): LegChange => ({ op: "delete", leg: legOf(leg) })),
+	);
+	for (const leg of legs) accounts.removeLeg(leg.id);
+	writeBack(accounts, aggregates, next);
 }
