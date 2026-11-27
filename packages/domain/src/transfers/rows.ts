@@ -24,6 +24,7 @@ import {
 import { dec, toMinor } from "../envelope/units";
 import { roundMoneyDec, roundRateDec } from "../money-dec";
 import type { Decimal } from "../precise-decimal";
+import { CURRENCY_KEY } from "../rate-booking";
 import { rowDateOf } from "../time-zone";
 import {
 	type BudgetEffect,
@@ -165,7 +166,7 @@ interface Place {
 /** The currency of a side: its account's, else the one given for Not tracked. */
 export function sideCurrency(side: TransferSide): string {
 	if (side.account) return side.account.currency;
-	if (!side.currency || !/^[A-Z0-9]{3,10}$/.test(side.currency)) {
+	if (!side.currency || !CURRENCY_KEY.test(side.currency)) {
 		throw new TransferRefusal(
 			"Pick an account or the currency of the money that is not tracked",
 		);
@@ -342,7 +343,11 @@ export function transferRows(input: TransferRowsInput): TransferRows {
 		fromHome: fromHome?.amount ?? null,
 		toHome: toHome?.amount ?? null,
 	});
-	const netWorth = booked?.fromHome.add(booked.toHome).add(fee?.home ?? dec(0));
+	// A fee with no home value leaves the effect unknown, never 0 (a missing
+	// rate is never 1, and never a free fee).
+	const feeHome = fee ? fee.home : dec(0);
+	const netWorth =
+		booked && feeHome ? booked.fromHome.add(booked.toHome).add(feeHome) : null;
 	const leg = (
 		place: Place,
 		amount: Decimal,

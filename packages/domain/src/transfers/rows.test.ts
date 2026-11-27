@@ -260,6 +260,31 @@ describe("the fee", () => {
 		expect(r.netWorthEffect).toEqual(ars(-386_250));
 	});
 
+	it("a fee in a third currency is valued at the day's rate, never at the account's stale one", () => {
+		// JPY 1,500 / 150 = USD 10 x ARS 1,545 = ARS 15,450 out of net worth,
+		// whatever rate the account still stores (999).
+		const yen = account("yen", "CASH", "JPY", { exchangeRate: "999" });
+		const r = rows(savings, wallet, "100000", {
+			fee: { amount: "1500", account: yen },
+		});
+		expect(r.fee?.leg.home?.amount.toString()).toBe("-15450");
+		expect(r.netWorthEffect).toEqual(ars(-1_545_000));
+	});
+
+	it("a fee no rate values leaves the net worth effect unknown, never 0", () => {
+		// EUR has no rate and the account stores none: no home value for the fee.
+		const eur = account("eur", "CASH", "EUR");
+		const r = rows(savings, wallet, "100000", {
+			fee: { amount: "5", account: eur },
+		});
+		expect(r.fee?.leg.home).toBeNull();
+		expect(r.legs.map((l) => l.home?.amount.toString())).toEqual([
+			"-100000",
+			"100000",
+		]);
+		expect(r.netWorthEffect).toBeNull();
+	});
+
 	it("a zero fee books nothing, and a fee over its currency's decimals refuses", () => {
 		expect(
 			rows(savings, wallet, "100000", { fee: { amount: "0" } }).fee,

@@ -137,10 +137,13 @@ async function resolveMove(tx: Tx, userId: string, input: CreateTransferInput) {
 	const feeAccount = input.fee?.accountId
 		? await lockOpenAccount(tx, userId, input.fee.accountId)
 		: null;
+	// The fee account's currency too: a fee in a third currency is valued at
+	// the day's rate like the legs, not at the account's stored one.
 	const pick = await ratePickFor(tx, [
 		home,
 		sideCurrency(from),
 		sideCurrency(to),
+		...(feeAccount ? [feeAccount.currency] : []),
 	]);
 	return { date, home, from, to, feeAccount, pick };
 }
@@ -255,17 +258,14 @@ function mergeChange(changes: AccountChange[], change: AccountChange) {
 /** D4: counted units leave the source and follow the money (the rows say how many). */
 async function moveCounted(tx: Tx, moves: readonly CountedMove[]) {
 	for (const { accountId, delta } of moves) {
-		if (delta.isNegative()) {
-			await tx.assetAccount.update({
-				where: { id: accountId },
-				data: { countedUnits: { decrement: delta.neg().toString() } },
-			});
-		} else {
-			await tx.assetAccount.update({
-				where: { id: accountId },
-				data: { countedUnits: { increment: delta.toString() } },
-			});
-		}
+		await tx.assetAccount.update({
+			where: { id: accountId },
+			data: {
+				countedUnits: delta.isNegative()
+					? { decrement: delta.neg().toString() }
+					: { increment: delta.toString() },
+			},
+		});
 	}
 }
 

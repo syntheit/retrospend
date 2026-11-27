@@ -109,7 +109,7 @@ const WRITERS: Record<string, readonly [number, string]> = {
 	"src/server/services/envelope/debt.service.ts": [1, "online (terms)"],
 	"src/server/services/income/move-in.mutation.ts": [1, "online, counted only"],
 	"src/server/services/transfers/create.mutation.ts": [
-		2,
+		1,
 		"device (M6b), counted only",
 	],
 	"src/server/services/transfers/delete.mutation.ts": [
