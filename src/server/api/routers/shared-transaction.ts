@@ -10,13 +10,10 @@ import {
 import { participantRefSchema } from "~/server/services/payments/input";
 import { getImageUrl } from "~/server/storage";
 import { deleteSharedAndRecord } from "~/server/services/shared-expenses/delete-tell";
-import {
-	receiptUrlSchema,
-	splitModeEnum,
-	splitParticipantSchema,
-} from "~/server/services/shared-expenses/input";
+import { receiptUrlSchema, splitModeEnum, splitParticipantSchema } from "~/server/services/shared-expenses/input";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import { toFloat } from "@retrospend/domain/precise-decimal";
+import { categoryIdSchema, projectIdSchema } from "~/lib/schemas/row-ids";
 
 export const sharedTransactionRouter = createTRPCRouter({
 	create: guestOrProtectedProcedure
@@ -25,14 +22,14 @@ export const sharedTransactionRouter = createTRPCRouter({
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
 				description: userText("shared_expense.description", 500),
-				categoryId: z.cuid().optional(),
+				categoryId: categoryIdSchema.optional(),
 				date: z.date(),
 				paidBy: participantRefSchema,
 				splitWith: z
 					.array(splitParticipantSchema)
 					.min(1, "A shared expense must have at least 1 participant"),
 				splitMode: splitModeEnum,
-				projectId: z.cuid().optional(),
+				projectId: projectIdSchema.optional(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
 				receiptUrl: receiptUrlSchema.optional(),
 			}),
@@ -52,7 +49,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				amount: z.number().positive("Amount must be positive").optional(),
 				currency: z.string().min(1).max(10).optional(),
 				description: userText("shared_expense.description", 500).optional(),
-				categoryId: z.cuid().nullish(),
+				categoryId: categoryIdSchema.nullish(),
 				date: z.date().optional(),
 				paidBy: participantRefSchema.optional(),
 				splitWith: z
@@ -60,7 +57,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 					.min(1, "A shared expense must have at least 1 participant")
 					.optional(),
 				splitMode: splitModeEnum.optional(),
-				projectId: z.cuid().nullish(),
+				projectId: projectIdSchema.nullish(),
 				notes: userTextOrEmpty("shared_expense.notes", 5000).nullish(),
 				receiptUrl: receiptUrlSchema.nullish(),
 			}),

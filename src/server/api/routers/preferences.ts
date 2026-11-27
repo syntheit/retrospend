@@ -10,6 +10,7 @@ import {
 	updatePageSettings,
 } from "~/server/services/user-settings";
 import { listFavoriteRates, toggleFavoriteRate } from "~/server/services/rate-favorites.service";
+import { categoryIdSchema } from "~/lib/schemas/row-ids";
 
 export const preferencesRouter = createTRPCRouter({
 	getPageSettings: protectedProcedure
@@ -88,7 +89,7 @@ export const preferencesRouter = createTRPCRouter({
 	updateAnalyticsCategoryPreference: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.cuid(),
+				categoryId: categoryIdSchema,
 				isFlexible: z.boolean(),
 			}),
 		)
@@ -104,7 +105,7 @@ export const preferencesRouter = createTRPCRouter({
 	deleteAnalyticsCategoryPreference: protectedProcedure
 		.input(
 			z.object({
-				categoryId: z.cuid(),
+				categoryId: categoryIdSchema,
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {

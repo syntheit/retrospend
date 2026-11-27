@@ -48,6 +48,7 @@ import type { MoneyMutation } from "~/server/services/preview/types";
 import { createTransfer } from "~/server/services/transfers/create.mutation";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
 import { WealthService } from "~/server/services/wealth.service";
+import { accountIdSchema } from "~/lib/schemas/row-ids";
 
 /**
  * A money mutation's two procedures (R30): `preview` runs it and rolls back,
@@ -78,7 +79,7 @@ function money<I extends object, V>(
 	};
 }
 
-const byId = z.object({ id: z.cuid() });
+const byId = z.object({ id: accountIdSchema });
 
 export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure

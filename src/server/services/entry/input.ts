@@ -16,6 +16,7 @@ import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
+import { categoryIdSchema, projectIdSchema } from "~/lib/schemas/row-ids";
 
 const decimal = z
 	.string()
@@ -36,7 +37,7 @@ const expenseFields = {
 	amount: decimal,
 	currency,
 	date: isoDay,
-	categoryId: z.cuid(),
+	categoryId: categoryIdSchema,
 	/** A rate type of the pair (official, blue...); omitted: the default. */
 	rateType: rateType.optional(),
 	/** A typed rate: 1 unit of `currency` = this many of the home currency. */
@@ -115,7 +116,7 @@ const sharedFields = {
 	amount: decimal,
 	currency,
 	description: userText("shared_expense.description", 500),
-	categoryId: z.cuid().optional(),
+	categoryId: categoryIdSchema.optional(),
 	date: isoDay,
 	notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
 	...splitFields,
@@ -125,14 +126,14 @@ export const sharedCreateSchema = z.object({
 	/** A client id: a repeated create (a double click) writes one row. */
 	id: z.uuid().optional(),
 	...sharedFields,
-	projectId: z.cuid().optional(),
+	projectId: projectIdSchema.optional(),
 });
 export const sharedUpdateSchema = z.object({
 	id,
 	...sharedFields,
 	// Sent on every edit, so an emptied note clears it.
 	notes: userTextOrEmpty("shared_expense.notes", 5000).nullable(),
-	projectId: z.cuid().nullable(),
+	projectId: projectIdSchema.nullable(),
 });
 
 /** Days and amounts in the shared service's shape. */
