@@ -140,6 +140,8 @@ export function pendingRow(
 		}
 		// A template's write is not a row of the list.
 		case "recurring":
+		// An account is not an Activity row: Wealth shows it.
+		case "accounts":
 			return null;
 	}
 }
