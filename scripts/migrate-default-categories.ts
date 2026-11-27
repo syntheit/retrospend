@@ -209,6 +209,9 @@ async function processUser(
 					data: {
 						name: newName,
 						nameIndex: await categoryNameIndexFor(tx, newName),
+						// A server rename must park a device edit queued against the old
+						// name (the trigger does not read the name): SQL increment.
+						version: { increment: 1 },
 					},
 				});
 			}

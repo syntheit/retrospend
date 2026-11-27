@@ -162,14 +162,17 @@ describe("default-category script", () => {
 		expect(await versionOf(taxes.id)).toBe(1);
 	});
 
-	it("a rename by the script leaves the version: only updateCategory sets it (PR1b decides)", async () => {
+	it("a script rename bumps once, so a device edit queued against the old version parks", async () => {
 		const { user } = await createTestUser();
 		const dining = await fixtureDb.category.create({
 			data: { userId: user.id, name: "Dining Out", color: "orange" },
 		});
 		const actions = await migrateUserCategories(user.id);
 		expect(actions.renames).toEqual(["Dining Out → Restaurants"]);
-		expect(await versionOf(dining.id)).toBe(0);
+		expect(await versionOf(dining.id)).toBe(1);
+		// A second run has nothing to rename and leaves it.
+		await migrateUserCategories(user.id);
+		expect(await versionOf(dining.id)).toBe(1);
 	});
 });
 

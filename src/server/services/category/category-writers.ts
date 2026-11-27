@@ -65,18 +65,23 @@ export const CALLERS: Record<string, readonly string[]> = {
 
 /**
  * Where `category.version` is written by code (M3 PR1a, Revisions 2 and 3):
- * only category.service.ts, in two statements: updateCategory's SQL increment
- * on a rename (the only update that sets it), and insertCategory passing the
- * version a restore brings back (merge.mutation.ts hands it the stash's).
- * Everything else moves the version through the database trigger over
- * CATEGORY_VERSION_COLUMNS, which no caller names, so a script's color fix
- * bumps and a reseal, which writes the name and its index only, never does.
- * category-writers.test.ts searches every writer file for a write that names
- * the version and compares with this.
+ * category.service.ts in two statements (updateCategory's SQL increment on a
+ * rename, the only update there that sets it; insertCategory passing the
+ * version a restore brings back, which merge.mutation.ts takes from the
+ * stash), and scripts/migrate-default-categories.ts, whose rename writes the
+ * same SQL increment. Everything else moves the version through the database
+ * trigger over CATEGORY_VERSION_COLUMNS, which no caller names, so a script's
+ * color fix bumps and a reseal, which writes the name and its index only,
+ * never does. category-writers.test.ts searches every writer file for a write
+ * that names the version and compares with this.
  */
 export const VERSION_SETTERS: Record<string, readonly [number, string]> = {
 	"src/server/services/category.service.ts": [
 		2,
 		"updateCategory's `data.version = { increment: 1 }` on a rename; insertCategory's `version: input.version` for a restore",
+	],
+	"scripts/migrate-default-categories.ts": [
+		1,
+		"online server rename; must park device edits (`version: { increment: 1 }`, the trigger does not read the name)",
 	],
 };
