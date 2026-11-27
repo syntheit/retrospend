@@ -26,13 +26,13 @@ import { readDeviceFigures } from "./registry";
 
 export const USER = "user";
 
-const day = (d: Date) => d.toISOString().slice(0, 10);
+export const day = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Decimals equal by value, null only to null. */
 const sameDecimal = (a: string | null, b: string | null) =>
 	a === null || b === null ? a === b : dec(a).eq(dec(b));
 
-function expectDecimal(
+export function expectDecimal(
 	actual: string | null | undefined,
 	expected: string | null,
 	what: string,
@@ -78,7 +78,7 @@ function checkAccount(row: AccountRow, want: Partial<ExpectedAccount>) {
 		expectEqual(row.dueDate ?? null, want.dueDate, `${what} dueDate`);
 }
 
-const need = <T>(row: T | undefined, what: string): T => {
+export const need = <T>(row: T | undefined, what: string): T => {
 	if (row === undefined) throw new Error(`${what} is missing`);
 	return row;
 };
@@ -168,17 +168,21 @@ export async function checkState(
 }
 
 /** One comparison per column of a port row: a column added to the row type fails to compile until it is named here. */
-type Columns<R> = { readonly [K in keyof R]-?: (a: R[K], b: R[K]) => boolean };
+export type Columns<R> = {
+	readonly [K in keyof R]-?: (a: R[K], b: R[K]) => boolean;
+};
 
-const exact = <T>(a: T, b: T) => (a ?? null) === (b ?? null);
-const instant = (a: Date | null, b: Date | null) =>
+export const exact = <T>(a: T, b: T) => (a ?? null) === (b ?? null);
+export const instant = (a: Date | null, b: Date | null) =>
 	(a?.getTime() ?? null) === (b?.getTime() ?? null);
-const decimal = (a: string | null | undefined, b: string | null | undefined) =>
-	sameDecimal(a ?? null, b ?? null);
+export const decimal = (
+	a: string | null | undefined,
+	b: string | null | undefined,
+) => sameDecimal(a ?? null, b ?? null);
 /** Compared elsewhere: rows are matched by id (a snapshot by account and day), so the id is the key. */
-const byKey = () => true;
+export const byKey = () => true;
 
-const ACCOUNT_COLUMNS: Columns<AccountRow> = {
+export const ACCOUNT_COLUMNS: Columns<AccountRow> = {
 	id: byKey,
 	type: exact,
 	currency: exact,
@@ -199,7 +203,7 @@ const ACCOUNT_COLUMNS: Columns<AccountRow> = {
 	createdAt: () => true,
 };
 
-const LEG_COLUMNS: Columns<LegRow> = {
+export const LEG_COLUMNS: Columns<LegRow> = {
 	id: byKey,
 	accountId: exact,
 	currency: exact,
@@ -214,7 +218,7 @@ const LEG_COLUMNS: Columns<LegRow> = {
 	expenseId: exact,
 };
 
-const SNAPSHOT_COLUMNS: Columns<SnapshotRow> = {
+export const SNAPSHOT_COLUMNS: Columns<SnapshotRow> = {
 	id: byKey,
 	accountId: byKey,
 	date: byKey,
@@ -234,7 +238,7 @@ const SWITCH_COLUMNS: Columns<RateSwitchRow> = {
 };
 
 /** The names of the columns that differ. */
-function differing<R extends object>(
+export function differing<R extends object>(
 	columns: Columns<R>,
 	device: R,
 	server: R,
@@ -318,7 +322,7 @@ export const seedRowOf = (a: SeedAccount): TableRows["accounts"] => ({
 	exchangeRateType: a.exchangeRateType,
 	closedAt: a.closedAt ?? null,
 	createdAt: new Date("2026-10-01T00:00:00Z"),
-	inBudget: null,
+	inBudget: a.inBudget ?? null,
 	countedUnits: a.countedUnits ?? "0",
 	isLiquid: true,
 	iconKind: null,
@@ -326,7 +330,9 @@ export const seedRowOf = (a: SeedAccount): TableRows["accounts"] => ({
 });
 
 /** The settings, rates and accounts of a vector as a device store. */
-export async function seededAccountStore(vector: AccountVector) {
+export async function seededAccountStore<
+	V extends Pick<AccountVector, "seed" | "accounts">,
+>(vector: V) {
 	const store = await seededStore(vector.seed);
 	await store.transaction((tx) => {
 		tx.put("owed", {

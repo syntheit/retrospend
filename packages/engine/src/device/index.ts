@@ -15,6 +15,11 @@ export type {
 	WriteBody,
 	WriteOp,
 } from "./book";
+export type {
+	TransferCreateBody,
+	TransferDeleteBody,
+	TransferOp,
+} from "./transfer-book";
 export type { BulkAnswer, BulkBooked, BulkOp } from "./bulk";
 export {
 	type CheckPlan,

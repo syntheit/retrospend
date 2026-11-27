@@ -39,6 +39,7 @@ import {
 	type TemplateUpdateBody,
 	templatePlanOf,
 } from "./template-book";
+import { isTransferOp, type TransferOp, transferPlanOf } from "./transfer-book";
 
 // What the phone saves, as the device books it: the same engine mutations a
 // preview runs, over the pending writes, in a transaction that is thrown away
@@ -97,7 +98,8 @@ export type WriteOp =
 	| { kind: "skip"; body: SettleBody }
 	| { kind: "templateCreate"; body: TemplateCreateBody }
 	| { kind: "templateUpdate"; body: TemplateUpdateBody }
-	| AccountOp;
+	| AccountOp
+	| TransferOp;
 
 /** The writes whose row is a recurring template. */
 type TemplateOp = Extract<
@@ -112,7 +114,7 @@ const isTemplateOp = (op: WriteOp): op is TemplateOp =>
 
 /** The row id the write is about: the expense, or the template of a confirm, skip, create or edit. */
 export const targetOf = (op: WriteOp): string =>
-	isAccountOp(op)
+	isAccountOp(op) || isTransferOp(op)
 		? op.body.id
 		: op.kind === "delete"
 			? op.id
@@ -142,8 +144,10 @@ export interface BookedWrite {
 	 */
 	base: string | null;
 	/**
-	 * An account write's account-family rows (account-book.ts): not in
-	 * `changes` until the outbox and the compare know these tables.
+	 * An account or transfer write's rows (account-book.ts): the accounts,
+	 * legs, snapshots, rate switches and transfers, not in `changes` until the
+	 * outbox and the compare know these tables. A transfer's fee is an
+	 * expense, so it is in `changes`.
 	 */
 	wealth?: WealthChange[];
 	/**
@@ -166,6 +170,7 @@ export function planOf(
 	now: Date,
 ): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
 	if (isAccountOp(op)) return accountPlanOf(op, now);
+	if (isTransferOp(op)) return transferPlanOf(op, now);
 	if (op.kind === "confirm" || op.kind === "skip")
 		return recurringPlanOf(op, now);
 	if (op.kind === "templateCreate" || op.kind === "templateUpdate")
@@ -175,7 +180,7 @@ export function planOf(
 }
 
 function expensePlanOf(
-	op: Exclude<WriteOp, TemplateOp | AccountOp>,
+	op: Exclude<WriteOp, TemplateOp | AccountOp | TransferOp>,
 	r: Reader,
 	cursors: WriteCursors,
 ): { id: string; write: WriteFn<ExpenseRow> } {
@@ -300,6 +305,7 @@ export async function bookIn(
 ): Promise<BookedWrite> {
 	const { id, write } = planOf(op, tx, cursors, new Date(bookedAt));
 	if (isAccountOp(op)) return bookAccountIn(tx, op, id, write, bookedAt);
+	if (isTransferOp(op)) return bookTransferIn(tx, id, write, bookedAt);
 	const row =
 		op.kind === "create" || op.kind === "templateCreate"
 			? undefined
@@ -344,6 +350,33 @@ async function bookAccountIn(
 	try {
 		const { undo } = await recordWrite(tx, id, write);
 		return { ...base, changes: [], wealth: wealthChangesOf(undo) };
+	} catch (error) {
+		if (error instanceof MissingRateError)
+			return { ...base, changes: [], unbooked: "no_rate" };
+		throw error;
+	}
+}
+
+/**
+ * `bookIn` for a transfer write: the fee's expense is a change like any
+ * expense's, and the rest (the transfer, its legs, the accounts and snapshots
+ * they moved) is `wealth`. A move the device cannot see whole refuses
+ * (TransferOnlineError) and is not booked; a transfer has no version to send.
+ */
+async function bookTransferIn(
+	tx: Writer,
+	id: string,
+	write: WriteFn<unknown>,
+	bookedAt: number,
+): Promise<BookedWrite> {
+	const base = { bookedAt, base: null, changed: [] };
+	try {
+		const { undo } = await recordWrite(tx, id, write);
+		return {
+			...base,
+			changes: bookedChangesOf(undo),
+			wealth: wealthChangesOf(undo),
+		};
 	} catch (error) {
 		if (error instanceof MissingRateError)
 			return { ...base, changes: [], unbooked: "no_rate" };
