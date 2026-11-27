@@ -11,6 +11,7 @@
  */
 import { MissingRateError } from "@retrospend/domain/money";
 import { describe, expect, it } from "vitest";
+import { BUDGET_GATE_ENTITIES } from "./budget-gate";
 import { bookIn, isDeviceRefusal } from "./device/book";
 import { fixtureRow } from "./fixtures";
 import { LocalDb } from "./local-db";
@@ -163,14 +164,7 @@ describe("the note is the person's text", () => {
 				.filter((c) => c.table !== "expenses")
 				.map((w) => w.table)
 				.sort(),
-		).toEqual([
-			"accounts",
-			"accounts",
-			"legs",
-			"legs",
-			"legs",
-			"transfers",
-		]);
+		).toEqual(["accounts", "accounts", "legs", "legs", "legs", "transfers"]);
 	});
 
 	it("a move the server books is a refusal the engine reads as 'the server decides'", async () => {
@@ -342,5 +336,82 @@ describe("counted units on a delete", () => {
 			balance: "250",
 			countedUnits: "250",
 		});
+	});
+});
+
+describe("a person with no budget books transfers on the device once the budget's entities are pulled", () => {
+	const PULLED = Object.fromEntries(
+		BUDGET_GATE_ENTITIES.map((entity) => [entity, "cursor"]),
+	);
+	const book = async (
+		cursors: Record<string, string>,
+		op: Parameters<typeof bookIn>[1],
+	) => {
+		const { store } = await open([accounts.ars1, accounts.ars2], "none");
+		return store.transaction((tx) => bookIn(tx, op, cursors, NOW.getTime()));
+	};
+	const move = {
+		kind: "transferCreate",
+		body: body(1, { fee: null }),
+	} as const;
+
+	it("Just track with the pull finished: booked, nothing recorded for a budget that is not there", async () => {
+		const booked = await book(PULLED, move);
+		expect(booked.unbooked).toBeUndefined();
+		expect(booked.changes.map((c) => c.table)).toContain("transfers");
+	});
+
+	it("with one entity not pulled yet: the server's, because a book may not have arrived", async () => {
+		const error = await book({ ...PULLED, budgetBooks: "" }, move).catch(
+			(e: unknown) => e,
+		);
+		expect(error).toBeInstanceOf(TransferOnlineError);
+		expect((error as TransferOnlineError).reason).toBe("budget_not_ready");
+	});
+
+	it("with an entity being pulled again after a reset: the server's", async () => {
+		const error = await book({ ...PULLED, envelopes: "reset" }, move).catch(
+			(e: unknown) => e,
+		);
+		expect(error).toBeInstanceOf(TransferOnlineError);
+	});
+
+	it("with no cursors at all: the server's", async () => {
+		const error = await book({}, move).catch((e: unknown) => e);
+		expect((error as TransferOnlineError).reason).toBe("budget_not_ready");
+	});
+
+	it("a delete runs too, on a move the device holds whole", async () => {
+		const { store, db } = await open([accounts.ars1, accounts.ars2], "none");
+		await db.write(
+			TRANSFER_CREATE,
+			createTransfer({
+				...body(1, { fee: null }),
+				now: NOW,
+				budgetPulled: true,
+			}),
+		);
+		const strict = await store
+			.transaction((tx) =>
+				bookIn(
+					tx,
+					{ kind: "transferDelete", body: { id: t1.transfer } },
+					{},
+					NOW.getTime(),
+				),
+			)
+			.catch((e: unknown) => e);
+		expect(strict).toBeInstanceOf(TransferOnlineError);
+		const booked = await store.transaction((tx) =>
+			bookIn(
+				tx,
+				{ kind: "transferDelete", body: { id: t1.transfer } },
+				PULLED,
+				NOW.getTime(),
+			),
+		);
+		expect(
+			booked.changes.some((c) => c.table === "transfers" && c.after === null),
+		).toBe(true);
 	});
 });

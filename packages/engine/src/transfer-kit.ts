@@ -49,13 +49,27 @@ export const refusingTransfer = <T>(run: () => T | Promise<T>): Promise<T> =>
 	});
 
 /**
+ * Whether the budget reads whole: ready, or no book at all once the pull of
+ * the budget's entities has finished (`budgetPulled`: a Just track person).
+ * Without that, "none" is a book that may not have arrived, and the server decides.
+ */
+export function budgetReadable(r: Repos, budgetPulled: boolean): boolean {
+	const status = r.budget.status();
+	return status === "ready" || (status === "none" && budgetPulled);
+}
+
+/**
  * Throws TransferOnlineError unless the device may book this move's budget
  * side as "nothing to record". Fail closed: a budget the device cannot read in
  * full, a side it has no rate for and a crossing into a book the server writes
  * to are all the server's.
  */
-export function refuseOnlineBudget(r: Repos, rows: TransferRows): void {
-	if (r.budget.status() !== "ready")
+export function refuseOnlineBudget(
+	r: Repos,
+	rows: TransferRows,
+	budgetPulled = false,
+): void {
+	if (!budgetReadable(r, budgetPulled))
 		throw new TransferOnlineError("budget_not_ready");
 	const { budget } = rows;
 	if (budget.effect === "unavailable")

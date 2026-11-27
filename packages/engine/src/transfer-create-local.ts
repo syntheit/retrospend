@@ -81,7 +81,11 @@ export interface TransferBody {
 	readonly putIn?: string | null;
 }
 
-export type CreateTransferInput = TransferBody & Moment;
+export type CreateTransferInput = TransferBody &
+	Moment & {
+		/** The device's pull of the budget's entities has finished: no book means none (`budgetFamilyPulled`). */
+		readonly budgetPulled?: boolean;
+	};
 
 export interface TransferCreated {
 	readonly transfer: TableRows["transfers"];
@@ -180,7 +184,7 @@ export function createTransfer(
 					feeLeg: input.feeLegId,
 				},
 			});
-			refuseOnlineBudget(r, rows);
+			refuseOnlineBudget(r, rows, input.budgetPulled);
 			refuseUnvalued(rows, home);
 
 			const { transfer: t } = rows;

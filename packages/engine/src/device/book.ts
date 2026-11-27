@@ -6,6 +6,7 @@ import {
 	RecurringRefusal,
 } from "@retrospend/domain/recurring-post/refusals";
 import { dayKey } from "@retrospend/domain/time-zone";
+import { budgetFamilyPulled } from "../budget-gate";
 import { NotFoundError } from "../errors";
 import { createExpense, EXPENSE_CREATE } from "../expense-create";
 import {
@@ -121,10 +122,8 @@ export const targetOf = (op: WriteOp): string =>
 				? op.body.templateId
 				: op.body.id;
 
-/** The sync cursors a fee check reads (the engine's own). */
-export type WriteCursors = Readonly<
-	Partial<Record<"expenses" | "transfers", string>>
->;
+/** The sync cursors a fee check and the budget gate read (the engine's own, by entity). */
+export type WriteCursors = Readonly<Partial<Record<string, string>>>;
 
 /** What an outbox entry keeps of a booking, and the version the write was based on. */
 export interface BookedWrite {
@@ -162,7 +161,8 @@ export function planOf(
 	now: Date,
 ): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
 	if (isAccountOp(op)) return accountPlanOf(op, now);
-	if (isTransferOp(op)) return transferPlanOf(op, now);
+	if (isTransferOp(op))
+		return transferPlanOf(op, now, budgetFamilyPulled(cursors));
 	if (op.kind === "confirm" || op.kind === "skip")
 		return recurringPlanOf(op, now);
 	if (op.kind === "templateCreate" || op.kind === "templateUpdate")
