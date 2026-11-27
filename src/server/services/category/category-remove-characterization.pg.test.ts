@@ -8,9 +8,10 @@
  * Hand-derived:
  *   - A refused delete or merge changes nothing: the category count and the
  *     expense rows are the same after as before.
- *   - A category has no version and no stamp, so the restored row equals the
- *     original in every column, nameIndex included (the same key makes the
- *     same index; the plain suite stores null both times).
+ *   - A restore keeps the version the stash holds (M3 PR1a), and a category has
+ *     no stamp, so the restored row equals the original in every column,
+ *     nameIndex and version included (the same key makes the same index; the
+ *     plain suite stores null both times).
  *   - A merge moves rows to the target and writes nothing to the target row.
  */
 import { randomUUID } from "node:crypto";
@@ -222,7 +223,7 @@ describe("a merge leaves its target alone and its undo restores the category", (
 		expect(await rowOf(target.id)).toEqual(targetBefore);
 	});
 
-	it("tRPC remove keeps a version-less v2 stash with the category's fields, and restore reads it once", async () => {
+	it("tRPC remove keeps a v3 stash with the category's fields and version, and restore reads it once", async () => {
 		const user = await createTestUser();
 		const scoped = caller(user.user.id);
 		const made = await category(user.user.id, "Stashed", {
@@ -245,9 +246,9 @@ describe("a merge leaves its target alone and its undo restores the category", (
 			category: Record<string, unknown>;
 			targetId: string | null;
 		};
-		expect(body.v).toBe(2);
+		expect(body.v).toBe(3);
 		expect(body.targetId).toBeNull();
-		// No version in the stash: a category has none today.
+		// The version rides in the stash, so a restore keeps it (a new category is 0).
 		expect(body.category).toEqual({
 			id: made.id,
 			name: "Stashed",
@@ -256,6 +257,7 @@ describe("a merge leaves its target alone and its undo restores the category", (
 			isFixed: false,
 			excludeByDefault: true,
 			kind: "EXPENSE",
+			version: 0,
 		});
 
 		await scoped.restore({ stash: done.value.stash });

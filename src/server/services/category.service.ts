@@ -28,6 +28,7 @@ export const CATEGORY_SELECT = {
 	icon: true,
 	kind: true,
 	excludeByDefault: true,
+	version: true,
 	_count: { select: { expenses: true } },
 } as const satisfies Prisma.CategorySelect;
 
@@ -145,6 +146,8 @@ export interface CategoryInsert extends CategoryInput {
 	id?: string;
 	isFixed?: boolean;
 	kind?: CategoryKind;
+	/** Set by an undo, which brings the category back at the version it held. */
+	version?: number;
 }
 
 /**
@@ -171,6 +174,7 @@ export async function insertCategory(
 			isFixed: input.isFixed ?? false,
 			excludeByDefault: input.excludeByDefault ?? false,
 			kind: input.kind ?? "EXPENSE",
+			...(input.version === undefined ? {} : { version: input.version }),
 			userId,
 		},
 		select: CATEGORY_SELECT,
@@ -193,7 +197,13 @@ export async function createCategory(
 	}
 }
 
-/** Changes the fields given; `icon: null` removes the icon. */
+/**
+ * Changes the fields given; `icon: null` removes the icon. A change that
+ * names `name` moves the version by SQL (`version = version + 1`, no read first,
+ * so two renames at once get two versions); the database trigger moves it for
+ * color, icon and excludeByDefault, and does not double a rename's bump. This
+ * is the only writer that sets the version on an update.
+ */
 export async function updateCategory(
 	db: AppDb,
 	userId: string,
@@ -219,6 +229,7 @@ export async function updateCategory(
 				);
 				await assertNameFree(tx, userId, changes.name, nameIndex, id);
 				data.nameIndex = nameIndex;
+				data.version = { increment: 1 };
 			}
 			return tx.category.update({
 				where: { id, userId },

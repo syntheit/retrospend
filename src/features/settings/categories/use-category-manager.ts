@@ -5,6 +5,7 @@ import { useToast } from "~/components/ui/toast";
 import { useCategoryName } from "~/hooks/use-category-name";
 import type { CategoryColor } from "~/lib/constants";
 import { api } from "~/trpc/react";
+import { nameChanged } from "./name-changed";
 
 // 12 visually distinct colors, one clear step apart across the spectrum
 const PICKER_COLORS: CategoryColor[] = [
@@ -129,7 +130,12 @@ export function useCategoryManager({
 			try {
 				await updateMutation.mutateAsync({
 					id,
-					name: nameToSave,
+					// A rename is a new version of the category: left out when the
+					// person did not change the name, so a save of anything else
+					// does not park a device's pending edit.
+					...(nameChanged(currentCategory?.name, nameToSave)
+						? { name: nameToSave }
+						: {}),
 					color: values.color,
 					icon: values.icon,
 					excludeByDefault: values.excludeByDefault,

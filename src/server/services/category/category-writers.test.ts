@@ -15,7 +15,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CALLERS, WRITERS } from "./category-writers";
+import { CALLERS, VERSION_SETTERS, WRITERS } from "./category-writers";
 
 const ROOT = join(__dirname, "../../../..");
 
@@ -132,5 +132,35 @@ describe("category writers", () => {
 			Object.entries(CALLERS).map(([name, files]) => [name, [...files].sort()]),
 		);
 		expect(found).toEqual(named);
+	});
+
+	it("only the writers VERSION_SETTERS names set the version: updateCategory, a restore's insert, the default-category script", () => {
+		// A write that names the version: an assignment, an increment or another
+		// atomic operation, the insert's pass-through, or raw SQL setting the column.
+		const WRITE =
+			/\bdata\.version\s*=|\bversion\s*:\s*\{\s*(?:increment|decrement|set|multiply|divide)\b|\bversion\s*:\s*input\.version\b|\bSET\b[^;`]*"version"/g;
+		// The files that write the table or call what does, and any file about categories.
+		const writerFiles = new Set([
+			...Object.keys(WRITERS),
+			...Object.values(CALLERS).flat(),
+		]);
+		const found: Record<string, number> = {};
+		for (const { rel, text } of FILES) {
+			// The inventory itself describes the writes in prose.
+			if (rel === "src/server/services/category/category-writers.ts") continue;
+			if (!writerFiles.has(rel) && !/categor/i.test(rel)) continue;
+			// Comments explain; they write nothing.
+			const code = text
+				.replace(/\/\*[\s\S]*?\*\//g, "")
+				.replace(/^\s*\/\/.*$/gm, "");
+			const n = code.match(WRITE)?.length ?? 0;
+			if (n > 0) found[rel] = n;
+		}
+		const named = Object.fromEntries(
+			Object.entries(VERSION_SETTERS).map(([file, [n]]) => [file, n]),
+		);
+		expect(found).toEqual(named);
+		for (const [file, [, what]] of Object.entries(VERSION_SETTERS))
+			expect(what.length, file).toBeGreaterThan(0);
 	});
 });

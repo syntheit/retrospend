@@ -133,8 +133,15 @@ describe("raw row schemas", () => {
 			isFixed: false,
 			excludeByDefault: false,
 			kind: "EXPENSE",
+			version: 0,
 		};
 		expect(syncCategorySchema.parse(category)).toEqual(category);
+		expect(
+			syncCategorySchema.safeParse({ ...category, version: -1 }).success,
+		).toBe(false);
+		expect(
+			syncCategorySchema.safeParse({ ...category, version: undefined }).success,
+		).toBe(false);
 		const template = {
 			id: "t1",
 			name: "Rent",

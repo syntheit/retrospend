@@ -5,8 +5,9 @@
  * what the device slice will change.
  *
  * Hand-derived:
- *   - A category row has no version and no updatedAt: its columns are exactly
- *     id, name, nameIndex, color, icon, isFixed, excludeByDefault, kind, userId.
+ *   - A category row has a version (M3 PR1a, 0 when new) and no updatedAt: its
+ *     columns are exactly id, name, nameIndex, color, icon, isFixed,
+ *     excludeByDefault, kind, version, userId.
  *   - Two names are the same name when their trimmed text is equal, compared
  *     exactly: "Food" and "Food " are one name, "Food" and "food" are two.
  *   - The name index exists only with a master key (the sealed suite has one):
@@ -50,6 +51,7 @@ type Dto = {
 	tone: number;
 	excludeByDefault: boolean;
 	expenseCount: number;
+	version: number;
 };
 
 const INDEX = /^[0-9a-f]{16}:[0-9a-f]{64}$/;
@@ -94,10 +96,11 @@ describe("create", () => {
 			icon: null,
 			kind: "EXPENSE",
 			excludeByDefault: false,
+			version: 0,
 		});
 		expect(z.cuid().safeParse(made.id).success).toBe(true);
 		const row = await rowOf(made.id);
-		// No version, no updatedAt: a category has neither today.
+		// A version, no updatedAt: a category has no updated date.
 		expect(Object.keys(row).sort()).toEqual([
 			"color",
 			"excludeByDefault",
@@ -108,6 +111,7 @@ describe("create", () => {
 			"name",
 			"nameIndex",
 			"userId",
+			"version",
 		]);
 		expect(row).toMatchObject({ isFixed: false, userId: who.user.id });
 		if (sealedSuite) expect(row.nameIndex).toMatch(INDEX);
@@ -159,6 +163,7 @@ describe("create", () => {
 			tone: 9,
 			excludeByDefault: true,
 			expenseCount: 0,
+			version: 0,
 		});
 		expect(made.id).not.toBe(wanted);
 		expect(z.cuid().safeParse(made.id).success).toBe(true);
@@ -272,6 +277,8 @@ describe("edit", () => {
 			icon: "house",
 			kind: "EXPENSE",
 			excludeByDefault: true,
+			// One bump for the rename and the three fields together.
+			version: 1,
 		});
 		expect(await rowOf(made.id)).toMatchObject({
 			name: "After",
@@ -282,28 +289,29 @@ describe("edit", () => {
 		});
 	});
 
-	it("tRPC needs a name and a color on every update, and cannot clear the icon", async () => {
-		const made = await fresh("Needs both", { icon: "house" });
+	it("tRPC takes a name or a color alone since M3 PR1a, and still cannot clear the icon", async () => {
+		const made = await fresh("Needs neither", { icon: "house" });
 		const api = trpcOf(who);
-		await expect(
-			api.update({ id: made.id, color: "rose" } as never),
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		await expect(
-			api.update({ id: made.id, name: "Only a name" } as never),
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 		await expect(
 			api.update({
 				id: made.id,
-				name: "Needs both",
+				name: "Needs neither",
 				color: "teal",
 				icon: null,
 			} as never),
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		// An icon and a flag left out are kept as they were.
-		await api.update({ id: made.id, name: "Needs both", color: "blue" });
+		// A color alone: the name, icon and flag are kept as they were.
+		await api.update({ id: made.id, color: "blue" });
 		expect(await rowOf(made.id)).toMatchObject({
+			name: "Needs neither",
 			icon: "house",
 			excludeByDefault: false,
+			color: "blue",
+		});
+		// A name alone: the color is kept.
+		await api.update({ id: made.id, name: "Only a name" });
+		expect(await rowOf(made.id)).toMatchObject({
+			name: "Only a name",
 			color: "blue",
 		});
 	});
@@ -323,7 +331,12 @@ describe("edit", () => {
 		});
 		const empty = await expectBody<Dto>(await patch(made.id, {}), c.update);
 		expect(empty).toEqual(flagged);
-		expect(await rowOf(made.id)).toEqual({ ...before, excludeByDefault: true });
+		// The flag is the one change, so one bump; the empty body wrote nothing.
+		expect(await rowOf(made.id)).toEqual({
+			...before,
+			excludeByDefault: true,
+			version: before.version + 1,
+		});
 	});
 
 	it("v1 PATCH removes the icon with null, and ignores a kind or an expectedVersion it is sent", async () => {

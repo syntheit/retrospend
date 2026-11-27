@@ -47,6 +47,7 @@ export function toCategory(row: CategoryRow): CategoryDto {
 		tone: categoryTone(row.color),
 		excludeByDefault: row.excludeByDefault,
 		expenseCount: row._count.expenses,
+		version: row.version,
 	};
 }
 

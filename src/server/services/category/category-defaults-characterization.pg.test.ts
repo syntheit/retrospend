@@ -246,7 +246,7 @@ describe("the phone's count toggle", () => {
 		expect(await flag(after)).toBe(false);
 	});
 
-	it("an Undo after another device's toggle overwrites it: no version, no refusal", async () => {
+	it("an Undo after another device's toggle overwrites it: no expectedVersion is sent yet, so no refusal", async () => {
 		const mine = await expectBody<{ id: string }>(
 			await call("/categories", {
 				method: "POST",

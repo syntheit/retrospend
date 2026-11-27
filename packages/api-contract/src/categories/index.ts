@@ -35,6 +35,16 @@ export const categoryColorSchema = z
 	.enum(CATEGORY_COLORS)
 	.meta({ id: "CategoryColor" });
 
+/**
+ * The category's version: it moves when the name, the color, the icon or the
+ * count default (excludeByDefault) changes, never for a seal or for the
+ * expenses filed under it. A new category is 0.
+ */
+export const categoryVersionSchema = z.int().min(0).meta({
+	description:
+		"The category's version. It moves when its name, color, icon or excludeByDefault changes, not when expenses are filed under it or moved.",
+});
+
 export const categorySchema = z
 	.object({
 		id: idSchema,
@@ -48,6 +58,7 @@ export const categorySchema = z
 		excludeByDefault: z.boolean(),
 		/** Expenses filed under it (amortized parts count one each). */
 		expenseCount: z.int().min(0),
+		version: categoryVersionSchema,
 	})
 	.meta({ id: "Category" });
 

@@ -5,7 +5,7 @@ import {
 	accountVersionSchema,
 	legSourceSchema,
 } from "../accounts/schemas";
-import { categoryColorSchema } from "../categories";
+import { categoryColorSchema, categoryVersionSchema } from "../categories";
 import { decimalStringSchema, idSchema, timestampSchema } from "../core";
 import { transferKindSchema } from "../transfers";
 
@@ -85,6 +85,10 @@ export const syncCategorySchema = z
 		isFixed: z.boolean(),
 		excludeByDefault: z.boolean(),
 		kind: z.enum(["EXPENSE", "INCOME"]),
+		version: categoryVersionSchema.meta({
+			description:
+				"The version a category write sends as `expectedVersion`. Categories have no updatedAt.",
+		}),
 	})
 	.meta({
 		id: "SyncCategory",

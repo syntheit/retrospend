@@ -19,6 +19,7 @@ import {
 	checkMergeKinds,
 	type Reroute,
 } from "@retrospend/domain/category-merge/plan";
+import { LEGACY_STASH_CATEGORY_VERSION } from "@retrospend/domain/category-version";
 import {
 	FIGURE_LEFT_IN_LIMITS,
 	FIGURE_LEFT_TO_SPEND,
@@ -67,19 +68,41 @@ export interface CategoryMerged {
 	readonly stash: string;
 }
 
-interface Stash {
-	readonly v: 2;
-	readonly category: {
-		readonly id: string;
-		readonly name: string;
-		readonly color: CategoryColor;
-		readonly icon: string | null;
-		readonly isFixed: boolean;
-		readonly excludeByDefault: boolean;
-		readonly kind: CategoryKind;
+interface StashedCategory {
+	readonly id: string;
+	readonly name: string;
+	readonly color: CategoryColor;
+	readonly icon: string | null;
+	readonly isFixed: boolean;
+	readonly excludeByDefault: boolean;
+	readonly kind: CategoryKind;
+}
+
+/**
+ * v3 keeps the version the category held; a v2 stash (written before the
+ * column) has none and comes back at LEGACY_STASH_CATEGORY_VERSION.
+ */
+type Stash =
+	| {
+			readonly v: 3;
+			readonly category: StashedCategory & { readonly version: number };
+			readonly targetId: string | null;
+			readonly held: Partial<Record<HolderId, unknown>>;
+	  }
+	| {
+			readonly v: 2;
+			readonly category: StashedCategory;
+			readonly targetId: string | null;
+			readonly held: Partial<Record<HolderId, unknown>>;
+	  };
+
+/** The category as the restore inserts it: the stashed version, or the legacy one. */
+function stashedInsert(body: Stash): StashedCategory & { version: number } {
+	return {
+		...body.category,
+		version:
+			body.v === 3 ? body.category.version : LEGACY_STASH_CATEGORY_VERSION,
 	};
-	readonly targetId: string | null;
-	readonly held: Partial<Record<HolderId, unknown>>;
 }
 
 const notFound = () =>
@@ -149,7 +172,7 @@ export const mergeCategories: MoneyMutation<MergeInput, CategoryMerged> = {
 		forgetMonthViews(tx);
 		await tx.category.delete({ where: { id: source.id, userId } });
 		const stash = await putUndoStash(tx, userId, {
-			v: 2,
+			v: 3,
 			category: {
 				id: source.id,
 				name: source.name,
@@ -158,6 +181,7 @@ export const mergeCategories: MoneyMutation<MergeInput, CategoryMerged> = {
 				isFixed: source.isFixed,
 				excludeByDefault: source.excludeByDefault,
 				kind: source.kind,
+				version: source.version,
 			},
 			targetId: c.targetId,
 			held,
@@ -195,7 +219,9 @@ export const restoreCategory: MoneyMutation<
 	run: async (tx, input, actor) => {
 		const userId = actor.userId;
 		const body = await takeUndoStash<Stash>(tx, userId, input.stash);
-		if (body.v !== 2 || !body.category) throw invalidUndo();
+		if ((body.v !== 2 && body.v !== 3) || !body.category) throw invalidUndo();
+		if (body.v === 3 && !Number.isInteger(body.category.version))
+			throw invalidUndo();
 		const target = body.targetId
 			? await tx.category.findFirst({
 					where: { id: body.targetId, userId },
@@ -205,7 +231,7 @@ export const restoreCategory: MoneyMutation<
 		// What the rows moved into is gone: there is nothing to take them back from.
 		if (body.targetId && !target) throw staleUndo();
 		try {
-			await insertCategory(tx, userId, body.category);
+			await insertCategory(tx, userId, stashedInsert(body));
 		} catch (error) {
 			throw asNameTaken(error);
 		}
