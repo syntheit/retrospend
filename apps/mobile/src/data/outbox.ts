@@ -26,9 +26,20 @@ import type { KeyValueStore } from "./store";
 
 /**
  * `confirm` and `skip` are a recurring template's: their `targetId` is the
- * template, so the hold rule orders every write to one template.
+ * template, so the hold rule orders every write to one template. `close`,
+ * `reopen`, `balance` and `rateType` are an account's, with `create` and
+ * `update`: their `targetId` is the account.
  */
-export type OutboxKind = "create" | "update" | "delete" | "confirm" | "skip";
+export type OutboxKind =
+	| "create"
+	| "update"
+	| "delete"
+	| "confirm"
+	| "skip"
+	| "close"
+	| "reopen"
+	| "balance"
+	| "rateType";
 /** `poster` entries were planned by the phone, not typed by a person. */
 export type OutboxOrigin = "user" | "poster";
 /**
@@ -39,9 +50,9 @@ export type OutboxOrigin = "user" | "poster";
 export type OutboxState = "pending" | "sending" | "failed" | "conflict";
 
 /**
- * The row's `updatedAt` an edit was based on; null for a create. `{ after }`
- * names an earlier entry for the same row that has not been acked: its
- * version is written in when it is.
+ * The row's `updatedAt` an edit was based on; null for a create. For an
+ * account, its version as text. `{ after }` names an earlier entry for the
+ * same row that has not been acked: its version is written in when it is.
  */
 export type BaseVersion = string | null | { after: string };
 

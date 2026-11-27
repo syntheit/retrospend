@@ -3,6 +3,7 @@ import type { ProblemCode } from "@retrospend/api-contract/errors";
 import type { Outbox, OutboxEntry, OutboxKind } from "@/data/outbox";
 import { originOf, PARKED_STAMP } from "@/data/outbox-chain";
 import type { Sender, SendResult } from "@/data/sync";
+import { dispatchWealth, isWealthEntry } from "./sendWealth";
 
 // Sends the composers' outbox entries to API v1. The entry's client id is the
 // idempotency key and the new row's id, so a retry after a lost answer
@@ -24,6 +25,7 @@ export const ENTRY_ENTITIES = [
 	"income",
 	"transfers",
 	"recurring",
+	"accounts",
 ] as const;
 export type EntryEntity = (typeof ENTRY_ENTITIES)[number];
 
@@ -34,7 +36,9 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 /**
  * The one table of what this sender can send: a create of its own entities, an
  * update or delete of an expense, and a create, edit, confirm or skip of a
- * recurring template (only the dev flag queues those). A kind not listed for
+ * recurring template and a create, edit, close, reopen, balance update or rate
+ * type switch of an account, and a transfer delete (only the dev flag queues
+ * those). A kind not listed for
  * its entity has no sender here (a template delete stays online) and must not
  * stop the queue.
  */
@@ -42,8 +46,9 @@ const SENDABLE: Record<EntryEntity, readonly OutboxKind[]> = {
 	expenses: ["create", "update", "delete"],
 	"shared-expenses": ["create"],
 	income: ["create"],
-	transfers: ["create"],
+	transfers: ["create", "delete"],
 	recurring: ["create", "update", "confirm", "skip"],
+	accounts: ["create", "update", "close", "reopen", "balance", "rateType"],
 };
 
 const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
@@ -275,7 +280,12 @@ export function createEntrySender(
 		}
 		// A write to an existing row is checked against the version it was based
 		// on; with none it would overwrite or delete unchecked.
-		if (entry.kind !== "create" && typeof entry.baseVersion !== "string") {
+		// A transfer has no version: its delete is checked by the row alone.
+		if (
+			entry.kind !== "create" &&
+			entry.entity !== "transfers" &&
+			typeof entry.baseVersion !== "string"
+		) {
 			return { status: "conflict", reason: PARKED_NO_STAMP };
 		}
 		if (
@@ -433,6 +443,7 @@ async function dispatch(
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
+	if (isWealthEntry(entry)) return dispatchWealth(api, entry, options);
 	switch (entry.kind) {
 		case "create":
 			return create(api, entry, options);
@@ -560,6 +571,8 @@ async function create(
 			};
 		case "recurring":
 			return createTemplate(api, entry, options);
+		case "accounts":
+			return dispatchWealth(api, entry, options);
 	}
 }
 
@@ -636,6 +649,8 @@ async function undoWithKey(
 			await api["shared-expenses"].undo(input, options);
 		} else if (ref.entity === "transfers") {
 			await api.transfers.undo(input, options);
+		} else if (ref.entity === "accounts") {
+			await api.accounts.undo(input, options);
 		} else if (ref.entity === "recurring") {
 			// A confirm and a skip are undone by different routes: never guess.
 			if (ref.kind === "confirm") await api.recurring.undo(input, options);
