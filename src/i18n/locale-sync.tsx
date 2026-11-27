@@ -26,10 +26,31 @@ export function LocaleSync({
 		const target = matchSupportedLocale(dbLocale) ?? DEFAULT_LOCALE;
 		if (cookieLocale === target) return;
 		synced.current = true;
-		void setLocaleCookie(target).then(() => {
-			if (renderedLocale !== target) window.location.reload();
-		});
+		void setLocaleCookie(target)
+			.then(() => {
+				if (renderedLocale !== target && firstTry(target))
+					window.location.reload();
+			})
+			.catch(() => undefined);
 	}, [dbLocale, cookieLocale, renderedLocale]);
 
 	return null;
+}
+
+const TRIED_KEY = "retrospend.localeSyncTried";
+
+/**
+ * One reload per language per tab. A browser that drops the cookie would
+ * otherwise reload on every page, because each load sees it missing again.
+ * Storage that throws (private modes) counts as already tried: no reload is
+ * better than a loop.
+ */
+function firstTry(target: string): boolean {
+	try {
+		if (window.sessionStorage.getItem(TRIED_KEY) === target) return false;
+		window.sessionStorage.setItem(TRIED_KEY, target);
+		return true;
+	} catch {
+		return false;
+	}
 }

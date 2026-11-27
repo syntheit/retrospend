@@ -16,6 +16,11 @@ vi.mock("./actions", () => ({
 import { LocaleSync } from "./locale-sync";
 
 const reload = vi.fn();
+const storage = new Map<string, string>();
+const session = {
+	getItem: (key: string) => storage.get(key) ?? null,
+	setItem: (key: string, value: string) => void storage.set(key, value),
+};
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 async function mount(dbLocale: string, cookieLocale: string | undefined) {
@@ -28,7 +33,8 @@ describe("LocaleSync", () => {
 		rendered.locale = "en";
 		setLocaleCookie.mockClear();
 		reload.mockClear();
-		vi.stubGlobal("window", { location: { reload } });
+		storage.clear();
+		vi.stubGlobal("window", { location: { reload }, sessionStorage: session });
 	});
 
 	it("sets a missing cookie without a reload when the page already matches", async () => {
@@ -70,6 +76,31 @@ describe("LocaleSync", () => {
 		rendered.locale = "en";
 		await mount("xx", undefined);
 		expect(setLocaleCookie).toHaveBeenCalledExactlyOnceWith("en");
+		expect(reload).not.toHaveBeenCalled();
+	});
+
+	it("does not reload again in the same tab when the cookie did not stick", async () => {
+		rendered.locale = "en";
+		await mount("de", undefined);
+		await mount("de", undefined);
+		expect(setLocaleCookie).toHaveBeenCalledTimes(2);
+		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not reload when session storage throws", async () => {
+		rendered.locale = "en";
+		vi.stubGlobal("window", {
+			location: { reload },
+			sessionStorage: {
+				getItem: () => {
+					throw new Error("blocked");
+				},
+				setItem: () => {
+					throw new Error("blocked");
+				},
+			},
+		});
+		await mount("de", undefined);
 		expect(reload).not.toHaveBeenCalled();
 	});
 });
