@@ -13,6 +13,7 @@
 		"./errors": "./src/common/errors.ts",
 		"./feedback-client": "./src/feedback/client.ts",
 		"./sync": "./src/sync/wire.ts",
+		"./transfers": "./src/transfers/schemas.ts",
 		"./template-fields": "./src/recurring/template-fields.ts",
 		"./keys": "./src/keys/index.ts",
 		"./openapi": "./src/openapi.ts",

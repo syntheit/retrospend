@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { seedRowOf } from "./account-conformance";
-import { insertLegs } from "./account-legs";
+import { insertLegs, removeLegs } from "./account-legs";
 import type { LegRow } from "./accounts";
 import { NotFoundError } from "./errors";
 import { MemoryStore } from "./memory-store";
@@ -180,5 +180,40 @@ describe("insertLegs", () => {
 			"already exists",
 		);
 		expect(store.get("accounts", "a1")?.balance).toBe("750.25");
+	});
+});
+
+describe("removeLegs", () => {
+	// Account 1,000.50 and a -250.25 leg dated Nov 10: 750.25 after it. The
+	// Nov 12 snapshot was recorded before the leg, so the leg never reached it
+	// and taking the leg back leaves it. Removing the leg puts the balance
+	// back to 1,000.50.
+	it("takes back what the leg moved and the leg itself", async () => {
+		const store = await open(
+			[account("a1")],
+			[snapshot("s1", "2026-11-12", "700", "2026-11-10T10:00:00Z")],
+		);
+		await insert(store, leg("l1"));
+		expect(store.get("accounts", "a1")?.balance).toBe("750.25");
+		const before = store.get("snapshots", "s1");
+		await store.transaction((tx) => {
+			const accounts = repos(tx).accounts;
+			const l = tx.get("legs", "l1");
+			if (l) removeLegs(accounts, [l]);
+		});
+		expect(store.get("legs", "l1")).toBeUndefined();
+		expect(Number(store.get("accounts", "a1")?.balance)).toBe(1000.5);
+		expect(store.get("snapshots", "s1")).toEqual(before);
+	});
+
+	it("an account the store does not hold throws before anything is removed", async () => {
+		const store = await open();
+		await insert(store, leg("l1"));
+		await expect(
+			store.transaction((tx) =>
+				removeLegs(repos(tx).accounts, [leg("l1", { accountId: "gone" })]),
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(store.get("legs", "l1")).toBeDefined();
 	});
 });

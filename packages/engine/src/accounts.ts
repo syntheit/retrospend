@@ -1,4 +1,5 @@
 /** Accounts with their legs and snapshots, as one aggregate. */
+import { dec } from "@retrospend/domain/precise-decimal";
 import { tableReads, tableWrites } from "./crud";
 import { NotFoundError } from "./errors";
 import {
@@ -19,6 +20,10 @@ export interface AccountAggregate {
 	readonly snapshots: readonly SnapshotRow[];
 }
 
+/** A transfer's legs in the order the server writes them: the source's, the destination's, then the fee's. */
+const legRank = (l: LegRow): number =>
+	l.source === "FEE" ? 2 : dec(l.amount).isNegative() ? 0 : 1;
+
 export function accountReads(r: Reader) {
 	const accounts = tableReads(r, "accounts");
 	const assemble = (account: AccountRow): AccountAggregate => ({
@@ -30,6 +35,16 @@ export function accountReads(r: Reader) {
 		/** The account's dated rate type switches, in the order they were stored (rateSwitchPlan sorts). */
 		rateSwitches: (accountId: string): RateSwitchRow[] =>
 			r.list("rateSwitches").filter((s) => s.accountId === accountId),
+		/** The legs a transfer wrote, in the order the server wrote them (legRank). */
+		legsOfTransfer: (transferId: string): LegRow[] =>
+			r
+				.list("legs")
+				.filter((l) => l.transferId === transferId)
+				.sort(
+					(a, b) =>
+						legRank(a) - legRank(b) ||
+						a.createdAt.getTime() - b.createdAt.getTime(),
+				),
 		get(id: string): AccountAggregate | undefined {
 			const account = accounts.get(id);
 			return account && assemble(account);
@@ -73,6 +88,8 @@ export function accountRepo(w: Writer) {
 			if (leg.accountId !== null) needAccount(leg.accountId);
 			legs.insert(leg);
 		},
+		/** Takes a leg away; true when it existed. The balance does not move with it: the leg writer (account-legs.ts) does that. */
+		removeLeg: (id: string) => legs.remove(id),
 		addSnapshot(snapshot: SnapshotRow) {
 			needAccount(snapshot.accountId);
 			snapshots.insert(snapshot);

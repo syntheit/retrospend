@@ -16,7 +16,12 @@ import {
 } from "../account-write-local";
 import type { TableRows } from "../port";
 import type { UndoToken } from "../undo";
-import { accountWithoutText, type TextFreeAccountRow } from "../wealth-rows";
+import {
+	accountWithoutText,
+	type TextFreeAccountRow,
+	type TextFreeTransferRow,
+	transferWithoutText,
+} from "../wealth-rows";
 
 // A person's account create, edit, close, reopen, balance update or rate type
 // switch, as the device books it: the engine's account mutations over the same
@@ -112,14 +117,21 @@ export function accountPlanOf(op: AccountOp, now: Date) {
 	}
 }
 
-/** The account tables a write changes. */
-type WealthTable = "accounts" | "legs" | "snapshots" | "rateSwitches";
+/** The tables an account or transfer write changes (a transfer's fee expense is an expense change, not one of these). */
+type WealthTable =
+	| "accounts"
+	| "legs"
+	| "snapshots"
+	| "rateSwitches"
+	| "transfers";
 
 type RowOf<T extends WealthTable> = T extends "accounts"
 	? TextFreeAccountRow
-	: TableRows[T];
+	: T extends "transfers"
+		? TextFreeTransferRow
+		: TableRows[T];
 
-/** One account-family row an entry changed, as the device booked it: an account without its name. */
+/** One account-family row an entry changed, as the device booked it: an account without its name, a transfer without its note. */
 export type WealthChange = {
 	[T in WealthTable]: {
 		readonly table: T;
@@ -134,17 +146,22 @@ const WEALTH_TABLES: readonly string[] = [
 	"legs",
 	"snapshots",
 	"rateSwitches",
+	"transfers",
 ] satisfies WealthTable[];
 
-/** The account, leg, snapshot and rate switch rows a write changed; the account's name is never kept. */
+/** The account, leg, snapshot, rate switch and transfer rows a write changed; the account's name and the transfer's note are never kept. */
 export function wealthChangesOf(undo: UndoToken): WealthChange[] {
 	const rows = undo.kind === "revert" ? undo.changes : [];
 	return rows.flatMap((c): WealthChange[] => {
 		if (!WEALTH_TABLES.includes(c.table)) return [];
-		const bare = (row: unknown) =>
-			c.table === "accounts" && row !== null
-				? accountWithoutText(row as TableRows["accounts"])
-				: row;
+		const bare = (row: unknown) => {
+			if (row === null) return row;
+			if (c.table === "accounts")
+				return accountWithoutText(row as TableRows["accounts"]);
+			if (c.table === "transfers")
+				return transferWithoutText(row as TableRows["transfers"]);
+			return row;
+		};
 		return [
 			{ ...c, before: bare(c.before), after: bare(c.after) } as WealthChange,
 		];

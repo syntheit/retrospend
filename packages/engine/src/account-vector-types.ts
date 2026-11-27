@@ -18,6 +18,8 @@ export interface SeedAccount {
 	exchangeRateType: string | null;
 	countedUnits?: string;
 	closedAt?: Date;
+	/** Part of the budget or not; absent is the default for its kind and currency. */
+	inBudget?: boolean | null;
 }
 
 export interface ExpectedAccount {

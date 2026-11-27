@@ -5,6 +5,7 @@
  * records what they change.
  */
 import { accountReads, accountRepo } from "./accounts";
+import { budgetReads } from "./budget-reads";
 import { expenseReads, expenseRepo } from "./expenses";
 import { movementReads, movementRepo } from "./movements";
 import type { Reader, Writer } from "./port";
@@ -13,6 +14,8 @@ import {
 	rateReads,
 	settingsReads,
 	transferReads,
+	transferRepo,
+	wealthMoveReads,
 } from "./reference";
 import { templateReads, templateRepo } from "./templates";
 
@@ -25,7 +28,11 @@ export interface Repos {
 	settings: ReturnType<typeof settingsReads>;
 	rates: ReturnType<typeof rateReads>;
 	categories: ReturnType<typeof categoryReads>;
-	transfers: ReturnType<typeof transferReads>;
+	transfers: ReturnType<typeof transferRepo>;
+	/** Read-only: the budget's side of a move arrives with a pull. */
+	wealthMoves: ReturnType<typeof wealthMoveReads>;
+	/** Whether the budget can be read, and the book it is kept in. */
+	budget: ReturnType<typeof budgetReads>;
 }
 
 export interface ReadRepos {
@@ -37,6 +44,8 @@ export interface ReadRepos {
 	rates: ReturnType<typeof rateReads>;
 	categories: ReturnType<typeof categoryReads>;
 	transfers: ReturnType<typeof transferReads>;
+	wealthMoves: ReturnType<typeof wealthMoveReads>;
+	budget: ReturnType<typeof budgetReads>;
 }
 
 export const repos = (w: Writer): Repos => ({
@@ -47,7 +56,9 @@ export const repos = (w: Writer): Repos => ({
 	settings: settingsReads(w),
 	rates: rateReads(w),
 	categories: categoryReads(w),
-	transfers: transferReads(w),
+	transfers: transferRepo(w),
+	wealthMoves: wealthMoveReads(w),
+	budget: budgetReads(w),
 });
 
 export const readRepos = (r: Reader): ReadRepos => ({
@@ -59,4 +70,6 @@ export const readRepos = (r: Reader): ReadRepos => ({
 	rates: rateReads(r),
 	categories: categoryReads(r),
 	transfers: transferReads(r),
+	wealthMoves: wealthMoveReads(r),
+	budget: budgetReads(r),
 });

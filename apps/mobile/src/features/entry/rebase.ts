@@ -1,4 +1,9 @@
-import type { AccountOp, WriteBody, WriteOp } from "@retrospend/engine/device";
+import type {
+	AccountOp,
+	TransferOp,
+	WriteBody,
+	WriteOp,
+} from "@retrospend/engine/device";
 import type { DeviceWrites } from "@/data/device-engine";
 import { newClientId } from "@/data/ids";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
@@ -44,12 +49,12 @@ export function rebasedBody(
 export interface RebasePlan {
 	/**
 	 * A re-based write is an expense edit or delete, or a confirm or skip: a
-	 * template edit is discarded, not re-based, and an account write is not
-	 * queued yet (the sender, PR6 of slice-device-wealth, brings it).
+	 * template edit is discarded, not re-based, and an account or transfer
+	 * write is not queued yet (the sender, PR6 of slice-device-wealth, brings it).
 	 */
 	op: Exclude<
 		WriteOp,
-		AccountOp | { kind: "templateCreate" | "templateUpdate" }
+		AccountOp | TransferOp | { kind: "templateCreate" | "templateUpdate" }
 	>;
 	/** The pulled version the new write is checked against. */
 	version: string;
