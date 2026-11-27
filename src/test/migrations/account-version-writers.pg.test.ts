@@ -313,10 +313,7 @@ const CASES: Record<string, readonly Case[]> = {
 			name: "a stash from before the column is bumped after the restore",
 			run: async (w) => {
 				const stash = viaJson(await stashAndDelete(w.userId, w.usdA));
-				const { version: _gone, ...old } = stash.account as Record<
-					string,
-					unknown
-				>;
+				const { version: _gone, ...old } = stash.account;
 				await userTransaction(adminDb, w.userId, (tx) =>
 					restoreAccount(tx, w.userId, { ...stash, account: old }),
 				);
