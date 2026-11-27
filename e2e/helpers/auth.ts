@@ -32,8 +32,8 @@ export async function loginAs(
  * (LocaleSync: a server action, then a full reload). The reload is part of
  * signing in, and it can land well after Home first looks quiet, so Home is
  * settled only once the action has answered and, when it set the cookie, the
- * reloaded document has loaded. The action can also be refused (a language
- * the cookie cannot hold), which sets nothing and reloads nothing.
+ * reloaded document has loaded. When the page already rendered the stored
+ * language, LocaleSync sets the cookie without a reload.
  */
 function watchLocaleSync(page: Page) {
 	let answered = false;
@@ -62,16 +62,23 @@ function watchLocaleSync(page: Page) {
 	page.on("request", onRequest);
 	page.on("load", onLoad);
 
-	const hasLocaleCookie = async () =>
-		(await page.context().cookies()).some((c) => c.name === "locale");
-	const hadCookie = hasLocaleCookie();
+	const localeCookie = async () =>
+		(await page.context().cookies()).find((c) => c.name === "locale")?.value;
+	const hadCookie = localeCookie();
 
 	return {
 		async settled() {
-			if (await hadCookie) return;
+			if ((await hadCookie) !== undefined) return;
 			const timeout = { timeout: 15_000 };
 			await expect.poll(() => answered, timeout).toBe(true);
-			if (!(await hasLocaleCookie())) return;
+			const cookie = await localeCookie();
+			if (cookie === undefined) return;
+			// LocaleSync reloads only when the page rendered another language
+			// than the one it just stored; <html lang> is the rendered one.
+			if (reloadRequested === false) {
+				const rendered = await page.locator("html").getAttribute("lang");
+				if (rendered === cookie) return;
+			}
 			await expect.poll(() => reloadRequested, timeout).toBe(true);
 			await expect.poll(() => reloadLoaded, timeout).toBe(true);
 			await waitUntilReady(page);
