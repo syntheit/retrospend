@@ -83,15 +83,12 @@ describe("useWealthDevice", () => {
 
 describe("useWealthDevice order and reopening", () => {
 	it("a late cache never overrides the server's answer", async () => {
-		// The server says off; the cache (which says on) resolves after it.
-		await world.local.cache.write("server.wealthWrites", 1, true);
+		// The server says off; the cache, slow, still says on when it resolves.
 		let release: () => void = () => undefined;
-		const cache = world.local.cache;
-		const realRead = cache.read.bind(cache);
-		jest.spyOn(cache, "read").mockImplementation(
-			(...args: Parameters<typeof realRead>) =>
+		jest.spyOn(world.local.cache, "read").mockImplementation(
+			() =>
 				new Promise((resolve) => {
-					release = () => resolve(realRead(...args));
+					release = () => resolve({ data: true });
 				}) as never,
 		);
 		world.api = info({ wealthWrites: false });
