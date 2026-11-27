@@ -213,7 +213,9 @@ describe("v1 shared expenses", () => {
 			lucia.db.category.findUnique({ where: { id: dining } }),
 		).resolves.toBeNull();
 		await expect(
-			adminDb.sharedTransaction.count({ where: { description: "Not yours" } }),
+			adminDb.sharedTransaction.count({
+				where: { createdById: martin.user.id, categoryId: dining },
+			}),
 		).resolves.toBe(0);
 	});
 });
@@ -309,7 +311,9 @@ describe("the web's shared expense writes", () => {
 			}),
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
 		await expect(
-			adminDb.sharedTransaction.count({ where: { description: "Old router" } }),
+			adminDb.sharedTransaction.count({
+				where: { createdById: w.userId, categoryId: w.other },
+			}),
 		).resolves.toBe(0);
 	});
 });

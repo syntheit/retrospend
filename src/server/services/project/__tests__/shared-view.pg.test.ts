@@ -220,13 +220,11 @@ describe("publicPageView", () => {
 		});
 		const v = await anonymousCaller().publicPageView({ id: project.id });
 		expect(v?.total).toEqual([{ minor: 1400, currency: "USD" }]);
-		const lines = (v?.byCategory ?? []).map((c) => [
-			c.name,
-			c.group[0]?.minor,
-		]);
+		// By id: a name is sealed without the owner's key, which the public page has not got.
+		const lines = (v?.byCategory ?? []).map((c) => [c.id, c.group[0]?.minor]);
 		expect(lines).toEqual(
 			expect.arrayContaining([
-				["Food", 1000],
+				[food.id, 1000],
 				[null, 400],
 			]),
 		);
