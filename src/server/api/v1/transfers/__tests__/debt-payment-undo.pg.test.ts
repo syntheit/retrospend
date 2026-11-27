@@ -1,8 +1,9 @@
 /**
- * Deleting a debt payment over /api/v1/transfers and undoing the delete puts
- * the whole payment back: the principal's budget side, the interest as
- * Fees spending in its envelope, the NOT_SPENDING mark from outside the
- * budget. ARS book (blue 1 USD = 1,545 ARS, unused: every leg is ARS).
+ * Deleting a transfer over /api/v1/transfers and undoing the delete puts back
+ * the rows that were there, as stored (transfers/stash.ts): a debt payment's
+ * budget side for the principal, its interest as Fees spending in its
+ * envelope, the NOT_SPENDING mark from outside the budget; a plain transfer's
+ * fee as the user left it. Nothing is inferred from today's budget flags. ARS book (blue 1 USD = 1,545 ARS, unused: every leg is ARS).
  *
  * Seed (ARS): starting money 200,000; envelope E "Card payoff" assigned
  * 150,000, so To assign is 50,000. Wallet 400,000 (in the budget), Card
@@ -138,7 +139,7 @@ async function world() {
 		mode: "add",
 		items: [{ id: randomUUID(), envelopeId: E, amountMinor: 15_000_000 }],
 	});
-	return { user, as, E, fees, wallet, card, brokerage, loan };
+	return { user, as, E, fees, dining, wallet, card, brokerage, loan };
 }
 
 type World = Awaited<ReturnType<typeof world>>;
@@ -161,6 +162,9 @@ async function snapshot(w: World, transferId: string, accounts: string[]) {
 	const sides = await adminDb.wealthTransfer.findMany({
 		where: { transferId },
 	});
+	const legs = (await adminDb.accountLeg.findMany({ where: { transferId } }))
+		.map((l) => [l.accountId, l.source, l.amount.toString()].join(":"))
+		.sort();
 	const balances: Record<string, string> = {};
 	for (const id of accounts) {
 		const a = await adminDb.assetAccount.findUniqueOrThrow({ where: { id } });
@@ -170,6 +174,7 @@ async function snapshot(w: World, transferId: string, accounts: string[]) {
 		envelope: [row?.assigned.minor, row?.activity.minor, row?.left.minor],
 		toAssign: month?.toAssign.amount.minor,
 		balances,
+		legs,
 		transfer: transfer && {
 			kind: transfer.kind,
 			from: transfer.fromAccountId,
@@ -184,6 +189,8 @@ async function snapshot(w: World, transferId: string, accounts: string[]) {
 			categoryId: fee.categoryId,
 			budgetEnvelopeId: fee.budgetEnvelopeId,
 			entryKind: fee.entryKind,
+			excludeFromAnalytics: fee.excludeFromAnalytics,
+			date: fee.date.toISOString(),
 		},
 		sides: sides.map((s) => ({
 			direction: s.direction,
@@ -231,7 +238,7 @@ async function deleteAndUndo(w: World, id: string) {
 	return { deleted, preview, undone };
 }
 
-describe("undoing the delete of a debt payment over /api/v1/transfers", () => {
+describe("undoing the delete of a transfer over /api/v1/transfers restores the rows that were there", () => {
 	it("a card paid from the wallet: envelope Left, To assign, budget side and interest come back", async () => {
 		const w = await world();
 		const { id } = await pay(w, {
@@ -368,5 +375,125 @@ describe("undoing the delete of a debt payment over /api/v1/transfers", () => {
 		});
 		await deleteAndUndo(w, id);
 		expect(await snapshot(w, id, accounts)).toEqual(plain);
+	});
+
+	it("a plain card payment whose fee the user categorized: the fee keeps Dining and no side appears", async () => {
+		const w = await world();
+		const made = await expectBody<{ transfer: { id: string } }>(
+			await send(w, "POST", "/transfers", {
+				fromAccountId: w.wallet,
+				toAccountId: w.card,
+				fromAmount: "100000",
+				fee: { amount: "5000" },
+			}),
+			c.create,
+			201,
+		);
+		const id = made.transfer.id;
+		const fee = await adminDb.transfer.findUniqueOrThrow({ where: { id } });
+		await adminDb.expense.update({
+			where: { id: fee.feeExpenseId as string },
+			data: { categoryId: w.dining },
+		});
+		const accounts = [w.wallet, w.card];
+		const edited = await snapshot(w, id, accounts);
+		expect(edited.fee).toMatchObject({ categoryId: w.dining });
+		expect(edited.sides).toEqual([]);
+		// Wallet 400,000 - 105,000; the card owes 200,000; To assign stays 50,000.
+		expect(edited.balances).toEqual({
+			[w.wallet]: "295000",
+			[w.card]: "200000",
+		});
+		await deleteAndUndo(w, id);
+		const back = await snapshot(w, id, accounts);
+		expect(back).toEqual(edited);
+		expect(back.toAssign).toBe(5_000_000);
+	});
+
+	it("a fee taken from another account comes back on that account", async () => {
+		const w = await world();
+		const made = await expectBody<{ transfer: { id: string } }>(
+			await send(w, "POST", "/transfers", {
+				fromAccountId: w.wallet,
+				toAccountId: w.card,
+				fromAmount: "100000",
+				fee: { amount: "5000", accountId: w.brokerage },
+			}),
+			c.create,
+			201,
+		);
+		const id = made.transfer.id;
+		const accounts = [w.wallet, w.card, w.brokerage];
+		const paid = await snapshot(w, id, accounts);
+		// The fee left the Brokerage (400,000 to 395,000); the Wallet only paid the principal.
+		expect(paid.balances).toEqual({
+			[w.wallet]: "300000",
+			[w.card]: "200000",
+			[w.brokerage]: "395000",
+		});
+		await deleteAndUndo(w, id);
+		expect(await snapshot(w, id, accounts)).toEqual(paid);
+	});
+
+	it("a card paid past what it owes can be restored", async () => {
+		const w = await world();
+		const made = await expectBody<{ transfer: { id: string } }>(
+			await send(w, "POST", "/transfers", {
+				fromAccountId: w.wallet,
+				toAccountId: w.card,
+				fromAmount: "350000",
+			}),
+			c.create,
+			201,
+		);
+		const id = made.transfer.id;
+		const accounts = [w.wallet, w.card];
+		const paid = await snapshot(w, id, accounts);
+		// 350,000 into a card that owed 300,000: it now holds 50,000 of yours.
+		expect(paid.balances).toEqual({ [w.wallet]: "50000", [w.card]: "-50000" });
+		await deleteAndUndo(w, id);
+		expect(await snapshot(w, id, accounts)).toEqual(paid);
+	});
+
+	it("a card moved out of the budget after the payment: the stored side still comes back", async () => {
+		const w = await world();
+		const { id } = await pay(w, {
+			liabilityId: w.card,
+			fromAccountId: w.wallet,
+			interest: "5000",
+		});
+		await adminDb.assetAccount.update({
+			where: { id: w.card },
+			data: { inBudget: false },
+		});
+		const accounts = [w.wallet, w.card];
+		const paid = await snapshot(w, id, accounts);
+		expect(paid.sides).toHaveLength(1);
+		await deleteAndUndo(w, id);
+		expect(await snapshot(w, id, accounts)).toEqual(paid);
+	});
+
+	it("a wallet moved out of the budget after a plain payment: no side is invented", async () => {
+		const w = await world();
+		const made = await expectBody<{ transfer: { id: string } }>(
+			await send(w, "POST", "/transfers", {
+				fromAccountId: w.wallet,
+				toAccountId: w.card,
+				fromAmount: "100000",
+				fee: { amount: "5000" },
+			}),
+			c.create,
+			201,
+		);
+		const id = made.transfer.id;
+		await adminDb.assetAccount.update({
+			where: { id: w.wallet },
+			data: { inBudget: false },
+		});
+		const accounts = [w.wallet, w.card];
+		const paid = await snapshot(w, id, accounts);
+		expect(paid.sides).toEqual([]);
+		await deleteAndUndo(w, id);
+		expect(await snapshot(w, id, accounts)).toEqual(paid);
 	});
 });

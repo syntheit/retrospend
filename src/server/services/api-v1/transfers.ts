@@ -2,9 +2,7 @@ import type { createTransferSchema } from "@retrospend/api-contract";
 import { UNDO_NOT_VALID } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
-import type { RecordDebtPaymentInput } from "~/lib/schemas/envelope-debt";
 import { transferView } from "~/server/services/entry/views";
-import { restoreDebtPaymentMutation } from "~/server/services/envelope/debt.mutation";
 import {
 	type CreateTransferInput,
 	createTransfer,
@@ -83,22 +81,18 @@ export async function createTransferWrite(caller: LedgerCaller, input: Input) {
 export const previewCreateTransfer = (caller: LedgerCaller, input: Input) =>
 	previewWrite(caller, createTransfer, createInput(caller, input));
 
-/**
- * The token that brings a deleted transfer back: a debt payment replays the
- * debt path (its budget side and interest are not a plain transfer's), any
- * other transfer is recreated as it was.
- */
-const restoreToken = (caller: LedgerCaller, value: DeletedTransfer) =>
-	value.debtPayment
-		? undoFor(caller, FAMILY, "debt_payment.record", value.debtPayment)
-		: undoFor(caller, FAMILY, "transfer.create", value.recreate);
+/** The undo of a delete: the recreate plus the stored budget side and fee fields (transfers/stash.ts). */
+const restoreInput = (value: DeletedTransfer): CreateTransferInput => ({
+	...value.recreate,
+	restore: value.restore,
+});
 
 export async function removeTransfer(caller: LedgerCaller, id: string) {
 	const value = await applyWrite(caller, deleteTransfer, { transferId: id });
 	return {
 		id: value.transferId,
 		accounts: value.accounts.map(accountChangeDto),
-		undo: restoreToken(caller, value),
+		undo: undoFor(caller, FAMILY, "transfer.create", restoreInput(value)),
 	};
 }
 
@@ -118,27 +112,7 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 				return {
 					id: value.transferId,
 					accounts: value.accounts.map(accountChangeDto),
-					redo: restoreToken(caller, value),
-				};
-			},
-		};
-	}
-	if (op === "debt_payment.record") {
-		const args = input as RecordDebtPaymentInput;
-		return {
-			preview: () => previewWrite(caller, restoreDebtPaymentMutation, args),
-			apply: async () => {
-				const value = await applyWrite(
-					caller,
-					restoreDebtPaymentMutation,
-					args,
-				);
-				return {
-					id: value.id,
-					accounts: value.accounts.map(accountChangeDto),
-					redo: undoFor(caller, FAMILY, "transfer.delete", {
-						transferId: value.id,
-					}),
+					redo: undoFor(caller, FAMILY, "transfer.create", restoreInput(value)),
 				};
 			},
 		};

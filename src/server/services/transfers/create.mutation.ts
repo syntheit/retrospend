@@ -43,6 +43,7 @@ import {
 	type TransferPlanInput,
 	typedAmount,
 } from "./plan";
+import { restoreTransferStash, type TransferStash } from "./stash";
 
 type Tx = Prisma.TransactionClient;
 
@@ -83,6 +84,11 @@ export interface CreateTransferInput {
 	readonly envelopeId?: string | null;
 	/** Entering the budget: the envelope it goes into (null = To assign). */
 	readonly putIn?: string | null;
+	/**
+	 * Set only by the undo of a delete (signed in its token, never in a plain
+	 * request): the budget side and fee fields as they were stored.
+	 */
+	readonly restore?: TransferStash | null;
 	readonly timeZone?: string;
 }
 
@@ -381,6 +387,13 @@ export async function createTransferIn(
 		envelopeId: (leaves ? input.envelopeId : input.putIn) ?? null,
 		accountId: (leaves ? move.to : move.from).account?.id ?? null,
 	});
+	if (input.restore)
+		await restoreTransferStash(
+			tx,
+			userId,
+			{ transferId, feeExpenseId: fee?.expenseId ?? null },
+			input.restore,
+		);
 	const netWorth = move.booked?.fromHome
 		.add(move.booked.toHome)
 		.add(fee?.home ?? dec(0));

@@ -30,7 +30,6 @@ import type {
 	RecordDebtPaymentInput,
 } from "~/lib/schemas/envelope-debt";
 import type { Prisma } from "~prisma";
-import type { AccountChange } from "../accounts/ledger";
 import { createTransferIn } from "../transfers/create.mutation";
 import { liabilitiesOf, projectIn } from "./debt.service";
 import { findPersonalBook } from "./inputs";
@@ -97,22 +96,12 @@ export async function recordDebtPayment(
 	input: RecordDebtPaymentInput,
 	now: Date,
 ): Promise<DebtPaymentResult> {
-	return (await payDebt(tx, userId, input, now)).result;
-}
-
-/** The payment and the account changes it made (the undo of a delete answers with them). */
-export async function payDebt(
-	tx: Tx,
-	userId: string,
-	input: RecordDebtPaymentInput,
-	now: Date,
-): Promise<{ result: DebtPaymentResult; accounts: readonly AccountChange[] }> {
 	const book = await findPersonalBook(tx, userId);
 	if (!book?.defaultEnvelopeId)
 		throw new EnvelopeError("NO_BOOK", "start a budget first");
 	const H = book.currency;
 	const again = await existing(tx, input, H);
-	if (again) return { result: again, accounts: [] };
+	if (again) return again;
 	const [debt] = await liabilitiesOf(tx, [input.liabilityId]);
 	if (!debt) throw new EnvelopeError("NOT_FOUND", "no such debt");
 	if (debt.currency !== H)
@@ -195,18 +184,15 @@ export async function payDebt(
 		where: { id: debt.id },
 	});
 	return {
-		result: {
-			transferId: moved.transferId,
-			interestExpenseId: moved.feeExpenseId,
-			principal: { minor: input.principalMinor, currency: H },
-			interest: { minor: input.interestMinor, currency: H },
-			balance: {
-				before,
-				after: { minor: toMinor(after.balance, H), currency: H },
-			},
-			wealthTransferId: side?.id ?? null,
+		transferId: moved.transferId,
+		interestExpenseId: moved.feeExpenseId,
+		principal: { minor: input.principalMinor, currency: H },
+		interest: { minor: input.interestMinor, currency: H },
+		balance: {
+			before,
+			after: { minor: toMinor(after.balance, H), currency: H },
 		},
-		accounts: moved.accounts,
+		wealthTransferId: side?.id ?? null,
 	};
 }
 
