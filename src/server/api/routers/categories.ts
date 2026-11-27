@@ -14,13 +14,24 @@ import {
 	updateCategory,
 } from "~/server/services/category.service";
 
-const categoryFields = {
+const createFields = {
 	name: categoryNameSchema,
 	color: z.enum(CATEGORY_COLORS, {
 		message: "Category color is invalid",
 	}),
 	icon: z.string().max(50).optional(),
 	excludeByDefault: z.boolean().optional(),
+};
+
+/**
+ * An edit names only what changes. `name` is optional so a save that renames
+ * nothing leaves it out and does not move the category's version (the server
+ * never compares names; a sent name is a rename).
+ */
+const categoryFields = {
+	...createFields,
+	name: createFields.name.optional(),
+	color: createFields.color.optional(),
 };
 
 /** Without the expense count, as these mutations always answered. */
@@ -41,7 +52,7 @@ export const categoriesRouter = createTRPCRouter({
 	),
 
 	create: protectedProcedure
-		.input(z.object(categoryFields))
+		.input(z.object(createFields))
 		.mutation(async ({ ctx, input }) =>
 			withoutCount(await createCategory(ctx.db, ctx.session.user.id, input)),
 		),

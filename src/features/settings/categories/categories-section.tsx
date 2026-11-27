@@ -129,13 +129,7 @@ function CategoryRow({
 	const setExcluded = (excludeByDefault: boolean) =>
 		void save({
 			apply: async (v: boolean) => {
-				await update.mutateAsync({
-					id: c.id,
-					name: c.name,
-					color: c.color,
-					icon: c.icon ?? undefined,
-					excludeByDefault: v,
-				});
+				await update.mutateAsync({ id: c.id, excludeByDefault: v });
 				await utils.categories.getAll.invalidate();
 			},
 			next: excludeByDefault,
