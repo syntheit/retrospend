@@ -1,9 +1,12 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import {
+	dispatchWealth,
+	isWealthEntry,
+} from "@retrospend/api-client/wealth-wire";
 import type { ProblemCode } from "@retrospend/api-contract/errors";
 import type { Outbox, OutboxEntry, OutboxKind } from "@/data/outbox";
 import { originOf, PARKED_STAMP } from "@/data/outbox-chain";
 import type { Sender, SendResult } from "@/data/sync";
-import { dispatchWealth, isWealthEntry } from "./sendWealth";
 
 // Sends the composers' outbox entries to API v1. The entry's client id is the
 // idempotency key and the new row's id, so a retry after a lost answer

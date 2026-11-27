@@ -9,6 +9,7 @@
 		".": "./src/index.ts",
 		"./invalidation": "./src/invalidation.ts",
 		"./query": "./src/query.ts",
+		"./wealth-wire": "./src/wealth-wire.ts",
 		"./react": "./src/react.ts"
 	},
 	"scripts": {

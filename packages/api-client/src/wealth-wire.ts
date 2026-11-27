@@ -1,11 +1,32 @@
-import type { RetrospendClient } from "@retrospend/api-client";
-import type { OutboxEntry } from "@/data/outbox";
-import type { CallOptions, Created } from "./send";
+import type { RetrospendClient } from "./index";
 
 // The wire of the queued account writes and the transfer delete: one call per
 // kind, with the client ids the device booked under (contract 1.15.0) and the
 // version and balance the write was based on (1.14.0). The answer's own
-// version is what an ack adopts: the device never counts the server's.
+// version is what an ack adopts: the device never counts the server's. Here,
+// next to the client, so the phone's sender and the server's tests send the
+// same calls.
+
+/** What an outbox entry for these writes holds (the phone's `OutboxEntry` has more). */
+export interface WealthEntry {
+	entity: string;
+	kind: string;
+	targetId: string;
+	baseVersion: unknown;
+	payload: unknown;
+}
+
+/** What the call takes beyond the body: the idempotency key and the abort signal. */
+export interface WealthCallOptions {
+	context: { idempotencyKey: string };
+	signal: AbortSignal;
+}
+
+/** The undo token ("" when the server answered none) and the version the answer named for the row. */
+export interface WealthAnswer {
+	undo: string;
+	version?: string | null;
+}
 
 type Body<T> = T extends (input: infer I, ...rest: never[]) => unknown
 	? I
@@ -21,21 +42,21 @@ export interface AccountPayload {
 
 /** The account's version as the entry holds it (text), or null when it names none. */
 export function accountVersionOf(
-	entry: Pick<OutboxEntry, "baseVersion">,
+	entry: Pick<WealthEntry, "baseVersion">,
 ): number | null {
 	const v = entry.baseVersion;
 	if (typeof v !== "string" || !/^\d+$/.test(v)) return null;
 	return Number(v);
 }
 
-const answer = (undo: string | null, version: number): Created => ({
+const answer = (undo: string | null, version: number): WealthAnswer => ({
 	undo: undo ?? NO_UNDO,
 	version: String(version),
 });
 
 /** Whether `entry` is one `dispatchWealth` sends. */
 export const isWealthEntry = (
-	entry: Pick<OutboxEntry, "entity" | "kind">,
+	entry: Pick<WealthEntry, "entity" | "kind">,
 ): boolean =>
 	entry.entity === "accounts" ||
 	(entry.entity === "transfers" && entry.kind === "delete");
@@ -48,9 +69,9 @@ export const isWealthEntry = (
  */
 export async function dispatchWealth(
 	api: RetrospendClient,
-	entry: OutboxEntry,
-	options: CallOptions,
-): Promise<Created> {
+	entry: WealthEntry,
+	options: WealthCallOptions,
+): Promise<WealthAnswer> {
 	const payload = (entry.payload ?? {}) as Record<string, unknown>;
 	const id = entry.targetId;
 	if (entry.entity === "transfers") {

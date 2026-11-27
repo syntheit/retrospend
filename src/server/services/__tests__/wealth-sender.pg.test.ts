@@ -1,5 +1,5 @@
 /**
- * The phone's wire for a queued account write (apps/mobile sendWealth.ts) over
+ * The phone's wire for a queued account write (@retrospend/api-client wealth-wire.ts) over
  * the real v1 routes: what the device booked over a pull is sent with the
  * version and the stored balance it saw, the answer's version is the account's
  * own (the device never counts the server's), and a fresh pull holds the
@@ -14,6 +14,7 @@
  */
 import { randomUUID } from "node:crypto";
 import type { RetrospendClient } from "@retrospend/api-client";
+import { dispatchWealth } from "@retrospend/api-client/wealth-wire";
 import { contract } from "@retrospend/api-contract";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { expectBody } from "~/server/api/v1/core/__tests__/harness";
@@ -25,7 +26,6 @@ import {
 } from "~/test/parity/pull";
 import { adminDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
-import { dispatchWealth } from "../../../../apps/mobile/src/features/entry/sendWealth";
 import {
 	type BookedWrite,
 	bookIn,

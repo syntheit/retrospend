@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { dispatchWealth } from "@retrospend/api-client/wealth-wire";
 import {
 	apiTransport,
 	classify,
@@ -6,7 +7,6 @@ import {
 	forgetUndoTokens,
 	undoFor,
 } from "./send";
-import { dispatchWealth } from "./sendWealth";
 
 // The plain sender for an account write and a transfer delete: the version it
 // checks against, the ids and balance it names, what it adopts from the answer.
