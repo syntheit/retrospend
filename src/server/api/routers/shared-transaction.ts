@@ -17,6 +17,7 @@ import {
 } from "~/server/services/shared-expenses/input";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import { toFloat } from "@retrospend/domain/precise-decimal";
+import { categoryIdSchema } from "~/lib/schemas/row-ids";
 
 export const sharedTransactionRouter = createTRPCRouter({
 	create: guestOrProtectedProcedure
@@ -25,7 +26,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				amount: z.number().positive("Amount must be positive"),
 				currency: z.string().min(1).max(10),
 				description: userText("shared_expense.description", 500),
-				categoryId: z.cuid().optional(),
+				categoryId: categoryIdSchema.optional(),
 				date: z.date(),
 				paidBy: participantRefSchema,
 				splitWith: z
@@ -52,7 +53,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				amount: z.number().positive("Amount must be positive").optional(),
 				currency: z.string().min(1).max(10).optional(),
 				description: userText("shared_expense.description", 500).optional(),
-				categoryId: z.cuid().nullish(),
+				categoryId: categoryIdSchema.nullish(),
 				date: z.date().optional(),
 				paidBy: participantRefSchema.optional(),
 				splitWith: z

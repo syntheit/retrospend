@@ -12,6 +12,7 @@ import {
 	listSharedParticipationsForUser,
 } from "~/server/services/shared-expense-integration";
 import { titleSuggestions } from "~/server/services/title-suggestions.service";
+import { categoryIdSchema } from "~/lib/schemas/row-ids";
 
 /**
  * An existing expense's id: forms write uuids, imports and the sidecar
@@ -40,7 +41,7 @@ const expenseInputSchema = z.object({
 	date: z.date(),
 	location: userTextOrEmpty("expense.location", 500).optional(),
 	description: userTextOrEmpty("expense.description", 2000).optional(),
-	categoryId: z.cuid().optional(),
+	categoryId: categoryIdSchema.optional(),
 	amortizeOver: z.number().int().min(2).max(60).optional(),
 	excludeFromAnalytics: z.boolean().optional(),
 });
@@ -166,7 +167,7 @@ export const expenseRouter = createTRPCRouter({
 							description: userTextOrEmpty("expense.description", 2000)
 								.nullable()
 								.optional(),
-							categoryId: z.cuid().nullable().optional(),
+							categoryId: categoryIdSchema.nullable().optional(),
 							pricingSource: z.string().nullable().optional(),
 							isAmortized: z.boolean().optional().default(false),
 							amortizeDuration: z.number().int().min(2).max(60).optional(),

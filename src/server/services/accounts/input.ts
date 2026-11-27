@@ -18,6 +18,8 @@ import { restChoiceSchema } from "~/lib/schemas/envelope";
 import { customRateSchema } from "~/lib/schemas/rate";
 import { signedRestore } from "~/server/services/entry/input";
 import { AssetType, RecurringFrequency, TransferKind } from "~prisma";
+import { templateIdSchema } from "~/lib/schemas/recurring";
+import { accountIdSchema } from "~/lib/schemas/row-ids";
 
 const decimal = z
 	.string()
@@ -47,14 +49,17 @@ const accountFields = {
 };
 
 export const createAccountSchema = z.object(accountFields);
-export const editAccountSchema = z.object({ id: z.cuid(), ...accountFields });
+export const editAccountSchema = z.object({
+	id: accountIdSchema,
+	...accountFields,
+});
 
 /**
  * A logo or a monogram color, or null for the default glyph. An uploaded
  * picture goes through POST /api/upload/account-icon, never this.
  */
 export const setAccountIconSchema = z.object({
-	id: z.cuid(),
+	id: accountIdSchema,
 	icon: z
 		.object({
 			kind: z.enum(["BRAND", "MONOGRAM"]),
@@ -82,7 +87,7 @@ export const importAccountsSchema = z.object({
 
 /** The old Update balance dialog: a number, as before. */
 export const legacyBalanceSchema = z.object({
-	assetId: z.cuid(),
+	assetId: accountIdSchema,
 	newBalance: z.number(),
 	exchangeRate: accountRateTextSchema.optional(),
 	exchangeRateType: z.string().optional(),
@@ -192,7 +197,7 @@ export const moveInSchema = z.union([
 ]);
 
 export const confirmRecurringIncomeSchema = z.object({
-	templateId: z.cuid(),
+	templateId: templateIdSchema,
 	dueDate: z.date().nullish(),
 	/** The real amount as typed, when the template's amount varies. */
 	amount: positive.nullish(),

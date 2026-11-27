@@ -13,6 +13,7 @@ import {
 	listCategoriesByUsage,
 	updateCategory,
 } from "~/server/services/category.service";
+import { categoryIdSchema } from "~/lib/schemas/row-ids";
 
 const categoryFields = {
 	name: categoryNameSchema,
@@ -30,9 +31,9 @@ function withoutCount<T extends { _count: unknown }>(row: T) {
 }
 
 const removeSchema = z.object({
-	id: z.cuid(),
+	id: categoryIdSchema,
 	/** The category the rows move to; null deletes and leaves them uncategorized. */
-	targetId: z.cuid().nullable(),
+	targetId: categoryIdSchema.nullable(),
 });
 
 export const categoriesRouter = createTRPCRouter({
@@ -47,7 +48,7 @@ export const categoriesRouter = createTRPCRouter({
 		),
 
 	update: protectedProcedure
-		.input(z.object({ id: z.cuid(), ...categoryFields }))
+		.input(z.object({ id: categoryIdSchema, ...categoryFields }))
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...changes } = input;
 			return withoutCount(

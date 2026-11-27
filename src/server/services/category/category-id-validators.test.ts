@@ -1,8 +1,9 @@
 /**
- * M3 PR0: the cuid-only id validators, found by search, and what they do to
- * the id a device makes. A category made on a device has a UUID id, which a
- * `z.cuid()` input refuses, so the web could not file an expense under it,
- * edit it or remove it until PR1 widens these (slice Rev 2 item 5).
+ * The cuid-only id validators, found by search, and what they do to the id a
+ * device makes. A category or an account made on a device has a UUID id,
+ * which a `z.cuid()` input refuses, so the web could not read, edit or use
+ * it. M3 PR1c moved every such reference to one schema that takes both; this
+ * pins that none came back.
  */
 
 import { randomUUID } from "node:crypto";
@@ -11,12 +12,8 @@ import { join, relative } from "node:path";
 import { idSchema } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-	ACCOUNT_ID_VALIDATORS,
-	CATEGORY_ID_VALIDATORS,
-	OTHER_ID_VALIDATORS,
-	type Validators,
-} from "./category-id-validators";
+import { accountIdSchema, categoryIdSchema } from "~/lib/schemas/row-ids";
+import { OTHER_ID_VALIDATORS, type Validators } from "./category-id-validators";
 
 const ROOT = join(__dirname, "../../../..");
 const SKIP_DIR = new Set([
@@ -53,6 +50,8 @@ function scan() {
 		for (const file of sources(join(ROOT, dir))) {
 			const rel = relative(ROOT, file);
 			if (isTestSupport(rel)) continue;
+			// The one owner of the cuid-or-uuid rule; it names z.cuid() on purpose.
+			if (rel === "src/lib/schemas/row-ids.ts") continue;
 			// Comments and doc strings may name the validator; code does not.
 			const text = readFileSync(file, "utf8")
 				.replace(/\/\*[\s\S]*?\*\//g, "")
@@ -70,48 +69,46 @@ function scan() {
 	return { named, unnamed };
 }
 
-/** The three lists merged into one file -> field -> count map. */
-function merged() {
-	const all: Validators = {};
-	for (const list of [
-		CATEGORY_ID_VALIDATORS,
-		ACCOUNT_ID_VALIDATORS,
-		OTHER_ID_VALIDATORS,
-	])
-		for (const [file, fields] of Object.entries(list))
-			for (const [field, n] of Object.entries(fields))
-				all[file] = { ...all[file], [field]: (all[file]?.[field] ?? 0) + n };
-	return all;
-}
-
 describe("cuid-only id validators", () => {
 	it("every one is a named field, so none hides in an array or a chain", () => {
 		expect(scan().unnamed).toEqual([]);
 	});
 
-	it("are exactly the category, account and other ids the lists name", () => {
-		expect(scan().named).toEqual(merged());
+	it("are exactly the ids the list names, built by search from the source", () => {
+		expect(scan().named).toEqual(OTHER_ID_VALIDATORS);
 	});
 
-	it("the category list holds the thirteen references the slice names", () => {
-		const total = Object.values(CATEGORY_ID_VALIDATORS)
-			.flatMap((fields) => Object.values(fields))
-			.reduce((a, b) => a + b, 0);
-		expect(total).toBe(13);
+	it("none of them is a category, account, asset or template reference", () => {
+		const fields = Object.values(scan().named).flatMap((f) => Object.keys(f));
+		for (const field of fields)
+			expect(field).not.toMatch(/categor|account|asset|template|target/i);
+		// The ids named `id` belong to the invite router only: every other
+		// router and input file that takes a category or an account id by
+		// that name uses the shared schemas.
+		const idFiles = Object.entries(scan().named)
+			.filter(([, f]) => "id" in f)
+			.map(([file]) => file);
+		expect(idFiles).toEqual(["src/server/api/routers/invite.ts"]);
 	});
 });
 
-describe("what they do to a device's UUID", () => {
+describe("categoryIdSchema and accountIdSchema", () => {
 	const uuid = randomUUID();
+	const cuid = `c${uuid.replaceAll("-", "")}`;
 
-	it("z.cuid() refuses a UUID and a cuid-shaped id passes; v1's idSchema takes both", () => {
+	it("z.cuid() refuses a UUID, the shared schemas and v1's idSchema take both", () => {
 		expect(z.cuid().safeParse(uuid).success).toBe(false);
-		expect(z.cuid().safeParse(`c${uuid.replaceAll("-", "")}`).success).toBe(
-			true,
-		);
-		expect(idSchema.safeParse(uuid).success).toBe(true);
-		expect(idSchema.safeParse(`c${uuid.replaceAll("-", "")}`).success).toBe(
-			true,
-		);
+		expect(z.cuid().safeParse(cuid).success).toBe(true);
+		for (const schema of [categoryIdSchema, accountIdSchema, idSchema]) {
+			expect(schema.safeParse(uuid).success).toBe(true);
+			expect(schema.safeParse(cuid).success).toBe(true);
+		}
+	});
+
+	it("still refuse what is neither shape", () => {
+		for (const schema of [categoryIdSchema, accountIdSchema]) {
+			for (const bad of ["", "not an id", "123", `${uuid}x`, "../x", null])
+				expect(schema.safeParse(bad).success).toBe(false);
+		}
 	});
 });

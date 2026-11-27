@@ -16,6 +16,7 @@ import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { z } from "zod";
 import { customRateSchema } from "~/lib/schemas/rate";
 import type { CreateExpenseInput } from "../expense.service";
+import { categoryIdSchema } from "~/lib/schemas/row-ids";
 
 const decimal = z
 	.string()
@@ -36,7 +37,7 @@ const expenseFields = {
 	amount: decimal,
 	currency,
 	date: isoDay,
-	categoryId: z.cuid(),
+	categoryId: categoryIdSchema,
 	/** A rate type of the pair (official, blue...); omitted: the default. */
 	rateType: rateType.optional(),
 	/** A typed rate: 1 unit of `currency` = this many of the home currency. */
@@ -115,7 +116,7 @@ const sharedFields = {
 	amount: decimal,
 	currency,
 	description: userText("shared_expense.description", 500),
-	categoryId: z.cuid().optional(),
+	categoryId: categoryIdSchema.optional(),
 	date: isoDay,
 	notes: userTextOrEmpty("shared_expense.notes", 5000).optional(),
 	...splitFields,
