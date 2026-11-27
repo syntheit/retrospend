@@ -347,7 +347,7 @@ describe("account client ids", () => {
 			const a = await open();
 			const legId = randomUUID();
 			const rateTypeId = randomUUID();
-			await expectBody(
+			const written = await expectBody<Write>(
 				await send("PUT", `/accounts/${a.id}`, {
 					...a,
 					balance: "1150",
@@ -357,6 +357,8 @@ describe("account client ids", () => {
 				}),
 				c.update,
 			);
+			// The answer says which of the ids it used.
+			expect(written.result).toMatchObject({ legId, rateTypeId });
 			expect(
 				(
 					await adminDb.accountLeg.findUniqueOrThrow({ where: { id: legId } })
@@ -386,6 +388,46 @@ describe("account client ids", () => {
 				"id_taken",
 			);
 			expect(await state(b.id)).toEqual(before);
+		});
+	});
+
+	describe("what PUT answers about the ids it was given", () => {
+		it("null for a row it did not write: no change in balance, no change in type", async () => {
+			const a = await open();
+			const done = await expectBody<Write>(
+				await send("PUT", `/accounts/${a.id}`, {
+					...a,
+					name: "Renamed",
+					legId: randomUUID(),
+					rateTypeId: randomUUID(),
+				}),
+				c.update,
+			);
+			expect(done.result).toMatchObject({ legId: null, rateTypeId: null });
+		});
+
+		it("only the leg when the balance changed and the type did not", async () => {
+			const a = await open();
+			const legId = randomUUID();
+			const done = await expectBody<Write>(
+				await send("PUT", `/accounts/${a.id}`, {
+					...a,
+					balance: "1200",
+					legId,
+					rateTypeId: randomUUID(),
+				}),
+				c.update,
+			);
+			expect(done.result).toMatchObject({ legId, rateTypeId: null });
+		});
+
+		it("null when no ids were sent, though a leg was written", async () => {
+			const a = await open();
+			const done = await expectBody<Write>(
+				await send("PUT", `/accounts/${a.id}`, { ...a, balance: "1300" }),
+				c.update,
+			);
+			expect(done.result).toMatchObject({ legId: null, rateTypeId: null });
 		});
 	});
 

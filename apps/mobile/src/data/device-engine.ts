@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type {
+	AccountSeen,
 	BookedWrite,
 	BulkAnswer,
 	BulkBooked,
@@ -120,7 +121,13 @@ export interface DeviceWrites {
 	/** The pulled row as the body that saves it again, for Try again; null when it cannot be read. */
 	storedRebase(id: string): Promise<Rebase | null>;
 	/** A pull that began after pull `pull` finished without this expense (see DeviceEngine). */
-	absentSince(id: string, pull: number): Promise<boolean>;
+	absentSince(
+		id: string,
+		pull: number,
+		table?: "expenses" | "accounts" | "transfers",
+	): Promise<boolean>;
+	/** The account as a pull left it (its version and stored balance), or null when it is not there. */
+	storedAccount(id: string): Promise<AccountSeen | null>;
 	/** The recurring template as a pull that began after pull `pull` left it; null while none has finished. */
 	templateSince(
 		id: string,
@@ -203,7 +210,8 @@ export function writesFor(api: RetrospendClient): DeviceWrites | null {
 		},
 		pullsBegun: () => engine.pullsBegun,
 		storedRebase: (id) => engine.storedRebase(id),
-		absentSince: (id, pull) => engine.absentSince(id, pull),
+		absentSince: (id, pull, table) => engine.absentSince(id, pull, table),
+		storedAccount: (id) => engine.storedAccount(id),
 		templateSince: (id, pull, dueAt, expenseId) =>
 			engine.templateSince(id, pull, dueAt, expenseId),
 		refresh: () => pending?.refresh() ?? Promise.resolve(),

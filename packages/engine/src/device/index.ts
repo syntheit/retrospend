@@ -15,11 +15,6 @@ export type {
 	WriteBody,
 	WriteOp,
 } from "./book";
-export type {
-	TransferCreateBody,
-	TransferDeleteBody,
-	TransferOp,
-} from "./transfer-book";
 export type { BulkAnswer, BulkBooked, BulkOp } from "./bulk";
 export {
 	type CheckPlan,
@@ -82,5 +77,15 @@ export type {
 } from "./ports";
 export type { PosterPlansInput, PosterTemplatePlan } from "./poster-plan";
 export type { ServerPreview } from "./preview-compare";
-export { type Rebase, type TemplateSeen, templateSeenOf } from "./rebase";
+export {
+	type AccountSeen,
+	type Rebase,
+	type TemplateSeen,
+	templateSeenOf,
+} from "./rebase";
 export type { TemplateCreateBody, TemplateUpdateBody } from "./template-book";
+export type {
+	TransferCreateBody,
+	TransferDeleteBody,
+	TransferOp,
+} from "./transfer-book";

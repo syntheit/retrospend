@@ -5,6 +5,7 @@
  * no money, counted units follow the leg and never exceed the balance, and
  * Not tracked moves nothing. Every value is derived by hand.
  */
+import { ID_TAKEN_MESSAGE } from "@retrospend/domain/id-taken";
 import { describe, expect, it } from "vitest";
 import { seedRowOf } from "./account-conformance";
 import { insertLegs, removeLegs } from "./account-legs";
@@ -176,8 +177,9 @@ describe("insertLegs", () => {
 	it("refuses a leg id that is taken and writes nothing", async () => {
 		const store = await open();
 		await insert(store, leg("l1"));
+		// The server's words for a taken id, from the one owner.
 		await expect(insert(store, leg("l1", { amount: "5" }))).rejects.toThrow(
-			"already exists",
+			ID_TAKEN_MESSAGE,
 		);
 		expect(store.get("accounts", "a1")?.balance).toBe("750.25");
 	});

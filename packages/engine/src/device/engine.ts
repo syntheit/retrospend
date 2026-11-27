@@ -56,6 +56,8 @@ import {
 	type ServerPreview,
 } from "./preview-compare";
 import {
+	type AccountSeen,
+	accountSeenOf,
 	type Rebase,
 	rebaseOf,
 	type TemplateSeen,
@@ -152,7 +154,13 @@ export interface DeviceEngine extends DeviceReads {
 	 * deleted it, or a sync reset took it. A pull that began before `pull`
 	 * resolves nothing. False when it cannot tell.
 	 */
-	absentSince(id: string, pull: number): Promise<boolean>;
+	absentSince(
+		id: string,
+		pull: number,
+		table?: "expenses" | "accounts" | "transfers",
+	): Promise<boolean>;
+	/** The account as the store holds it, without a pending write laid over it; null when it is not there. */
+	storedAccount(id: string): Promise<AccountSeen | null>;
 	/**
 	 * The recurring template as a pull that began after pull number `pull` and
 	 * has finished left it (see `TemplateSeen`), for a parked confirm or skip
@@ -790,10 +798,17 @@ export function createDeviceEngine(
 
 	const storedRebase = (id: string) => readStored((view) => rebaseOf(view, id));
 
-	async function absentSince(id: string, pull: number): Promise<boolean> {
+	async function absentSince(
+		id: string,
+		pull: number,
+		table: "expenses" | "accounts" | "transfers" = "expenses",
+	): Promise<boolean> {
 		if (settledPull <= pull) return false;
-		return (await readStored((view) => !view.get("expenses", id))) === true;
+		return (await readStored((view) => !view.get(table, id))) === true;
 	}
+
+	const storedAccount = (id: string) =>
+		readStored((view) => accountSeenOf(view, id));
 
 	async function templateSince(
 		id: string,
@@ -895,6 +910,7 @@ export function createDeviceEngine(
 		readWithPending,
 		book,
 		storedRebase,
+		storedAccount,
 		absentSince,
 		templateSince,
 		planPoster,

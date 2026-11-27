@@ -8,12 +8,10 @@
  */
 import { bookValuationKey } from "@retrospend/domain/envelope/book-valuation-key";
 import { dec } from "@retrospend/domain/precise-decimal";
-import type { Columns } from "./account-conformance";
 import {
 	ACCOUNT_COLUMNS,
 	byKey,
 	day,
-	decimal,
 	differing,
 	exact,
 	expectDecimal,
@@ -33,6 +31,7 @@ import type {
 	ExpectedTransferState,
 	TransferVector,
 } from "./transfer-vector-types";
+import { type Columns, TRANSFER_COLUMNS } from "./wealth-columns";
 
 /** A device store holding the vector's settings, rates, accounts and budget book. */
 export async function seededTransferStore(vector: TransferVector) {
@@ -209,21 +208,6 @@ export async function checkTransferState(
 		);
 	}
 }
-
-const TRANSFER_COLUMNS: Columns<TableRows["transfers"]> = {
-	id: byKey,
-	kind: exact,
-	date: instant,
-	fromAccountId: exact,
-	fromAmount: decimal,
-	toAccountId: exact,
-	toAmount: decimal,
-	toCurrency: exact,
-	feeExpenseId: exact,
-	countedFromUnits: decimal,
-	countedToUnits: decimal,
-	note: exact,
-};
 
 /** The columns of an expense both a device's booking and the server's read have (the fee's booked rate is held by the vector's own values). */
 const EXPENSE_COLUMNS: Columns<

@@ -33,7 +33,9 @@ describe("pending source over the outbox", () => {
 		});
 		expect(entries[1]).toMatchObject({ parked: true });
 		expect(entries[1]?.ack).toBeUndefined();
-		expect(entries[1]?.changes[0]?.before?.version).toBe(T1);
+		expect(
+			(entries[1]?.changes[0]?.before as { version: unknown } | null)?.version,
+		).toBe(T1);
 	});
 
 	it("reads a restarted run's acked entry with pull 0", async () => {

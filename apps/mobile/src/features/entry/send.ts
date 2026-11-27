@@ -1,4 +1,8 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import {
+	dispatchWealth,
+	isWealthEntry,
+} from "@retrospend/api-client/wealth-wire";
 import type { ProblemCode } from "@retrospend/api-contract/errors";
 import type { Outbox, OutboxEntry, OutboxKind } from "@/data/outbox";
 import { originOf, PARKED_STAMP } from "@/data/outbox-chain";
@@ -24,6 +28,7 @@ export const ENTRY_ENTITIES = [
 	"income",
 	"transfers",
 	"recurring",
+	"accounts",
 ] as const;
 export type EntryEntity = (typeof ENTRY_ENTITIES)[number];
 
@@ -34,7 +39,9 @@ export function isEntryEntity(entity: string): entity is EntryEntity {
 /**
  * The one table of what this sender can send: a create of its own entities, an
  * update or delete of an expense, and a create, edit, confirm or skip of a
- * recurring template (only the dev flag queues those). A kind not listed for
+ * recurring template and a create, edit, close, reopen, balance update or rate
+ * type switch of an account, and a transfer delete (only the dev flag queues
+ * those). A kind not listed for
  * its entity has no sender here (a template delete stays online) and must not
  * stop the queue.
  */
@@ -42,8 +49,9 @@ const SENDABLE: Record<EntryEntity, readonly OutboxKind[]> = {
 	expenses: ["create", "update", "delete"],
 	"shared-expenses": ["create"],
 	income: ["create"],
-	transfers: ["create"],
+	transfers: ["create", "delete"],
 	recurring: ["create", "update", "confirm", "skip"],
+	accounts: ["create", "update", "close", "reopen", "balance", "rateType"],
 };
 
 const sendable = (e: OutboxEntry): e is OutboxEntry & { entity: EntryEntity } =>
@@ -98,6 +106,8 @@ export const PROTECTED_ACCOUNT = problem("protected_account");
 export const RECURRING_ALREADY_POSTED = problem("recurring_already_posted");
 export const RECURRING_NOT_DUE = problem("recurring_not_due");
 export const RECURRING_CHANGED = problem("recurring_changed");
+/** The account moved (its version, or its stored balance) since the write read it. */
+export const PARKED_ACCOUNT_CHANGED = problem("account_changed");
 
 /** The server answered that it did not take the write, and said nothing of an earlier try. */
 export function notStored(sent: { http?: number; reason: string }): boolean {
@@ -142,6 +152,7 @@ export const MAYBE_GONE: readonly string[] = [
 	PARKED_STAMP,
 	RECURRING_ALREADY_POSTED,
 	RECURRING_CHANGED,
+	PARKED_ACCOUNT_CHANGED,
 ];
 
 /**
@@ -275,7 +286,12 @@ export function createEntrySender(
 		}
 		// A write to an existing row is checked against the version it was based
 		// on; with none it would overwrite or delete unchecked.
-		if (entry.kind !== "create" && typeof entry.baseVersion !== "string") {
+		// A transfer has no version: its delete is checked by the row alone.
+		if (
+			entry.kind !== "create" &&
+			entry.entity !== "transfers" &&
+			typeof entry.baseVersion !== "string"
+		) {
 			return { status: "conflict", reason: PARKED_NO_STAMP };
 		}
 		if (
@@ -292,6 +308,7 @@ export function createEntrySender(
 				undo: token,
 				version,
 				expenseVersion,
+				unwritten,
 			} = await transport.dispatch(entry, {
 				context: { idempotencyKey: entry.clientId },
 				signal: timeout.signal,
@@ -312,6 +329,7 @@ export function createEntrySender(
 				status: "sent",
 				...(version !== undefined ? { version } : {}),
 				...(expenseVersion !== undefined ? { expenseVersion } : {}),
+				...(unwritten !== undefined ? { unwritten } : {}),
 			};
 		} catch (error) {
 			// The id exists: an earlier try went through and its answer got lost.
@@ -366,6 +384,8 @@ export interface Created {
 	 * version, as before.
 	 */
 	expenseVersion?: string;
+	/** Row ids the booking holds that the server did not write (see `WealthAnswer`). */
+	unwritten?: readonly string[];
 }
 
 export const NO_TOKEN = "";
@@ -433,6 +453,7 @@ async function dispatch(
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
+	if (isWealthEntry(entry)) return dispatchWealth(api, entry, options);
 	switch (entry.kind) {
 		case "create":
 			return create(api, entry, options);
@@ -560,6 +581,8 @@ async function create(
 			};
 		case "recurring":
 			return createTemplate(api, entry, options);
+		case "accounts":
+			return dispatchWealth(api, entry, options);
 	}
 }
 
@@ -636,6 +659,8 @@ async function undoWithKey(
 			await api["shared-expenses"].undo(input, options);
 		} else if (ref.entity === "transfers") {
 			await api.transfers.undo(input, options);
+		} else if (ref.entity === "accounts") {
+			await api.accounts.undo(input, options);
 		} else if (ref.entity === "recurring") {
 			// A confirm and a skip are undone by different routes: never guess.
 			if (ref.kind === "confirm") await api.recurring.undo(input, options);

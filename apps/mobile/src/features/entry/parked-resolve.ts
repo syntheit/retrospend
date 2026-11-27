@@ -37,17 +37,31 @@ export async function resolveParked(
 		return parkedFrom(entry);
 	if (entry.entity === "recurring")
 		return resolveTemplate(outbox, writes, entry);
+	const table = ABSENCE_TABLE[entry.entity];
 	if (
-		entry.entity !== "expenses" ||
-		!(await writes.absentSince(entry.targetId, notFoundPull(entry.clientId)))
+		!table ||
+		!(await writes.absentSince(
+			entry.targetId,
+			notFoundPull(entry.clientId),
+			table,
+		))
 	)
 		return parkedFrom(entry);
-	if (entry.kind === "update") return parkedFrom(entry, true);
+	// The row is gone: an edit shows "Deleted on another device"; a delete has nothing left to do.
+	if (entry.kind !== "delete")
+		return entry.entity === "expenses"
+			? parkedFrom(entry, true)
+			: discardOnly(entry, true);
 	// Gone already: retired without a Sync issue.
 	await exclusive(outbox, () => outbox.discard(entry.clientId));
 	forgetNotFound(entry.clientId);
 	return null;
 }
+
+/** The table whose absence a parked write of each entity waits on. */
+const ABSENCE_TABLE: Readonly<
+	Record<string, "expenses" | "accounts" | "transfers" | undefined>
+> = { expenses: "expenses", accounts: "accounts", transfers: "transfers" };
 
 /** A parked write the person can only discard: the template moved under it, so sending it again could book the wrong period. */
 const discardOnly = (entry: OutboxEntry, gone = false): ParkedEntry => ({
@@ -106,8 +120,7 @@ async function resolveTemplate(
 	// The server refuses a poster entry (an auto post) with a 404 when the
 	// template no longer pays automatically with a fixed amount: the next run
 	// plans nothing for it, so the entry has nothing left to do.
-	const autoOff =
-		seen.found && (!seen.autoPay || seen.amountMode !== "FIXED");
+	const autoOff = seen.found && (!seen.autoPay || seen.amountMode !== "FIXED");
 	const retire = !seen.found
 		? poster || entry.kind === "skip"
 		: poster

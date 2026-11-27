@@ -35,6 +35,10 @@ export const serverInfoSchema = z
 					description:
 						"Whether POST /recurring/{id}/confirm takes `auto` (contract 1.13.0), which an app that posts recurring income itself needs: a server before 1.13.0 leaves this out and would run such a confirm as a person's income confirm. An app plans recurring income only when this is true.",
 				}),
+				wealthWrites: z.boolean().optional().meta({
+					description:
+						"Whether account and transfer writes take the client-made ids (contract 1.15.0), `expectedVersion` and `expectedBalance` (1.14.0), and PUT /accounts/{id} answers the ids it used (1.16.0). A server before 1.16.0 leaves this out and ignores ids it does not know. An app books and queues these writes on the device only when this is true.",
+				}),
 			})
 			.meta({ description: "Optional server capabilities." }),
 		auth: z.object({

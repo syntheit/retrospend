@@ -2,6 +2,7 @@ import type { Me, ServerInfo } from "@retrospend/api-contract";
 import { env } from "~/env";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
+import { WEALTH_WRITES } from "~/server/services/accounts/wealth-writes";
 import { type PushConfig, pushConfig } from "~/server/services/push/config";
 import {
 	AUTO_CONFIRM,
@@ -38,6 +39,7 @@ export async function getServerInfo(
 			advancedProtection: env.ADVANCED_PROTECTION_ENABLED,
 			autoPost: autoPostEnabled(),
 			autoConfirm: AUTO_CONFIRM,
+			wealthWrites: WEALTH_WRITES,
 		},
 		auth: {
 			methods: ["password", "totp", "bearer", "apiKey", "deviceAuthorization"],

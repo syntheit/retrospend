@@ -14,6 +14,7 @@ import {
 	accountRateRevertedSchema,
 	accountRemovedSchema,
 	accountStateParamsSchema,
+	accountUpdatedSchema,
 	balanceUpdateSchema,
 	createAccountSchema,
 	defaultAccountsSchema,
@@ -52,7 +53,7 @@ const update = moneyWrite({
 	summary: "Replace an account's fields",
 	event: "account.updated",
 	input: updateAccountSchema,
-	result: accountItemSchema,
+	result: accountUpdatedSchema,
 });
 const close = moneyWrite({
 	path: "/accounts/{id}/close",

@@ -14,6 +14,12 @@ import {
 	templateWithoutText,
 } from "../templates";
 import { applyChanges } from "../undo";
+import { differingColumns } from "../wealth-columns";
+import {
+	isWealthTable,
+	type WealthChange,
+	type WealthTable,
+} from "../wealth-rows";
 import { sameColumnValue } from "../write-parity";
 
 // Writes the device has booked and the server has not shown back yet, read
@@ -42,7 +48,13 @@ export interface TemplateChange {
 	readonly after: TextFreeTemplateRow | null;
 }
 
-export type PendingChange = ExpenseChange | TemplateChange;
+/**
+ * One account, leg, snapshot, rate switch or transfer row an entry changed:
+ * an account without its name, a transfer without its note (wealth-rows.ts).
+ */
+export type { WealthChange };
+
+export type PendingChange = ExpenseChange | TemplateChange | WealthChange;
 
 /** One write in the outbox or the acked list; the engine reads it and never changes it. */
 export interface PendingEntry {
@@ -103,6 +115,12 @@ export const CREATE_TEMPLATE_TEXT = {
 	category: null,
 };
 
+/** The same for a created account: no name. */
+export const CREATE_ACCOUNT_TEXT = { name: "" };
+
+/** The same for a created transfer: no note. */
+export const CREATE_TRANSFER_TEXT = { note: null };
+
 /**
  * Whether the overlay replays `entry`. A parked entry may never be sent and an
  * unbooked one has no device booking, so neither counts. An acked one counts
@@ -145,6 +163,28 @@ function settled(row: TextFreeExpenseRow): Record<string, unknown> {
 	};
 }
 
+/** The text a created row of `table` has in an overlay (none for rows without text). */
+function createTextOf(table: TableName): Record<string, unknown> {
+	switch (table) {
+		case "recurringTemplates":
+			return CREATE_TEMPLATE_TEXT;
+		case "accounts":
+			return CREATE_ACCOUNT_TEXT;
+		case "transfers":
+			return CREATE_TRANSFER_TEXT;
+		case "legs":
+		case "snapshots":
+		case "rateSwitches":
+			return {};
+		default:
+			return CREATE_TEXT;
+	}
+}
+
+/** An account's version is a number; every other row's is the `updatedAt` text. */
+const ackedVersion = (table: TableName, version: string) =>
+	table === "accounts" ? Number(version) : version;
+
 /**
  * Whether the stored expense is the one an entry's `before` names: every
  * column the device keeps, decimals by value (a pulled row's text is the
@@ -175,10 +215,41 @@ function isBeforeTemplate(current: unknown, expected: unknown): boolean {
 	);
 }
 
+/**
+ * The same for the account family, over every column the device keeps, except
+ * an account's `version`: it is the server's, a placeholder on the device
+ * until the ack names it, and another entry (a transfer through the account)
+ * holds the account as the placeholder had it. The version is checked at send
+ * (expectedVersion), and a changed account differs in a column anyway.
+ */
+function isBeforeWealth(
+	current: unknown,
+	expected: unknown,
+	table: WealthTable,
+): boolean {
+	if (current === null || expected === null) return current === expected;
+	return (
+		differingColumns(
+			table,
+			current as object,
+			expected as object,
+			BEFORE_SKIPPED[table] ?? [],
+		).length === 0
+	);
+}
+
+/** Columns a stored row has that an entry's text-free row does not, or that the ack names (the version). */
+const BEFORE_SKIPPED: Partial<Record<WealthTable, readonly string[]>> = {
+	accounts: ["name", "version"],
+	transfers: ["note"],
+};
+
 const isBefore = (current: unknown, expected: unknown, table: TableName) =>
 	table === "recurringTemplates"
 		? isBeforeTemplate(current, expected)
-		: isBeforeExpense(current, expected);
+		: isWealthTable(table)
+			? isBeforeWealth(current, expected, table)
+			: isBeforeExpense(current, expected);
 
 /**
  * Replays one entry over `tx`. A row it would change must equal its `before`
@@ -201,13 +272,16 @@ function replay(tx: Writer, entry: PendingEntry) {
 			matches: isBefore,
 			rowFor: (c, current) => {
 				if (c.after === null) return null;
-				const text =
-					c.table === "recurringTemplates" ? CREATE_TEMPLATE_TEXT : CREATE_TEXT;
 				return {
-					...(current ?? text),
+					...(current ?? createTextOf(c.table)),
 					...c.after,
+					// A write that does not name the account's version (a transfer through
+					// it) leaves the version the account holds; its own count is a placeholder.
+					...(c.table === "accounts" && current && versioned !== "accounts"
+						? { version: (current as { version: number }).version }
+						: {}),
 					...(entry.ack?.version && c.table === versioned
-						? { version: entry.ack.version }
+						? { version: ackedVersion(c.table, entry.ack.version) }
 						: {}),
 				} as RowChange["after"];
 			},

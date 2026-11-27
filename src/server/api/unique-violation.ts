@@ -1,3 +1,4 @@
+import { ID_TAKEN_MESSAGE } from "@retrospend/domain/id-taken";
 import { Prisma } from "~prisma";
 
 /** Whether the unique key that failed is the row's id (its primary key). */
@@ -22,6 +23,6 @@ export function uniqueViolation(
 	)
 		return null;
 	return idIsTheKey(error)
-		? { problem: "id_taken", message: "That id is already used" }
+		? { problem: "id_taken", message: ID_TAKEN_MESSAGE }
 		: { problem: "conflict", message: "That id or name is already used" };
 }

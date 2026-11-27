@@ -14,14 +14,16 @@ import {
 	createAccount,
 	updateAccount,
 } from "../account-write-local";
+import type { RowChange } from "../changes";
 import type { TableRows } from "../port";
-import type { UndoToken } from "../undo";
 import {
 	accountWithoutText,
-	type TextFreeAccountRow,
-	type TextFreeTransferRow,
+	isWealthTable,
 	transferWithoutText,
+	type WealthChange,
 } from "../wealth-rows";
+
+export type { WealthChange };
 
 // A person's account create, edit, close, reopen, balance update or rate type
 // switch, as the device books it: the engine's account mutations over the same
@@ -31,10 +33,9 @@ import {
 // body's `expectedVersion` and `expectedBalance`, taken from `accountBase`),
 // and a view that has moved on only makes this booking a refusal.
 //
-// The rows an account write changes are `wealth`, not `changes`: the outbox,
-// the overlay and the pull-time compare read `PendingChange`, and teaching
-// them these tables is the sender's work (PR6 of slice-device-wealth). Until
-// then an account entry is booked and previewed here and is not queued.
+// The rows an account write changes are `changes` like any other write's: the
+// outbox, the overlay and the pull-time compare read them as `PendingChange`,
+// without the account's name (wealth-rows.ts).
 
 export type AccountCreateBody = AccountFieldsInput & { id: string };
 export type AccountUpdateBody = AccountFieldsInput & {
@@ -117,53 +118,16 @@ export function accountPlanOf(op: AccountOp, now: Date) {
 	}
 }
 
-/** The tables an account or transfer write changes (a transfer's fee expense is an expense change, not one of these). */
-type WealthTable =
-	| "accounts"
-	| "legs"
-	| "snapshots"
-	| "rateSwitches"
-	| "transfers";
-
-type RowOf<T extends WealthTable> = T extends "accounts"
-	? TextFreeAccountRow
-	: T extends "transfers"
-		? TextFreeTransferRow
-		: TableRows[T];
-
-/** One account-family row an entry changed, as the device booked it: an account without its name, a transfer without its note. */
-export type WealthChange = {
-	[T in WealthTable]: {
-		readonly table: T;
-		readonly id: string;
-		readonly before: RowOf<T> | null;
-		readonly after: RowOf<T> | null;
+/** The account-family row `c` changed, without the account's name or the transfer's note; null for another table. */
+export function wealthChangeOf(c: RowChange): WealthChange | null {
+	if (!isWealthTable(c.table)) return null;
+	const bare = (row: unknown) => {
+		if (row === null) return row;
+		if (c.table === "accounts")
+			return accountWithoutText(row as TableRows["accounts"]);
+		if (c.table === "transfers")
+			return transferWithoutText(row as TableRows["transfers"]);
+		return row;
 	};
-}[WealthTable];
-
-const WEALTH_TABLES: readonly string[] = [
-	"accounts",
-	"legs",
-	"snapshots",
-	"rateSwitches",
-	"transfers",
-] satisfies WealthTable[];
-
-/** The account, leg, snapshot, rate switch and transfer rows a write changed; the account's name and the transfer's note are never kept. */
-export function wealthChangesOf(undo: UndoToken): WealthChange[] {
-	const rows = undo.kind === "revert" ? undo.changes : [];
-	return rows.flatMap((c): WealthChange[] => {
-		if (!WEALTH_TABLES.includes(c.table)) return [];
-		const bare = (row: unknown) => {
-			if (row === null) return row;
-			if (c.table === "accounts")
-				return accountWithoutText(row as TableRows["accounts"]);
-			if (c.table === "transfers")
-				return transferWithoutText(row as TableRows["transfers"]);
-			return row;
-		};
-		return [
-			{ ...c, before: bare(c.before), after: bare(c.after) } as WealthChange,
-		];
-	});
+	return { ...c, before: bare(c.before), after: bare(c.after) } as WealthChange;
 }

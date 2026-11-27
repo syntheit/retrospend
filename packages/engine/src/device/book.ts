@@ -6,6 +6,7 @@ import {
 	RecurringRefusal,
 } from "@retrospend/domain/recurring-post/refusals";
 import { dayKey } from "@retrospend/domain/time-zone";
+import { budgetFamilyPulled } from "../budget-gate";
 import { NotFoundError } from "../errors";
 import { createExpense, EXPENSE_CREATE } from "../expense-create";
 import {
@@ -29,8 +30,7 @@ import {
 	type AccountOp,
 	accountPlanOf,
 	isAccountOp,
-	type WealthChange,
-	wealthChangesOf,
+	wealthChangeOf,
 } from "./account-book";
 import type { ExpenseChange, PendingChange } from "./pending";
 import { recurringPlanOf } from "./recurring-book";
@@ -122,16 +122,14 @@ export const targetOf = (op: WriteOp): string =>
 				? op.body.templateId
 				: op.body.id;
 
-/** The sync cursors a fee check reads (the engine's own). */
-export type WriteCursors = Readonly<
-	Partial<Record<"expenses" | "transfers", string>>
->;
+/** The sync cursors a fee check and the budget gate read (the engine's own, by entity). */
+export type WriteCursors = Readonly<Partial<Record<string, string>>>;
 
 /** What an outbox entry keeps of a booking, and the version the write was based on. */
 export interface BookedWrite {
 	/** Epoch ms the device booked it. */
 	bookedAt: number;
-	/** Each expense and template it changed; empty when the device had no rate. */
+	/** Each expense, template, account, leg, snapshot, rate switch and transfer it changed, in order; empty when the device had no rate. */
 	changes: PendingChange[];
 	/** The body fields the person changed (names only). */
 	changed: string[];
@@ -143,13 +141,6 @@ export interface BookedWrite {
 	 * account write, whose base is `accountBase`.
 	 */
 	base: string | null;
-	/**
-	 * An account or transfer write's rows (account-book.ts): the accounts,
-	 * legs, snapshots, rate switches and transfers, not in `changes` until the
-	 * outbox and the compare know these tables. A transfer's fee is an
-	 * expense, so it is in `changes`.
-	 */
-	wealth?: WealthChange[];
 	/**
 	 * The version and stored balance of the account as the overlay holds it,
 	 * which the send names as `expectedVersion` and `expectedBalance`; absent
@@ -170,7 +161,8 @@ export function planOf(
 	now: Date,
 ): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
 	if (isAccountOp(op)) return accountPlanOf(op, now);
-	if (isTransferOp(op)) return transferPlanOf(op, now);
+	if (isTransferOp(op))
+		return transferPlanOf(op, now, budgetFamilyPulled(cursors));
 	if (op.kind === "confirm" || op.kind === "skip")
 		return recurringPlanOf(op, now);
 	if (op.kind === "templateCreate" || op.kind === "templateUpdate")
@@ -264,8 +256,9 @@ export function pendingChangesOf(undo: UndoToken): ExpenseChange[] {
 }
 
 /**
- * The expense and template rows a write changed, in the order it changed
- * them, as an outbox entry keeps them: a recurring confirm changes both.
+ * The rows a write changed, in the order it changed them, as an outbox entry
+ * keeps them: a recurring confirm changes an expense and a template, a
+ * transfer its rows, its legs, its accounts and its fee. Never any text.
  */
 export function bookedChangesOf(undo: UndoToken): PendingChange[] {
 	const rows = undo.kind === "revert" ? undo.changes : [];
@@ -273,6 +266,8 @@ export function bookedChangesOf(undo: UndoToken): PendingChange[] {
 	return rows.flatMap((c): PendingChange[] => {
 		if (c.table === "expenses")
 			return expenses.filter((e) => e.id === c.id).slice(0, 1);
+		const wealth = wealthChangeOf(c);
+		if (wealth) return [wealth];
 		if (c.table !== "recurringTemplates") return [];
 		return [
 			{
@@ -349,7 +344,7 @@ async function bookAccountIn(
 	};
 	try {
 		const { undo } = await recordWrite(tx, id, write);
-		return { ...base, changes: [], wealth: wealthChangesOf(undo) };
+		return { ...base, changes: bookedChangesOf(undo) };
 	} catch (error) {
 		if (error instanceof MissingRateError)
 			return { ...base, changes: [], unbooked: "no_rate" };
@@ -372,11 +367,7 @@ async function bookTransferIn(
 	const base = { bookedAt, base: null, changed: [] };
 	try {
 		const { undo } = await recordWrite(tx, id, write);
-		return {
-			...base,
-			changes: bookedChangesOf(undo),
-			wealth: wealthChangesOf(undo),
-		};
+		return { ...base, changes: bookedChangesOf(undo) };
 	} catch (error) {
 		if (error instanceof MissingRateError)
 			return { ...base, changes: [], unbooked: "no_rate" };

@@ -246,6 +246,21 @@ export function dropBudgetOnReset(tx: Writer, entity: string): boolean {
 }
 
 /**
+ * Whether the device's pull has finished every entity the budget reads, so a
+ * missing book means the person has none (Just track) and not that it has not
+ * arrived. A cursor is a position the entity's pull ended on, and a reset one
+ * is being pulled again.
+ */
+export function budgetFamilyPulled(
+	cursors: Readonly<Partial<Record<string, string>>>,
+): boolean {
+	return BUDGET_GATE_ENTITIES.every((entity) => {
+		const cursor = cursors[entity];
+		return typeof cursor === "string" && cursor !== "" && cursor !== SYNC_RESET;
+	});
+}
+
+/**
  * What the device can say about the budget right now. "none": it holds no
  * book (Just track, or never pulled). "stale": it holds a book but no block
  * made for that book as it is now, so the figures are unavailable until a pull

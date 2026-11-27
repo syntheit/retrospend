@@ -27,7 +27,11 @@ import type { ExpenseRow } from "./expenses";
 import type { WriteFn } from "./local-db";
 import type { TableRows } from "./port";
 import type { Repos } from "./repos";
-import { refusingTransfer, TransferOnlineError } from "./transfer-kit";
+import {
+	budgetReadable,
+	refusingTransfer,
+	TransferOnlineError,
+} from "./transfer-kit";
 
 export const TRANSFER_DELETE = "transfer.delete";
 
@@ -35,6 +39,8 @@ export const TRANSFER_NOT_FOUND = "Transfer not found";
 
 export interface DeleteTransferInput {
 	readonly id: string;
+	/** The device's pull of the budget's entities has finished: no book means none (`budgetFamilyPulled`). */
+	readonly budgetPulled?: boolean;
 }
 
 export interface TransferDeleted {
@@ -106,7 +112,7 @@ export function deleteTransfer(
 			if (!holdsAll(r, transfer, legs))
 				throw new TransferOnlineError("incomplete_transfer");
 			// Whether a budget side exists is only known once the budget reads whole.
-			if (r.budget.status() !== "ready")
+			if (!budgetReadable(r, input.budgetPulled ?? false))
 				throw new TransferOnlineError("budget_not_ready");
 			if (r.wealthMoves.list().some((w) => w.transferId === transfer.id))
 				throw new TransferOnlineError("has_budget_side");

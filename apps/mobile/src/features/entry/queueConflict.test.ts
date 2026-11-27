@@ -47,6 +47,7 @@ function writesOf(
 		comparePreview: async () => undefined,
 		pullsBegun: () => 5,
 		storedRebase: async () => null,
+		storedAccount: async () => null,
 		absentSince: jest.fn(async () => false),
 		refresh: async () => undefined,
 		...over,

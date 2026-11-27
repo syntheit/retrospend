@@ -1,4 +1,5 @@
 /** Row access the repositories share: one table, by id, with the checks every write makes. */
+import { ID_TAKEN_MESSAGE } from "@retrospend/domain/id-taken";
 import { NotFoundError } from "./errors";
 import {
 	InvalidInputError,
@@ -21,7 +22,7 @@ export function tableWrites<T extends TableName>(w: Writer, table: T) {
 		/** Adds a row; an id already in use throws InvalidInputError. */
 		insert(row: TableRows[T]) {
 			if (w.get(table, row.id) !== undefined)
-				throw new InvalidInputError(`${table} ${row.id} already exists`);
+				throw new InvalidInputError(ID_TAKEN_MESSAGE);
 			w.put(table, row);
 		},
 		/** Replaces a row that exists; a missing one throws NotFoundError. */

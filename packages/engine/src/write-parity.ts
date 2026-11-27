@@ -32,6 +32,7 @@ import { bookedOf } from "./local-expense-create";
 import { type Reader, SETTINGS_ID } from "./port";
 import { ratesAsOf } from "./rates";
 import type { TemplateRow, TextFreeTemplateRow } from "./templates";
+import { compareWealth } from "./write-parity-wealth";
 
 export type SkipCode =
 	| "no_rate"
@@ -114,6 +115,28 @@ export function differingFields(
 	server: BookedExpense,
 ): string[] {
 	return COMPARED.filter((k) => !sameColumnValue(k, device[k], server[k]));
+}
+
+/**
+ * Why a row booked at `bookedAt` into `home` cannot be held to the server's:
+ * the device holds no settings, the home currency moved, or the rates changed
+ * after the write was booked. The one owner, for every row that carries a
+ * booked rate (an expense, a leg).
+ */
+export function bookingSkip(
+	live: Reader,
+	bookedAt: number,
+	/** The home currency the row was booked into; undefined for a row with none (an account), which only the rates can move. */
+	home: string | null | undefined,
+): "no_settings" | "settings_moved" | "rates_moved" | null {
+	const settings = live.get("settings", SETTINGS_ID);
+	if (!settings) return "no_settings";
+	if (home !== undefined && settings.homeCurrency !== home)
+		return "settings_moved";
+	const asOf = ratesAsOf(live);
+	if (asOf !== null && !(Date.parse(asOf) <= bookedAt - CLOCK_SKEW_MS))
+		return "rates_moved";
+	return null;
 }
 
 const skipped = (id: string, code: SkipCode): WriteVerdict => ({
@@ -218,13 +241,8 @@ export function compareWrite(
 	if (!pulled) return skipped(id, "gone_already");
 	if (acked.version !== null && pulled.version !== acked.version)
 		return skipped(id, "changed_since");
-	const settings = live.get("settings", SETTINGS_ID);
-	if (!settings) return skipped(id, "no_settings");
-	if (settings.homeCurrency !== after.homeCurrency)
-		return skipped(id, "settings_moved");
-	const asOf = ratesAsOf(live);
-	if (asOf !== null && !(Date.parse(asOf) <= acked.bookedAt - CLOCK_SKEW_MS))
-		return skipped(id, "rates_moved");
+	const moved = bookingSkip(live, acked.bookedAt, after.homeCurrency);
+	if (moved) return skipped(id, moved);
 	try {
 		bookedOf(pulled);
 	} catch {
@@ -267,15 +285,16 @@ export function compareTemplate(
 		: { id, outcome: "differs", fields };
 }
 
-/** `compareWrite` or `compareTemplate` for any row an entry changed. */
+/** `compareWrite`, `compareTemplate` or `compareWealth` for any row an entry changed; null for a row that is not compared. */
 export function compareChange(
 	live: Reader,
 	change: PendingChange,
 	acked: AckedWrite,
-): WriteVerdict {
-	return change.table === "expenses"
-		? compareWrite(live, change, acked)
-		: compareTemplate(live, change, acked);
+): WriteVerdict | null {
+	if (change.table === "expenses") return compareWrite(live, change, acked);
+	if (change.table === "recurringTemplates")
+		return compareTemplate(live, change, acked);
+	return compareWealth(live, change, acked);
 }
 
 /**
@@ -291,8 +310,8 @@ export function compareEntry(
 	acked: AckedWrite,
 ): WriteVerdict[] {
 	const named = ackedTableOf(changes);
-	return changes.map((c) =>
-		compareChange(live, c, {
+	return changes.flatMap((c) => {
+		const verdict = compareChange(live, c, {
 			bookedAt: acked.bookedAt,
 			version:
 				c.table === named
@@ -300,6 +319,7 @@ export function compareEntry(
 					: c.table === "expenses"
 						? (acked.expenseVersion ?? null)
 						: null,
-		}),
-	);
+		});
+		return verdict ? [verdict] : [];
+	});
 }

@@ -32,16 +32,20 @@ export const isTransferOp = (op: { kind: string }): op is TransferOp =>
 	op.kind.startsWith("transfer");
 
 /** The mutation of a transfer write, the figures it moves, and its write over `now`. */
-export function transferPlanOf(op: TransferOp, now: Date) {
+export function transferPlanOf(
+	op: TransferOp,
+	now: Date,
+	budgetPulled: boolean,
+) {
 	return op.kind === "transferCreate"
 		? {
 				id: TRANSFER_CREATE_MUTATION.id,
 				touches: TRANSFER_CREATE_MUTATION.touches,
-				write: createTransfer({ ...op.body, now }),
+				write: createTransfer({ ...op.body, now, budgetPulled }),
 			}
 		: {
 				id: TRANSFER_DELETE_MUTATION.id,
 				touches: TRANSFER_DELETE_MUTATION.touches,
-				write: deleteTransfer(op.body),
+				write: deleteTransfer({ ...op.body, budgetPulled }),
 			};
 }

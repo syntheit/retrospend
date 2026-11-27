@@ -16,6 +16,8 @@ export type SendResult =
 			version?: string | null;
 			/** A confirm's booked expense, which `version` (the template's) does not name. */
 			expenseVersion?: string;
+			/** Row ids the booking holds that the server did not write: the ack drops them from what the compare holds. */
+			unwritten?: readonly string[];
 	  }
 	/**
 	 * Nothing to send any more: the server already has the write, or the row
@@ -136,6 +138,7 @@ export async function flushOutbox(
 			await outbox.markSent(entry.clientId, {
 				version: result.version,
 				expenseVersion: result.expenseVersion,
+				unwritten: result.unwritten,
 				pull: options.pullsBegun?.(),
 			});
 			report.sent += 1;

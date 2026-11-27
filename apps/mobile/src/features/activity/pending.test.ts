@@ -270,3 +270,16 @@ describe("merging waiting rows into the server's page", () => {
 		expect(page.nextCursor).toBeNull();
 	});
 });
+
+describe("an account write", () => {
+	it("is no row of the list: Wealth shows a new account, Activity does not", () => {
+		const made = entry("accounts", "n1", {
+			name: "Cash",
+			currency: "ARS",
+			balance: "500",
+			date: "2026-11-02",
+		});
+		expect(pendingRow(made, ctx)).toBeNull();
+		expect(pendingRows([made], ctx)).toEqual([]);
+	});
+});

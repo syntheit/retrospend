@@ -1,6 +1,8 @@
 import {
+	ACCOUNT_TEXT_COLUMNS,
 	EXPENSE_TEXT_COLUMNS,
 	TEMPLATE_STRIPPED_COLUMNS,
+	TRANSFER_TEXT_COLUMNS,
 } from "@retrospend/engine";
 import { ACKED_MAX, ACKED_MAX_AGE_MS, createOutbox } from "./outbox";
 import { DEVICE_TEXT_COLUMNS } from "./outbox-chain";
@@ -144,6 +146,16 @@ describe("device field", () => {
 		expect([...DEVICE_TEXT_COLUMNS.recurringTemplates]).toEqual([
 			...TEMPLATE_STRIPPED_COLUMNS,
 		]);
+		expect([...DEVICE_TEXT_COLUMNS.accounts]).toEqual([
+			...ACCOUNT_TEXT_COLUMNS,
+		]);
+		expect([...DEVICE_TEXT_COLUMNS.transfers]).toEqual([
+			...TRANSFER_TEXT_COLUMNS,
+		]);
+		// Legs, snapshots and rate switches hold no person's text.
+		expect(DEVICE_TEXT_COLUMNS.legs).toEqual([]);
+		expect(DEVICE_TEXT_COLUMNS.snapshots).toEqual([]);
+		expect(DEVICE_TEXT_COLUMNS.rateSwitches).toEqual([]);
 	});
 
 	it("reads rows back with real dates and the booked decimal text", async () => {
@@ -466,8 +478,11 @@ describe("chains", () => {
 		await outbox.markSent("u1", { version: T2 });
 		const [second] = await outbox.all();
 		expect(second?.baseVersion).toBe(T2);
-		expect(second?.device?.changes[0]?.before?.version).toBe(T2);
-		expect(second?.device?.changes[0]?.after?.version).toBeNull();
+		const rows = second?.device?.changes[0] as
+			| { before: { version: unknown }; after: { version: unknown } }
+			| undefined;
+		expect(rows?.before.version).toBe(T2);
+		expect(rows?.after.version).toBeNull();
 	});
 
 	it("parks an entry chained to an ack with no version", async () => {
@@ -573,11 +588,11 @@ describe("recurring entries", () => {
 		const bogus = {
 			bookedAt: 1,
 			changed: [],
-			changes: [{ table: "accounts", id: "a1", before: null, after: {} }],
+			changes: [{ table: "payoffPlans", id: "a1", before: null, after: {} }],
 		};
 		await expect(
 			outbox.enqueue(confirm("c1", "t1", T1, { device: bogus as never })),
-		).rejects.toThrow(/unknown table "accounts"/);
+		).rejects.toThrow(/unknown table "payoffPlans"/);
 		expect(await store.keys("")).toEqual([]);
 	});
 

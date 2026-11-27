@@ -82,7 +82,7 @@ export const accountOps = {
 			...input,
 			timeZone: caller.timeZone,
 		}),
-		present: (v) => v.item,
+		present: (v) => ({ ...v.item, ...v.used }),
 		plan: (i, v): Plan | null =>
 			v.previous
 				? {
