@@ -138,6 +138,12 @@ describe("bulk delete on the device", () => {
 			tx.put("expenses", { ...row("b"), direction: "IN" });
 			tx.put("transfers", {
 				id: "t1",
+				kind: "TRANSFER",
+				fromAccountId: null,
+				fromAmount: "0",
+				countedFromUnits: "0",
+				countedToUnits: "0",
+				note: null,
 				date: first.base.date,
 				toAccountId: null,
 				toAmount: "0",
@@ -303,6 +309,12 @@ describe("bulk categorize on the device", () => {
 		await put((tx) => {
 			tx.put("transfers", {
 				id: "t1",
+				kind: "TRANSFER",
+				fromAccountId: null,
+				fromAmount: "0",
+				countedFromUnits: "0",
+				countedToUnits: "0",
+				note: null,
 				date: first.base.date,
 				toAccountId: null,
 				toAmount: "0",

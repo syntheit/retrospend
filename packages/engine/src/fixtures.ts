@@ -44,6 +44,9 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		source: "TRANSFER",
 		homeAmount: null,
 		homeCurrency: null,
+		countedUnits: "0",
+		transferId: null,
+		expenseId: null,
 	}),
 	snapshots: (id) => ({
 		id,
@@ -63,6 +66,12 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		exchangeRateType: "blue",
 		closedAt: null,
 		createdAt: at("2026-01-01T00:00:00Z"),
+		name: "Wallet",
+		inBudget: null,
+		countedUnits: "0",
+		isLiquid: true,
+		iconKind: null,
+		version: 0,
 	}),
 	rateSwitches: (id) => ({
 		id,
@@ -197,6 +206,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		envelopeId: "env-1",
 		date: at("2026-03-10T00:00:00Z"),
 		amount: "5000",
+		transferId: null,
 	}),
 	payoffPlans: (id) => ({
 		id,
@@ -208,11 +218,17 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 	}),
 	transfers: (id) => ({
 		id,
+		kind: "TRANSFER",
 		date: at("2026-03-12T00:00:00Z"),
+		fromAccountId: null,
+		fromAmount: "20000",
 		toAccountId: "acc-1",
 		toAmount: "20000",
 		toCurrency: "ARS",
 		feeExpenseId: null,
+		countedFromUnits: "0",
+		countedToUnits: "0",
+		note: null,
 	}),
 	budgetSnapshot: (id) => ({
 		id,

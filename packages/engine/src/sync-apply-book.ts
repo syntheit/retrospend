@@ -191,6 +191,7 @@ export const BOOK_ROWS: {
 		envelopeId: w.envelopeId,
 		date: instant(w.date, `Wealth transfer ${w.id} date`),
 		amount: decimal(w.amount, `Wealth transfer ${w.id} amount`),
+		transferId: w.transferId,
 	}),
 	payoffPlans: (w) => ({
 		id: w.id,
@@ -202,11 +203,23 @@ export const BOOK_ROWS: {
 	}),
 	transfers: (w) => ({
 		id: w.id,
+		kind: w.kind,
 		date: instant(w.date, `Transfer ${w.id} date`),
+		fromAccountId: w.fromAccountId,
+		fromAmount: decimal(w.fromAmount, `Transfer ${w.id} fromAmount`),
 		toAccountId: w.toAccountId,
 		toAmount: decimal(w.toAmount, `Transfer ${w.id} toAmount`),
 		toCurrency: w.toCurrency,
 		feeExpenseId: w.feeExpenseId,
+		countedFromUnits: decimal(
+			w.countedFromUnits,
+			`Transfer ${w.id} countedFromUnits`,
+		),
+		countedToUnits: decimal(
+			w.countedToUnits,
+			`Transfer ${w.id} countedToUnits`,
+		),
+		note: w.note,
 	}),
 };
 

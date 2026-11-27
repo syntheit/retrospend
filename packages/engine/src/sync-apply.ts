@@ -174,6 +174,12 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		dueDate: w.dueDate,
 		closedAt: instantOrNull(w.closedAt, `Account ${w.id} closedAt`),
 		createdAt: instant(w.createdAt, `Account ${w.id} createdAt`),
+		name: w.name,
+		inBudget: w.inBudget,
+		countedUnits: decimal(w.countedUnits, `Account ${w.id} countedUnits`),
+		isLiquid: w.isLiquid,
+		iconKind: w.iconKind,
+		version: w.version,
 	}),
 	snapshots: (w) => ({
 		id: w.id,
@@ -194,6 +200,9 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		source: w.source,
 		homeAmount: decimalOrNull(w.homeAmount, `Leg ${w.id} homeAmount`),
 		homeCurrency: w.homeCurrency,
+		countedUnits: decimal(w.countedUnits, `Leg ${w.id} countedUnits`),
+		transferId: w.transferId,
+		expenseId: w.expenseId,
 	}),
 	rateSwitches: (w) => ({
 		id: w.id,

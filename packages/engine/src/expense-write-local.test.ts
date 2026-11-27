@@ -192,6 +192,12 @@ describe("refusals, each reached on its own", () => {
 		await put((tx) =>
 			tx.put("transfers", {
 				id: "t1",
+				kind: "TRANSFER",
+				fromAccountId: null,
+				fromAmount: "0",
+				countedFromUnits: "0",
+				countedToUnits: "0",
+				note: null,
 				date: BASE.date,
 				toAccountId: null,
 				toAmount: "0",
@@ -346,6 +352,12 @@ describe("refusals, each reached on its own", () => {
 			await put((tx) =>
 				tx.put("transfers", {
 					id: "t1",
+					kind: "TRANSFER",
+					fromAccountId: null,
+					fromAmount: "0",
+					countedFromUnits: "0",
+					countedToUnits: "0",
+					note: null,
 					date: BASE.date,
 					toAccountId: null,
 					toAmount: "0",

@@ -226,3 +226,10 @@ export {
 	templateWithoutText,
 } from "./templates";
 export type { UndoToken } from "./undo";
+export type { TextFreeAccountRow, TextFreeTransferRow } from "./wealth-rows";
+export {
+	ACCOUNT_TEXT_COLUMNS,
+	accountWithoutText,
+	TRANSFER_TEXT_COLUMNS,
+	transferWithoutText,
+} from "./wealth-rows";
