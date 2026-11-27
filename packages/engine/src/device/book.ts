@@ -25,6 +25,13 @@ import {
 import { EXPENSE_FIGURES } from "../preview";
 import { type TemplateRow, templateWithoutText } from "../templates";
 import type { UndoToken } from "../undo";
+import {
+	type AccountOp,
+	accountPlanOf,
+	isAccountOp,
+	type WealthChange,
+	wealthChangesOf,
+} from "./account-book";
 import type { ExpenseChange, PendingChange } from "./pending";
 import { recurringPlanOf } from "./recurring-book";
 import {
@@ -89,7 +96,8 @@ export type WriteOp =
 	| { kind: "confirm"; body: ConfirmBody }
 	| { kind: "skip"; body: SettleBody }
 	| { kind: "templateCreate"; body: TemplateCreateBody }
-	| { kind: "templateUpdate"; body: TemplateUpdateBody };
+	| { kind: "templateUpdate"; body: TemplateUpdateBody }
+	| AccountOp;
 
 /** The writes whose row is a recurring template. */
 type TemplateOp = Extract<
@@ -104,11 +112,13 @@ const isTemplateOp = (op: WriteOp): op is TemplateOp =>
 
 /** The row id the write is about: the expense, or the template of a confirm, skip, create or edit. */
 export const targetOf = (op: WriteOp): string =>
-	op.kind === "delete"
-		? op.id
-		: op.kind === "confirm" || op.kind === "skip"
-			? op.body.templateId
-			: op.body.id;
+	isAccountOp(op)
+		? op.body.id
+		: op.kind === "delete"
+			? op.id
+			: op.kind === "confirm" || op.kind === "skip"
+				? op.body.templateId
+				: op.body.id;
 
 /** The sync cursors a fee check reads (the engine's own). */
 export type WriteCursors = Readonly<
@@ -127,9 +137,21 @@ export interface BookedWrite {
 	unbooked?: "no_rate";
 	/**
 	 * The `updatedAt` of the row as the overlay holds it, for an edit or a
-	 * delete; null for a create, or for a row an unsent entry made.
+	 * delete; null for a create, or for a row an unsent entry made. Null for an
+	 * account write, whose base is `accountBase`.
 	 */
 	base: string | null;
+	/**
+	 * An account write's account-family rows (account-book.ts): not in
+	 * `changes` until the outbox and the compare know these tables.
+	 */
+	wealth?: WealthChange[];
+	/**
+	 * The version and stored balance of the account as the overlay holds it,
+	 * which the send names as `expectedVersion` and `expectedBalance`; absent
+	 * for a create or a write that is not an account's.
+	 */
+	accountBase?: { version: number; balance: string };
 }
 
 /**
@@ -143,6 +165,7 @@ export function planOf(
 	cursors: WriteCursors,
 	now: Date,
 ): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
+	if (isAccountOp(op)) return accountPlanOf(op, now);
 	if (op.kind === "confirm" || op.kind === "skip")
 		return recurringPlanOf(op, now);
 	if (op.kind === "templateCreate" || op.kind === "templateUpdate")
@@ -152,7 +175,7 @@ export function planOf(
 }
 
 function expensePlanOf(
-	op: Exclude<WriteOp, TemplateOp>,
+	op: Exclude<WriteOp, TemplateOp | AccountOp>,
 	r: Reader,
 	cursors: WriteCursors,
 ): { id: string; write: WriteFn<ExpenseRow> } {
@@ -276,6 +299,7 @@ export async function bookIn(
 	bookedAt: number,
 ): Promise<BookedWrite> {
 	const { id, write } = planOf(op, tx, cursors, new Date(bookedAt));
+	if (isAccountOp(op)) return bookAccountIn(tx, op, id, write, bookedAt);
 	const row =
 		op.kind === "create" || op.kind === "templateCreate"
 			? undefined
@@ -295,6 +319,34 @@ export async function bookIn(
 	} catch (error) {
 		if (error instanceof MissingRateError)
 			return { ...base, changes: [], changed, unbooked: "no_rate" };
+		throw error;
+	}
+}
+
+/** `bookIn` for an account write: its rows are `wealth`, and its base is the account's version and balance. */
+async function bookAccountIn(
+	tx: Writer,
+	op: AccountOp,
+	id: string,
+	write: WriteFn<unknown>,
+	bookedAt: number,
+): Promise<BookedWrite> {
+	const account =
+		op.kind === "accountCreate" ? undefined : tx.get("accounts", op.body.id);
+	const base = {
+		bookedAt,
+		base: null,
+		changed: [],
+		...(account
+			? { accountBase: { version: account.version, balance: account.balance } }
+			: {}),
+	};
+	try {
+		const { undo } = await recordWrite(tx, id, write);
+		return { ...base, changes: [], wealth: wealthChangesOf(undo) };
+	} catch (error) {
+		if (error instanceof MissingRateError)
+			return { ...base, changes: [], unbooked: "no_rate" };
 		throw error;
 	}
 }

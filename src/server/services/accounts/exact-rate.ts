@@ -1,4 +1,4 @@
-import { dec } from "@retrospend/domain/envelope/units";
+import { rateRefusal } from "@retrospend/domain/accounts/refusals";
 import { TRPCError } from "@trpc/server";
 
 /**
@@ -7,13 +7,9 @@ import { TRPCError } from "@trpc/server";
  * change is refused, never stored altered.
  */
 export function exactRate(text: string, field: string): number {
-	const n = Number(text);
-	if (!dec(String(n)).eq(dec(text)))
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: `${field} ${text} has too many digits to keep exactly`,
-		});
-	return n;
+	const message = rateRefusal(text, field);
+	if (message !== null) throw new TRPCError({ code: "BAD_REQUEST", message });
+	return Number(text);
 }
 
 /** The account fields with their `exchangeRate` text read as the number the services take. */

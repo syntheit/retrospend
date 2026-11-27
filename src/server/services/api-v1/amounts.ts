@@ -1,5 +1,8 @@
+import {
+	amountRefusal,
+	excessDecimals,
+} from "@retrospend/domain/accounts/refusals";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "@retrospend/domain/money";
 
 /**
  * Amounts come in as decimal text and are never rounded on the way in. A
@@ -8,8 +11,6 @@ import { currencyDecimals } from "@retrospend/domain/money";
  * takes a JavaScript number, so a split amount is also refused when a double
  * cannot hold it exactly (more than 15 digits).
  */
-const MAX_SIGNIFICANT_DIGITS = 15;
-
 const refuse = (message: string) =>
 	new TRPCError({ code: "BAD_REQUEST", message });
 
@@ -19,13 +20,8 @@ export function assertMinorUnits(
 	currency: string,
 	field = "amount",
 ) {
-	if (!text) return;
-	const decimals = currencyDecimals(currency);
-	const fraction = text.split(".")[1] ?? "";
-	if (fraction.length > decimals)
-		throw refuse(
-			`${field} ${text} has more decimals than ${currency} allows (${decimals})`,
-		);
+	const message = excessDecimals(text, currency, field);
+	if (message !== null) throw refuse(message);
 }
 
 /** The number for a split amount, once it is exactly the text. */
@@ -34,9 +30,7 @@ export function exactAmount(
 	currency: string,
 	field = "amount",
 ): number {
-	assertMinorUnits(text, currency, field);
-	const [whole = "", fraction = ""] = text.split(".");
-	if (`${whole}${fraction}`.replace(/^0+/, "").length > MAX_SIGNIFICANT_DIGITS)
-		throw refuse(`${field} ${text} has too many digits to split exactly`);
+	const message = amountRefusal(text, currency, field);
+	if (message !== null) throw refuse(message);
 	return Number(text);
 }

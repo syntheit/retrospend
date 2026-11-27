@@ -1,5 +1,14 @@
 export type { WriteVerdict } from "../write-parity";
 export type {
+	AccountBalanceBody,
+	AccountCreateBody,
+	AccountOp,
+	AccountRateTypeBody,
+	AccountStateBody,
+	AccountUpdateBody,
+	WealthChange,
+} from "./account-book";
+export type {
 	BookedWrite,
 	ConfirmBody,
 	SettleBody,

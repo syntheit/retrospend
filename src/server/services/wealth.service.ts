@@ -1,4 +1,8 @@
 import {
+	NoRateFoundError,
+	resolveAccountRate,
+} from "@retrospend/domain/accounts/resolve-rate";
+import {
 	type SnapshotMeta,
 	type SnapshotPlan,
 	snapshotPlan,
@@ -7,7 +11,6 @@ import { isValidRate } from "@retrospend/domain/money";
 import {
 	convertDec,
 	fromUSDDec,
-	hasRate as hasUsableRate,
 	toUSDDec,
 	USD,
 } from "@retrospend/domain/money-dec";
@@ -18,9 +21,7 @@ import {
 	dec,
 	toFloat,
 } from "@retrospend/domain/precise-decimal";
-import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { TRPCError } from "@trpc/server";
-import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate, findExchangeRatesForDates } from "../exchange-rates";
@@ -64,29 +65,18 @@ export class WealthService {
 		date: Date,
 		requested?: { rate?: DecimalInput | null; type?: string | null },
 	): Promise<{ rate: number; rateType: string | null }> {
-		if (currency === BASE_CURRENCY) {
-			return { rate: 1, rateType: null };
+		try {
+			return await resolveAccountRate(
+				currency,
+				date,
+				requested ?? {},
+				(c, d, type) => findExchangeRate(this.db, c, d, type),
+			);
+		} catch (error) {
+			if (error instanceof NoRateFoundError)
+				throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+			throw error;
 		}
-
-		const custom = requested?.type === CUSTOM_RATE_TYPE ? requested.rate : null;
-		if (custom != null && hasUsableRate(currency, custom)) {
-			return { rate: toFloat(custom), rateType: CUSTOM_RATE_TYPE };
-		}
-
-		const bestRate = await findExchangeRate(
-			this.db,
-			currency,
-			date,
-			requested?.type,
-		);
-		if (bestRate) {
-			return { rate: bestRate.rate, rateType: bestRate.type };
-		}
-
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: `No exchange rate found for ${currency}. Please sync rates or provide a custom rate.`,
-		});
 	}
 
 	/**

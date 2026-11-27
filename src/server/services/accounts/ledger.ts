@@ -11,6 +11,10 @@
  */
 
 import { balanceEffect } from "@retrospend/domain/accounts/places";
+import {
+	ACCOUNT_CLOSED,
+	ACCOUNT_NOT_FOUND,
+} from "@retrospend/domain/accounts/refusals";
 import type { RatePick } from "@retrospend/domain/accounts/valuation";
 import { dec } from "@retrospend/domain/envelope/units";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
@@ -96,12 +100,12 @@ export async function lockOpenAccount(
 		select: ACCOUNT_SELECT,
 	});
 	if (!account) {
-		throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
+		throw new TRPCError({ code: "NOT_FOUND", message: ACCOUNT_NOT_FOUND });
 	}
 	if (account.closedAt) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
-			message: "This account is closed. Reopen it to change it.",
+			message: ACCOUNT_CLOSED,
 		});
 	}
 	return account;

@@ -1,3 +1,4 @@
+import { balanceFieldsRefusal } from "@retrospend/domain/accounts/refusals";
 import { TRPCError } from "@trpc/server";
 import { exactRate } from "~/server/services/accounts/exact-rate";
 import {
@@ -14,7 +15,6 @@ import {
 	updateBalance,
 } from "~/server/services/accounts/update-balance.mutation";
 import type { MoneyMutation } from "~/server/services/preview/types";
-import { assertMinorUnits } from "../amounts";
 import { moneyOfText } from "../money-write";
 
 /**
@@ -64,7 +64,13 @@ export const updateBalanceMutation: MoneyMutation<
 	scope: (input) => ({ accountId: input.id }),
 	run: async (tx, input, actor) => {
 		const currency = await currencyOf(tx, actor.userId, input.id);
-		assertMinorUnits(input.balance, currency, "balance");
+		const refusal = balanceFieldsRefusal({
+			currency,
+			balance: input.balance,
+			exchangeRate: input.exchangeRate,
+		});
+		if (refusal !== null)
+			throw new TRPCError({ code: "BAD_REQUEST", message: refusal });
 		const done = await updateBalance.run(
 			tx,
 			{

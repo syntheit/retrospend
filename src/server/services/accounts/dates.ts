@@ -1,30 +1,23 @@
-import { snapshotDay } from "@retrospend/domain/accounts/snapshot-plan";
-import { dayKey } from "@retrospend/domain/time-zone";
+import { moveDay as domainMoveDay } from "@retrospend/domain/accounts/move-day";
+import { AccountRefusal } from "@retrospend/domain/accounts/refusals";
 import { TRPCError } from "@trpc/server";
 
 /**
  * The calendar day a money move is dated, as a UTC midnight: the day the
- * client sent, else today in the user's zone. Never a future day: a leg
- * moves today's balance, so it must have happened already.
+ * client sent, else today in the user's zone. Never a future day. The rule is
+ * the domain's (the device books with the same one); this only maps its
+ * refusal to the transport's.
  */
 export function moveDay(
 	day: string | null | undefined,
 	now: Date,
 	timeZone?: string,
 ): Date {
-	// No day given: the person's today, which is snapshotDay's zone rule (the
-	// one owner, so a snapshot and a same-day check never disagree).
-	if (day == null) return snapshotDay({ rule: "zone", now, timeZone });
-	const today = dayKey(now, timeZone);
-	const picked = day;
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(picked) || Number.isNaN(Date.parse(picked))) {
-		throw new TRPCError({ code: "BAD_REQUEST", message: "Pick a valid date" });
+	try {
+		return domainMoveDay(day, now, timeZone);
+	} catch (error) {
+		if (error instanceof AccountRefusal)
+			throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+		throw error;
 	}
-	if (picked > today) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "A money move cannot be dated in the future",
-		});
-	}
-	return new Date(`${picked}T00:00:00.000Z`);
 }
