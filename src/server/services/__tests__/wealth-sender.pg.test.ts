@@ -26,9 +26,11 @@ import {
 } from "~/test/parity/pull";
 import { adminDb } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
+import { BUDGET_GATE_ENTITIES } from "../../../../packages/engine/src/budget-gate";
 import {
 	type BookedWrite,
 	bookIn,
+	isDeviceRefusal,
 	type WriteOp,
 } from "../../../../packages/engine/src/device/book";
 import { readOverlaid } from "../../../../packages/engine/src/device/pending";
@@ -271,5 +273,250 @@ describe("a write against an account that moved is refused and writes nothing", 
 		).catch(problem);
 		expect(error).toMatchObject({ status: 409, code: "account_changed" });
 		expect((await accountRow(id)).balance.toString()).toBe("1100");
+	});
+});
+
+// ── Transfers: the phone's create goes out as the plain v1 create with the
+// ids it booked under, its delete through the wire. ARS home, Just track (no
+// budget book) unless a case seeds one. ARS 1,000 moved with a fee of 10:
+// the source holds 100,000 - 1,000 - 10 = 98,990 and the destination 51,000.
+
+const network = () => new Error("Network request failed");
+
+async function twoAccounts(me: string) {
+	const v1 = await v1For(me);
+	const ids = { from: randomUUID(), to: randomUUID() };
+	for (const [id, name, balance] of [
+		[ids.from, "Checking", "100000"],
+		[ids.to, "Savings", "50000"],
+	] as const)
+		await expectBody(
+			await v1("POST", "/accounts", {
+				id,
+				name,
+				type: "CASH",
+				currency: "ARS",
+				balance,
+				isLiquid: true,
+			}),
+			contract.accounts.create,
+			201,
+		);
+	return ids;
+}
+
+const moveBody = (from: string, to: string) => ({
+	id: randomUUID(),
+	fromLegId: randomUUID(),
+	toLegId: randomUUID(),
+	feeLegId: randomUUID(),
+	feeExpenseId: randomUUID(),
+	fromAccountId: from,
+	toAccountId: to,
+	fromAmount: "1000",
+	fee: { amount: "10" },
+});
+
+/** The device books a transfer over its pull (nothing is kept), as the phone does. */
+async function bookMove(
+	device: Awaited<ReturnType<typeof newDevice>>,
+	op: WriteOp,
+) {
+	const bookedAt = Date.now();
+	return readOverlaid(device.store, [], 0, (tx) =>
+		bookIn(tx, op, device.cursors, bookedAt),
+	);
+}
+
+async function pulledDevice(me: string) {
+	const device = await newDevice(me);
+	await pullAll(device, await expectedCounts(me), { shares: false });
+	return device;
+}
+
+describe("a transfer sent over the real routes", () => {
+	it("a create that waited offline is sent with all five ids, and the pulled rows match the device's", async () => {
+		const me = await arsUser();
+		const api = rotatingClient(me);
+		const { from, to } = await twoAccounts(me);
+		const device = await pulledDevice(me);
+		const body = moveBody(from, to);
+		const booked = await bookMove(device, { kind: "transferCreate", body });
+		expect(booked.unbooked).toBeUndefined();
+		// The first try meets no network; the entry stays and goes out again, same ids, same key.
+		let tries = 0;
+		const send = async () => {
+			if (tries++ === 0) throw network();
+			return api.transfers.create(body, optionsFor("k-move"));
+		};
+		await expect(send()).rejects.toThrow("Network");
+		expect(await adminDb.transfer.count({ where: { id: body.id } })).toBe(0);
+		await send();
+		// The server's rows carry every id the device booked under.
+		expect(
+			(await adminDb.transfer.findUniqueOrThrow({ where: { id: body.id } }))
+				.feeExpenseId,
+		).toBe(body.feeExpenseId);
+		const legs = await adminDb.accountLeg.findMany({
+			where: { transferId: body.id },
+			select: { id: true },
+		});
+		expect(legs.map((l) => l.id).sort()).toEqual(
+			[body.fromLegId, body.toLegId, body.feeLegId].sort(),
+		);
+		expect(
+			(
+				await adminDb.assetAccount.findUniqueOrThrow({ where: { id: from } })
+			).balance.toString(),
+		).toBe("98990");
+		expect(
+			(
+				await adminDb.assetAccount.findUniqueOrThrow({ where: { id: to } })
+			).balance.toString(),
+		).toBe("51000");
+		const live = await pulled(me);
+		const verdicts = compareEntry(live.snapshot(), booked.changes, {
+			bookedAt: booked.bookedAt,
+			version: null,
+		});
+		expect(verdicts.map((v) => v.id)).toEqual(
+			expect.arrayContaining([
+				body.id,
+				body.fromLegId,
+				body.toLegId,
+				body.feeLegId,
+				body.feeExpenseId,
+			]),
+		);
+		expect(verdicts.filter((v) => v.outcome === "differs")).toEqual([]);
+	});
+
+	it("a delete is sent and acked, and the pulled store holds none of its rows", async () => {
+		const me = await arsUser();
+		const api = rotatingClient(me);
+		const { from, to } = await twoAccounts(me);
+		const body = moveBody(from, to);
+		await api.transfers.create(body, optionsFor("k-make"));
+		const device = await pulledDevice(me);
+		const booked = await bookMove(device, {
+			kind: "transferDelete",
+			body: { id: body.id },
+		});
+		const sent = await dispatchWealth(
+			api,
+			{
+				clientId: randomUUID(),
+				entity: "transfers",
+				kind: "delete",
+				targetId: body.id,
+				baseVersion: null,
+				payload: { id: body.id },
+			},
+			optionsFor("k-delete"),
+		);
+		expect(sent.undo).not.toBe("");
+		expect(await adminDb.transfer.count({ where: { id: body.id } })).toBe(0);
+		expect(
+			(
+				await adminDb.assetAccount.findUniqueOrThrow({ where: { id: from } })
+			).balance.toString(),
+		).toBe("100000");
+		const live = await pulled(me);
+		const verdicts = compareEntry(live.snapshot(), booked.changes, {
+			bookedAt: booked.bookedAt,
+			version: null,
+		});
+		expect(verdicts.filter((v) => v.outcome === "differs")).toEqual([]);
+		expect(verdicts.map((v) => v.id)).toContain(body.id);
+	});
+
+	it("a crossing move goes online: the device refuses to book it, nothing is queued, and the server records its budget side", async () => {
+		const me = await arsUser();
+		const api = rotatingClient(me);
+		const v1 = await v1For(me);
+		// A book with a default envelope in the home currency: a move out of it has a side to record.
+		const book = await adminDb.budgetBook.create({
+			data: {
+				createdById: me,
+				name: "Home",
+				currency: "ARS",
+				startDate: new Date("2026-11-01T00:00:00.000Z"),
+				startMonth: 202611,
+			},
+		});
+		await adminDb.budgetMember.create({
+			data: { bookId: book.id, userId: me, role: "OWNER" },
+		});
+		await adminDb.bookPeriod.create({
+			data: {
+				bookId: book.id,
+				fromMonth: 202611,
+				startDay: 1,
+				rateType: "blue",
+			},
+		});
+		const envelope = await adminDb.envelope.create({
+			data: { bookId: book.id, name: "To assign", sortOrder: 0 },
+		});
+		await adminDb.budgetBook.update({
+			where: { id: book.id },
+			data: { defaultEnvelopeId: envelope.id },
+		});
+		const inside = randomUUID();
+		const outside = randomUUID();
+		for (const [id, inBudget] of [
+			[inside, true],
+			[outside, false],
+		] as const)
+			await expectBody(
+				await v1("POST", "/accounts", {
+					id,
+					name: inBudget ? "Checking" : "Brokerage",
+					type: "CASH",
+					currency: "ARS",
+					balance: "100000",
+					isLiquid: true,
+					inBudget,
+				}),
+				contract.accounts.create,
+				201,
+			);
+		const device = await pulledDevice(me);
+		const body = {
+			...moveBody(inside, outside),
+			fee: undefined,
+		};
+		const refused = await bookMove(device, {
+			kind: "transferCreate",
+			body,
+		}).catch((e: unknown) => e);
+		expect(isDeviceRefusal(refused)).toBe(true);
+		// Online, the server books it with the side recorded.
+		await api.transfers.create(body, optionsFor("k-crossing"));
+		expect(
+			await adminDb.wealthTransfer.count({ where: { bookId: book.id } }),
+		).toBe(1);
+	});
+
+	it("a Just track device books locally only once every budget entity is pulled", async () => {
+		const me = await arsUser();
+		const { from, to } = await twoAccounts(me);
+		const device = await pulledDevice(me);
+		for (const entity of BUDGET_GATE_ENTITIES)
+			expect(device.cursors[entity]).toEqual(expect.any(String));
+		const op: WriteOp = {
+			kind: "transferCreate",
+			body: moveBody(from, to),
+		};
+		expect((await bookMove(device, op)).changes.length).toBeGreaterThan(0);
+		// One entity not pulled yet: a book may not have arrived, so the server decides.
+		const behind = {
+			...device,
+			cursors: { ...device.cursors, budgetBooks: "" },
+		};
+		const refused = await bookMove(behind as typeof device, op).catch(
+			(e: unknown) => e,
+		);
+		expect(isDeviceRefusal(refused)).toBe(true);
 	});
 });
