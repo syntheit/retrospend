@@ -331,7 +331,12 @@ describe("edit", () => {
 		});
 		const empty = await expectBody<Dto>(await patch(made.id, {}), c.update);
 		expect(empty).toEqual(flagged);
-		expect(await rowOf(made.id)).toEqual({ ...before, excludeByDefault: true });
+		// The flag is the one change, so one bump; the empty body wrote nothing.
+		expect(await rowOf(made.id)).toEqual({
+			...before,
+			excludeByDefault: true,
+			version: before.version + 1,
+		});
 	});
 
 	it("v1 PATCH removes the icon with null, and ignores a kind or an expectedVersion it is sent", async () => {
