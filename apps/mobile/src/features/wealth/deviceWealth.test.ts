@@ -398,7 +398,7 @@ describe("an account write under the flag", () => {
 		);
 	});
 
-	it("behind an unsent write, names the balance that write leaves, not the one the sheet showed", async () => {
+	it("behind an unsent write that names a balance, names the balance that write leaves, not the one the sheet showed", async () => {
 		const close = jest.fn(async () => ({ undo: null, result: { version: 5 } }));
 		const updateBalance = jest.fn(async () => ({
 			undo: null,
@@ -411,10 +411,10 @@ describe("an account write under the flag", () => {
 		await outbox.enqueue({
 			clientId: "first",
 			entity: "accounts",
-			kind: "close",
+			kind: "balance",
 			targetId: A,
 			baseVersion: "4",
-			payload: { id: A },
+			payload: { id: A, balance: "1200", expectedBalance: "1000" },
 		});
 		await writeAccountOnDevice({
 			device,
@@ -425,6 +425,46 @@ describe("an account write under the flag", () => {
 			expect.objectContaining({ expectedBalance: "1200" }),
 			expect.anything(),
 		);
+	});
+
+	it("behind a write that checks only the version, still names the balance the sheet showed: a transfer that landed since parks it", async () => {
+		// Rate type switch queued offline; the sheet shows 1,000; a +200 transfer
+		// lands (overlay 1,200, version unchanged); the person saves 1,500.
+		const setRateType = jest.fn(async () => ({
+			undo: null,
+			result: { version: 5 },
+		}));
+		const updateBalance = jest.fn(async (body: { expectedBalance: string }) => {
+			if (body.expectedBalance !== "1200")
+				throw problem(409, "account_changed");
+			return { undo: null, result: { version: 6 } };
+		});
+		const { device, outbox } = deviceWith(
+			{ accounts: { setRateType, updateBalance } },
+			async () => booked({ accountBase: { version: 4, balance: "1200" } }),
+		);
+		await outbox.enqueue({
+			clientId: "switch",
+			entity: "accounts",
+			kind: "rateType",
+			targetId: A,
+			baseVersion: "4",
+			payload: { id: A, rateType: "official", rateTypeId: "r0" },
+		});
+		const typed = {
+			...balanceOp,
+			body: { ...balanceOp.body, balance: "1500" },
+		};
+		await writeAccountOnDevice({ device, op: typed, opened: seen(4, "1000") });
+		expect(updateBalance).toHaveBeenCalledWith(
+			expect.objectContaining({ balance: "1500", expectedBalance: "1000" }),
+			expect.anything(),
+		);
+		const parked = (await outbox.all()).find((e) => e.kind === "balance");
+		expect(parked).toMatchObject({
+			state: "conflict",
+			lastError: "account_changed",
+		});
 	});
 
 	it("refuses to stack on a parked write to the account", async () => {

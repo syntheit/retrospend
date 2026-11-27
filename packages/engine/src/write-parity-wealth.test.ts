@@ -204,4 +204,33 @@ describe("compareEntry of an account entry", () => {
 			code: "changed_since",
 		});
 	});
+
+	it("skips an account booked on rates the table has since moved past: its exchangeRate is the device's own", async () => {
+		const { store, changes } = await pulledAfterBalanceUpdate();
+		const account = store.get("accounts", A);
+		if (!account) throw new Error("no account");
+		await store.transaction((tx) => {
+			tx.put("accounts", { ...account, exchangeRate: "1600" });
+			tx.put("rateSync", {
+				id: "rates",
+				asOf: new Date(NOW - 86_400_000).toISOString(),
+			});
+		});
+		// Booked before the last rate sync: not a difference.
+		expect(
+			outcome(
+				compareEntry(store, changes, {
+					bookedAt: NOW - 2 * 86_400_000,
+					version: "4",
+				}),
+				A,
+			),
+		).toEqual({ id: A, outcome: "skipped", code: "rates_moved" });
+		// Booked after it, the same rate is held to the column.
+		expect(outcome(compare(store, changes), A)).toEqual({
+			id: A,
+			outcome: "differs",
+			fields: ["exchangeRate"],
+		});
+	});
 });

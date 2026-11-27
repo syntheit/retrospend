@@ -126,11 +126,13 @@ export function differingFields(
 export function bookingSkip(
 	live: Reader,
 	bookedAt: number,
-	home: string | null,
+	/** The home currency the row was booked into; undefined for a row with none (an account), which only the rates can move. */
+	home: string | null | undefined,
 ): "no_settings" | "settings_moved" | "rates_moved" | null {
 	const settings = live.get("settings", SETTINGS_ID);
 	if (!settings) return "no_settings";
-	if (settings.homeCurrency !== home) return "settings_moved";
+	if (home !== undefined && settings.homeCurrency !== home)
+		return "settings_moved";
 	const asOf = ratesAsOf(live);
 	if (asOf !== null && !(Date.parse(asOf) <= bookedAt - CLOCK_SKEW_MS))
 		return "rates_moved";

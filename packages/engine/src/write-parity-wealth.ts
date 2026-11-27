@@ -66,12 +66,15 @@ export function compareWealth(
 		String((pulled as { version: number }).version) !== acked.version
 	)
 		return skipped(id, "changed_since");
-	// A leg is booked at the rates and the home currency the device held.
-	if (table === "legs") {
+	// A leg, and an account's typed or table rate, are booked at the rates
+	// (and a leg into the home currency) the device held.
+	if (table === "legs" || table === "accounts") {
 		const moved = bookingSkip(
 			live,
 			acked.bookedAt,
-			(change.after as { homeCurrency: string }).homeCurrency,
+			table === "legs"
+				? (change.after as { homeCurrency: string }).homeCurrency
+				: undefined,
 		);
 		if (moved) return skipped(id, moved);
 	}

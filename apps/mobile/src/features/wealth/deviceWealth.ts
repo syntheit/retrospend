@@ -170,11 +170,20 @@ export async function writeAccountOnDevice(input: {
 				version === null ? null : String(version),
 			);
 			if (!base) return { settled: "unreadable" };
-			// Behind an unsent write the balance the person saw is not the one
-			// the server will hold: the overlay's, which that write leaves.
+			// The balance the person saw is what the write names, unless an unsent
+			// write ahead of it itself names a balance: then the server will hold
+			// what that one leaves, which the overlay has. A write ahead that
+			// checks only the version (a rate type switch) leaves the check as seen.
+			const aheadNamesBalance = (await outbox.all()).some(
+				(e) =>
+					e.targetId === id &&
+					e.state !== "conflict" &&
+					typeof (e.payload as { expectedBalance?: unknown } | null)
+						?.expectedBalance === "string",
+			);
 			const expectedBalance = !NAMES_BALANCE.has(op.kind)
 				? undefined
-				: gate.earlier
+				: aheadNamesBalance
 					? booked.accountBase?.balance
 					: (opened?.balance ?? booked.accountBase?.balance);
 			const clientId = newClientId();
