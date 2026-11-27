@@ -1,4 +1,9 @@
-import { expect, type Page, type Response } from "@playwright/test";
+import {
+	expect,
+	type Page,
+	type Request,
+	type Response,
+} from "@playwright/test";
 import { ADMIN_USER, TEST_USER } from "../constants";
 import { gotoReady, waitUntilReady } from "./navigation";
 
