@@ -28,9 +28,11 @@ const devDependencies = Object.keys(pkg.devDependencies ?? {});
 
 // Static imports take a quoted string; only import() and require() calls can
 // take a template literal. Keeping backticks to calls stops prose in comments
-// ("from `month`") from reading as an import.
+// ("from `month`") from reading as an import. A `from` counts only inside an
+// import or export statement (its names hold no quote or semicolon), so a
+// string literal "from" in code is not read as one.
 const SPECIFIER =
-	/\bfrom\s*["']([^"']+)["']|\bimport\s*["']([^"']+)["']|\b(?:import|require)\s*\(\s*["'`]([^"'`]+)["'`]/g;
+	/\b(?:import|export)\b[^"'`;]*?\bfrom\s*["']([^"']+)["']|\bimport\s*["']([^"']+)["']|\b(?:import|require)\s*\(\s*["'`]([^"'`]+)["'`]/g;
 /** Every JS or TS module, so a .js or .mts file cannot slip past the scan. */
 const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/;
