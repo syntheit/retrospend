@@ -5,16 +5,19 @@
  * logged difference like Update balance.
  */
 
-import { isLiability } from "@retrospend/domain/accounts/places";
+import { accountColumnsOf } from "@retrospend/domain/accounts/columns";
+import {
+	ASSET_NOT_FOUND,
+	legChangeMessage,
+} from "@retrospend/domain/accounts/refusals";
+import {
+	reopenRate,
+	usdKeepsRateType,
+} from "@retrospend/domain/accounts/resolve-rate";
 import { snapshotDay } from "@retrospend/domain/accounts/snapshot-plan";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { dec } from "@retrospend/domain/envelope/units";
-import {
-	columnText,
-	hasRate,
-	MissingRateError,
-	USD,
-} from "@retrospend/domain/money-dec";
+import { columnText, hasRate, USD } from "@retrospend/domain/money-dec";
 import type { Decimal, DecimalInput } from "@retrospend/domain/precise-decimal";
 import { TRPCError } from "@trpc/server";
 import { CsvNumber, generateCsv } from "~/lib/csv";
@@ -55,34 +58,17 @@ async function accountRate(
 		rate: fields.exchangeRate,
 		type: fields.exchangeRateType,
 	});
-	return fields.currency === USD
-		? { ...resolved, rateType: fields.exchangeRateType ?? null }
-		: resolved;
+	return usdKeepsRateType(fields.currency, resolved, fields.exchangeRateType);
 }
 
-const column = (value: number | null | undefined, scale: number) =>
-	value === null || value === undefined
-		? value
-		: columnText(value, scale);
-
-const otherFields = (input: AccountFields) => ({
-	name: input.name,
-	type: input.type,
-	currency: input.currency,
-	isLiquid: input.isLiquid,
-	interestRate: column(input.interestRate, 6),
-	minimumPayment: column(input.minimumPayment, 8),
-	dueDate: input.dueDate,
-	...(input.inBudget !== undefined ? { inBudget: input.inBudget } : {}),
-});
+const otherFields = accountColumnsOf<AssetType>;
 
 /**
  * A balance typed by hand (create, edit) is dated by the user's day, like
  * every leg: moveDay, the zone rule of snapshotDay. Close and reopen date
  * their snapshot by the UTC day instead.
  */
-const checkpointDay = (timeZone: string) =>
-	moveDay(null, new Date(), timeZone);
+const checkpointDay = (timeZone: string) => moveDay(null, new Date(), timeZone);
 
 export async function createAccountIn(
 	tx: Prisma.TransactionClient,
@@ -136,28 +122,16 @@ export const createAccount = (
 	);
 
 /** Edits an open account. A new rate type is a dated switch (D3); a new balance a checkpoint. */
-/**
- * Legs are signed in what you have and an account's history reads them by
- * its type, so once money moved through it neither its currency nor which
- * side of net worth it is on (something you have or something you owe) can
- * change.
- */
 async function refuseLegChanges(
 	tx: Prisma.TransactionClient,
 	existing: { id: string; currency: string; type: AssetType },
 	input: Pick<AccountFields, "currency" | "type">,
 ) {
-	const currency = existing.currency !== input.currency;
-	const side = isLiability(existing.type) !== isLiability(input.type);
-	if (!currency && !side) return;
+	const message = legChangeMessage(existing, input);
+	if (message === null) return;
 	const legs = await tx.accountLeg.count({ where: { accountId: existing.id } });
 	if (legs === 0) return;
-	throw new TRPCError({
-		code: "BAD_REQUEST",
-		message: currency
-			? "Money moved through this account in its currency. Add a new account instead."
-			: "Money moved through this account as something you have or owe. Add a new account instead.",
-	});
+	throw new TRPCError({ code: "BAD_REQUEST", message });
 }
 
 export async function editAccountIn(
@@ -213,7 +187,7 @@ async function ownAccount(
 ) {
 	const asset = await db.assetAccount.findFirst({ where: { id, userId } });
 	if (!asset) {
-		throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+		throw new TRPCError({ code: "NOT_FOUND", message: ASSET_NOT_FOUND });
 	}
 	return asset;
 }
@@ -261,30 +235,6 @@ export async function closeAccountIn(
 export const closeAccount = (db: Db, userId: string, id: string) =>
 	userTransaction(db, userId, (tx) => closeAccountIn(tx, userId, id));
 
-/** Today's rate of the account's type, else its stored rate; none throws MissingRateError. */
-async function reopenRate(
-	service: WealthService,
-	asset: {
-		currency: string;
-		exchangeRate: DecimalInput | null;
-		exchangeRateType: string | null;
-	},
-	today: Date,
-): Promise<DecimalInput> {
-	try {
-		const { rate } = await service.resolveExchangeRate(asset.currency, today, {
-			rate: asset.exchangeRate,
-			type: asset.exchangeRateType,
-		});
-		return rate;
-	} catch {
-		// No table rate: the account's own stored rate, if any
-		if (asset.exchangeRate !== null && hasRate(asset.currency, asset.exchangeRate))
-			return asset.exchangeRate;
-		throw new MissingRateError(asset.currency);
-	}
-}
-
 /**
  * Reopens a closed account with the balance it had. That balance is recorded
  * for today, so the history picks the account up again from the day it was
@@ -306,7 +256,14 @@ export async function reopenAccountIn(
 		? "0.00"
 		: service.calculateBalanceInUSD(
 				balance,
-				await reopenRate(service, asset, today),
+				await reopenRate(
+					async () =>
+						service.resolveExchangeRate(asset.currency, today, {
+							rate: asset.exchangeRate,
+							type: asset.exchangeRateType,
+						}),
+					asset,
+				),
 				asset.currency,
 			);
 	await tx.assetAccount.update({
@@ -340,7 +297,7 @@ export async function deleteAccountIn(
 ) {
 	const result = await tx.assetAccount.deleteMany({ where: { id, userId } });
 	if (result.count === 0) {
-		throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+		throw new TRPCError({ code: "NOT_FOUND", message: ASSET_NOT_FOUND });
 	}
 	return { success: true };
 }

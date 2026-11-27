@@ -8,6 +8,7 @@ import {
 	balanceEffect,
 	cappedCounted,
 } from "@retrospend/domain/accounts/places";
+import { usdKeepsRateType } from "@retrospend/domain/accounts/resolve-rate";
 import { dec } from "@retrospend/domain/envelope/units";
 import { USD } from "@retrospend/domain/money";
 import type { Decimal } from "@retrospend/domain/precise-decimal";
@@ -76,8 +77,7 @@ export async function updateBalanceIn(
 		},
 	);
 	// A USD account has no rate of its own; its type values the home side (D3).
-	const rate =
-		account.currency === USD ? { ...resolved, rateType: wanted } : resolved;
+	const rate = usdKeepsRateType(account.currency, resolved, wanted);
 	// The switch records the type the account ends up with, which is the
 	// resolved one (a type with no rate today falls back), never the request.
 	const rateSwitch =

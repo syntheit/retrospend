@@ -1,5 +1,5 @@
+import { excessDecimals } from "@retrospend/domain/accounts/refusals";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "@retrospend/domain/money";
 
 /**
  * Amounts come in as decimal text and are never rounded on the way in. A
@@ -19,13 +19,8 @@ export function assertMinorUnits(
 	currency: string,
 	field = "amount",
 ) {
-	if (!text) return;
-	const decimals = currencyDecimals(currency);
-	const fraction = text.split(".")[1] ?? "";
-	if (fraction.length > decimals)
-		throw refuse(
-			`${field} ${text} has more decimals than ${currency} allows (${decimals})`,
-		);
+	const message = excessDecimals(text, currency, field);
+	if (message !== null) throw refuse(message);
 }
 
 /** The number for a split amount, once it is exactly the text. */
