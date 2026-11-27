@@ -22,6 +22,7 @@ import { TRPCError } from "@trpc/server";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
 import { asBadRequest } from "./rate-types";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -43,7 +44,7 @@ async function refuseForeignCategory(
 ) {
 	if (!categoryId) return;
 	const found = await db.category.findFirst({
-		where: { id: categoryId, userId },
+		where: ownCategoryWhere(userId, categoryId),
 		select: { kind: true },
 	});
 	checkTemplateCategory(found, direction);

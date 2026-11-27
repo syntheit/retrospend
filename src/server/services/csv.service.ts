@@ -19,6 +19,7 @@ import { AmortizationService } from "./amortization.service";
 import { entryLegOnly, fileLegOf, legAt } from "./import/book";
 import { listedEntryWhere } from "./spending";
 import { type DecimalInput, dec } from "@retrospend/domain/precise-decimal";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 /**
  * Stored rate and USD amount of an imported row. A rate in the file wins
@@ -255,10 +256,7 @@ export class CsvService {
 		const categoryExcludes = new Map<string, boolean>();
 		if (categoryIds.length > 0) {
 			const categories = await this.db.category.findMany({
-				where: {
-					id: { in: categoryIds },
-					userId: userId,
-				},
+				where: ownCategoryWhere(userId, categoryIds),
 				select: { id: true, excludeByDefault: true },
 			});
 			for (const category of categories) {

@@ -12,6 +12,7 @@ import {
 	mergeCategories,
 	restoreCategory,
 } from "./merge.mutation";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type AppDb = typeof globalDb;
 
@@ -32,7 +33,7 @@ export async function deleteRequest(
 	},
 ): Promise<MergeInput> {
 	const found = await db.category.findFirst({
-		where: { id, userId },
+		where: ownCategoryWhere(userId, id),
 		select: { id: true },
 	});
 	if (!found)

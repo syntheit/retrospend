@@ -30,6 +30,7 @@ import {
 } from "./rule.service";
 import { loadRecord, ruleColumns, toRule, toRuleDto } from "./rule-store";
 import { ruleMatches } from "./rules";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 type Book = Awaited<ReturnType<typeof requireBook>>;
@@ -52,6 +53,7 @@ export async function listRules(
 
 async function checkTargets(
 	tx: Tx,
+	userId: string,
 	book: Book,
 	envelopeId: string | undefined,
 	match: RuleMatchInput | undefined,
@@ -62,9 +64,8 @@ async function checkTargets(
 		if (e.archivedAt) invalid("that envelope is archived");
 	}
 	if (match?.kind === "CATEGORY") {
-		// RLS shows only the user's own categories.
 		const ok = await tx.category.count({
-			where: { id: match.categoryId, kind: "INCOME" },
+			where: ownCategoryWhere(userId, match.categoryId, "INCOME"),
 		});
 		if (!ok) invalid("pick one of your income categories");
 	}
@@ -89,7 +90,7 @@ export async function createRule(
 			throw new EnvelopeError("ID_REUSED", "that id was already used");
 		return toRuleDto(existing, book.currency);
 	}
-	await checkTargets(tx, book, input.envelopeId, input.match);
+	await checkTargets(tx, userId, book, input.envelopeId, input.match);
 	const last = await tx.incomeRule.aggregate({
 		where: { bookId: book.id },
 		_max: { sortOrder: true },
@@ -123,7 +124,7 @@ export async function updateRule(
 ): Promise<IncomeRuleDto> {
 	const book = await requireBook(tx, userId);
 	await ownRule(tx, book, input.id);
-	await checkTargets(tx, book, input.envelopeId, input.match);
+	await checkTargets(tx, userId, book, input.envelopeId, input.match);
 	const row = await tx.incomeRule.update({
 		where: { id: input.id },
 		data: {

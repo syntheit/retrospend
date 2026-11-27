@@ -44,6 +44,7 @@ import {
 	Tracker,
 } from "./movement-state";
 import { activeRules, runPendingRules } from "./rule.service";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -74,7 +75,12 @@ async function ownDraft(tx: Tx, bookId: string, draftId: string) {
 	return d;
 }
 
-async function checkRefs(tx: Tx, read: MonthRead, input: SaveDraftInput) {
+async function checkRefs(
+	tx: Tx,
+	userId: string,
+	read: MonthRead,
+	input: SaveDraftInput,
+) {
 	const live = new Set(
 		read.loaded.book.envelopes.filter((e) => !e.archived).map((e) => e.id),
 	);
@@ -94,10 +100,10 @@ async function checkRefs(tx: Tx, read: MonthRead, input: SaveDraftInput) {
 			),
 		),
 	];
-	// RLS shows only the user's own categories.
 	if (
 		cats.length &&
-		(await tx.category.count({ where: { id: { in: cats } } })) !== cats.length
+		(await tx.category.count({ where: ownCategoryWhere(userId, cats) })) !==
+			cats.length
 	)
 		invalid("a draft names an unknown category");
 }
@@ -121,7 +127,7 @@ export async function saveDraft(
 				? "a plan is for next month"
 				: "What if is for this month or the next",
 		);
-	await checkRefs(tx, read, input);
+	await checkRefs(tx, userId, read, input);
 	const existing = await tx.budgetDraft.findUnique({ where: { id: input.id } });
 	if (
 		existing &&

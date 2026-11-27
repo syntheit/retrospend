@@ -27,6 +27,7 @@ import {
 	writeSetupExtras,
 } from "./setup-p5";
 import { KIND_FOR, LIABILITY_TYPES, targetColumns } from "./target-write";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -103,7 +104,7 @@ function invalid(message: string): never {
 	throw new EnvelopeError("INVALID", message);
 }
 
-async function validate(tx: Tx, input: SetupInput) {
+async function validate(tx: Tx, userId: string, input: SetupInput) {
 	const groupKeys = new Set<string>();
 	for (const g of input.groups) {
 		if (groupKeys.has(g.key)) invalid(`group key ${g.key} is used twice`);
@@ -148,9 +149,9 @@ async function validate(tx: Tx, input: SetupInput) {
 			}
 		}
 	}
-	// RLS shows only the user's own rows, so a count below the ids asked means foreign or missing ids.
+	// A count below the ids asked means foreign or missing ids.
 	const ownCategories = await tx.category.count({
-		where: { id: { in: [...categories] }, kind: "EXPENSE" },
+		where: ownCategoryWhere(userId, [...categories], "EXPENSE"),
 	});
 	if (ownCategories !== categories.size) invalid("unknown or income category");
 	// RLS shows only the user's own accounts.
@@ -336,8 +337,8 @@ export async function setupBook(
 }> {
 	if (await findPersonalBook(tx, userId))
 		throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
-	await validate(tx, input);
-	await validateSetupExtras(tx, input);
+	await validate(tx, userId, input);
+	await validateSetupExtras(tx, userId, input);
 	const b = await bookSettings(tx, userId, input, ctx);
 	const bookId = await createBook(tx, userId, input, b, ctx);
 	const envelopeIds = await createEnvelopes(tx, bookId, input, b);

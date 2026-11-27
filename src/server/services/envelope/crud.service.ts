@@ -78,7 +78,7 @@ export async function createEnvelope(
 	const book = s.loaded.row;
 	const H = s.loaded.book.currency;
 	checkGroup(s, input.groupId);
-	await checkCategories(tx, input.categoryIds);
+	await checkCategories(tx, userId, input.categoryIds);
 	await checkTarget(tx, input.kind, input.target);
 	await assertNewChange(tx, input.id);
 	await tx.envelope.create({
@@ -152,7 +152,7 @@ export async function updateEnvelope(
 	const regroup = input.groupId !== undefined && input.groupId !== env.groupId;
 	const rename = input.name !== undefined && input.name !== env.name;
 	if (input.groupId !== undefined) checkGroup(s, input.groupId);
-	if (input.categoryIds) await checkCategories(tx, input.categoryIds);
+	if (input.categoryIds) await checkCategories(tx, userId, input.categoryIds);
 	await assertNewChange(tx, input.id);
 	if (rename || regroup)
 		await tx.envelope.update({

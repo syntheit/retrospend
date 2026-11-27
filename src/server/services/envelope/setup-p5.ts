@@ -10,6 +10,7 @@ import { dec, fromMinor } from "@retrospend/domain/envelope/units";
 import type { GroupTargetInput, SetupInput } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
 import { ruleColumns } from "./rule-store";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,7 +32,11 @@ export function groupTargetColumns(t: GroupTargetInput | undefined, H: string) {
 }
 
 /** Sweeps and rules name envelopes of this setup; rule matches name the user's own rows. */
-export async function validateSetupExtras(tx: Tx, input: SetupInput) {
+export async function validateSetupExtras(
+	tx: Tx,
+	userId: string,
+	input: SetupInput,
+) {
 	const keys = new Set(input.envelopes.map((e) => e.key));
 	for (const e of input.envelopes) {
 		if (!e.sweepToKey) continue;
@@ -43,7 +48,7 @@ export async function validateSetupExtras(tx: Tx, input: SetupInput) {
 		if (!keys.has(r.envelopeKey)) invalid("a rule names an unknown envelope");
 		if (r.match.kind === "CATEGORY") {
 			const ok = await tx.category.count({
-				where: { id: r.match.categoryId, kind: "INCOME" },
+				where: ownCategoryWhere(userId, r.match.categoryId, "INCOME"),
 			});
 			if (!ok) invalid("a rule names an unknown income category");
 		}

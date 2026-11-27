@@ -12,6 +12,7 @@ import {
 } from "./category-name-index.service";
 import { ensureUserKeyringWhenSealing } from "./keys/data-key.service";
 import { byUsageThenName, compareText, sortByText } from "./text-order";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type AppDb = typeof globalDb;
 
@@ -86,7 +87,7 @@ export async function getCategory(
 	id: string,
 ): Promise<CategoryRow> {
 	const row = await db.category.findFirst({
-		where: { id, userId },
+		where: ownCategoryWhere(userId, id),
 		select: CATEGORY_SELECT,
 	});
 	if (!row)

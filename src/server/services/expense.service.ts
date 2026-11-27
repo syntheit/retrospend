@@ -29,6 +29,7 @@ import { findDuplicateExpense } from "./expense-duplicate";
 import { asBadRequestAsync } from "./rate-types";
 import { listedEntryWhere } from "./spending";
 import { sortByText } from "./text-order";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 /** pricingSource of a rate the user typed in by hand. */
 export const CUSTOM_PRICING_SOURCE = CUSTOM_RATE_TYPE;
@@ -70,7 +71,7 @@ export async function createExpenseIn(
 	const category = input.categoryId
 		? expenseCategory(
 				await tx.category.findFirst({
-					where: { id: input.categoryId, userId },
+					where: ownCategoryWhere(userId, input.categoryId),
 					select: { id: true, kind: true, excludeByDefault: true },
 				}),
 				"not_found",

@@ -44,6 +44,7 @@ import { findPersonalBook, loadBook } from "./inputs";
 import { forgetMonthViews, owedInputOf } from "./month-read";
 import { lockedSnapshot } from "./movement-state";
 import type { UnsavedChoice } from "./splits-input";
+import { isOwnCategory } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -56,10 +57,7 @@ export async function assertOwnExpenseCategory(
 	userId: string,
 	categoryId: string,
 ): Promise<void> {
-	const mine = await tx.category.count({
-		where: { id: categoryId, userId, kind: "EXPENSE" },
-	});
-	if (mine === 0)
+	if (!(await isOwnCategory(tx, userId, categoryId, "EXPENSE")))
 		throw new EnvelopeError("INVALID", "pick one of your own categories");
 }
 

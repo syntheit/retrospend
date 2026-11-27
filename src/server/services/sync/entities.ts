@@ -14,6 +14,7 @@
  */
 import type { Prisma } from "~prisma";
 import { BOOK_LOADERS, type SyncBookEntity } from "./book-entities";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 export const SYNCED_ENTITIES = [
 	"expense",
@@ -38,7 +39,7 @@ const USER_LOADERS = {
 	expense: (tx: Tx, ids: string[], userId: string) =>
 		tx.expense.findMany({ where: { id: { in: ids }, userId } }),
 	category: (tx: Tx, ids: string[], userId: string) =>
-		tx.category.findMany({ where: { id: { in: ids }, userId } }),
+		tx.category.findMany({ where: ownCategoryWhere(userId, ids) }),
 	recurring_template: (tx: Tx, ids: string[], userId: string) =>
 		tx.recurringTemplate.findMany({ where: { id: { in: ids }, userId } }),
 	asset_account: (tx: Tx, ids: string[], userId: string) =>

@@ -36,6 +36,7 @@ import type { MoneyMutation } from "../preview/types";
 import { assertNoClosedMonthChange } from "./closed-months";
 import { type MergeCtx, staleUndo } from "./holder";
 import { HOLDERS, MOVE_ORDER } from "./holders";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 /** Spent does not move (kinds match, flags stay); the budget pool moves when envelope links do. */
 const TOUCHES = [
@@ -113,7 +114,7 @@ async function lockedCategory(tx: MergeCtx["tx"], userId: string, id: string) {
 	const [row] = await tx.$queryRaw<{ id: string }[]>`
 		SELECT "id" FROM "category" WHERE "id" = ${id} AND "userId" = ${userId} FOR UPDATE`;
 	if (!row) throw notFound();
-	return tx.category.findFirstOrThrow({ where: { id, userId } });
+	return tx.category.findFirstOrThrow({ where: ownCategoryWhere(userId, id) });
 }
 
 async function checkedTarget(
@@ -128,7 +129,7 @@ async function checkedTarget(
 			message: "A category cannot be merged into itself",
 		});
 	const target = await tx.category.findFirst({
-		where: { id: input.targetId, userId },
+		where: ownCategoryWhere(userId, input.targetId),
 	});
 	if (!target)
 		throw new TRPCError({
@@ -224,7 +225,7 @@ export const restoreCategory: MoneyMutation<
 			throw invalidUndo();
 		const target = body.targetId
 			? await tx.category.findFirst({
-					where: { id: body.targetId, userId },
+					where: ownCategoryWhere(userId, body.targetId),
 					select: { id: true },
 				})
 			: null;
