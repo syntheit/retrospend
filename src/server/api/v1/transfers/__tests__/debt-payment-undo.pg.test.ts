@@ -29,12 +29,19 @@ import {
 	TODAY,
 	TODAY_ZONE,
 } from "~/server/services/accounts/test-fixtures";
+import { mintUndo, readUndo } from "~/server/services/api-v1/undo";
 import { assignEnvelopes } from "~/server/services/envelope/movement.mutation";
 import { getMonth } from "~/server/services/envelope/read.service";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
+import type { TransferStash } from "~/server/services/transfers/stash";
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
-import { asMobile, call, expectBody } from "../../core/__tests__/harness";
+import {
+	asMobile,
+	call,
+	expectBody,
+	expectProblem,
+} from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -495,5 +502,148 @@ describe("undoing the delete of a transfer over /api/v1/transfers restores the r
 		expect(paid.sides).toEqual([]);
 		await deleteAndUndo(w, id);
 		expect(await snapshot(w, id, accounts)).toEqual(paid);
+	});
+});
+
+/**
+ * The stash guards (transfers/stash.ts). Each test deletes a debt payment,
+ * edits the stash inside its signed token and mints it again, so it trips one
+ * guard only and nothing is written when the undo is refused.
+ */
+describe("a stash the undo refuses or repairs", () => {
+	type Edit = (restore: TransferStash) => void;
+
+	async function undoWith(w: World, id: string, edit: Edit) {
+		const deleted = await expectBody<{ undo: string }>(
+			await send(w, "DELETE", `/transfers/${id}`),
+			c.delete,
+		);
+		const { op, input } = readUndo(w.user.id, "transfer", deleted.undo);
+		const next = structuredClone(input) as { restore: TransferStash };
+		edit(next.restore);
+		const token = mintUndo(w.user.id, "transfer", op, next);
+		return send(w, "POST", "/transfers/undo", { token });
+	}
+
+	const paid = async () => {
+		const w = await world();
+		const { id } = await pay(w, {
+			liabilityId: w.card,
+			fromAccountId: w.wallet,
+			interest: "5000",
+		});
+		return { w, id };
+	};
+	const gone = (id: string) => adminDb.transfer.count({ where: { id } });
+
+	it("refuses a stash of an unknown shape (400) and writes nothing", async () => {
+		const { w, id } = await paid();
+		await expectProblem(
+			await undoWith(w, id, (r) => {
+				(r as unknown as Record<string, unknown>).extra = true;
+			}),
+			400,
+			"bad_request",
+		);
+		await expect(gone(id)).resolves.toBe(0);
+	});
+
+	it("refuses a side that belongs to another transfer (400)", async () => {
+		const { w, id } = await paid();
+		await expectProblem(
+			await undoWith(w, id, (r) => {
+				r.sides[0].transferId = randomUUID();
+			}),
+			400,
+			"bad_request",
+		);
+		await expect(gone(id)).resolves.toBe(0);
+	});
+
+	it("refuses a side written by someone else (400)", async () => {
+		const { w, id } = await paid();
+		await expectProblem(
+			await undoWith(w, id, (r) => {
+				r.sides[0].actorUserId = randomUUID();
+			}),
+			400,
+			"bad_request",
+		);
+		await expect(gone(id)).resolves.toBe(0);
+	});
+
+	it("conflicts when the side's envelope is gone (409)", async () => {
+		const { w, id } = await paid();
+		await expectProblem(
+			await undoWith(w, id, (r) => {
+				r.sides[0].envelopeId = randomUUID();
+			}),
+			409,
+			"conflict",
+		);
+		await expect(gone(id)).resolves.toBe(0);
+	});
+
+	it("conflicts when the side's book is gone (409)", async () => {
+		const { w, id } = await paid();
+		await expectProblem(
+			await undoWith(w, id, (r) => {
+				r.sides[0].bookId = randomUUID();
+				r.sides[0].envelopeId = null;
+			}),
+			409,
+			"conflict",
+		);
+		await expect(gone(id)).resolves.toBe(0);
+	});
+
+	it("conflicts when the side's account is gone (409)", async () => {
+		const { w, id } = await paid();
+		await expectProblem(
+			await undoWith(w, id, (r) => {
+				r.sides[0].assetAccountId = randomUUID();
+			}),
+			409,
+			"conflict",
+		);
+		await expect(gone(id)).resolves.toBe(0);
+	});
+
+	it("leaves the fee uncategorized when its category was deleted since", async () => {
+		const w = await world();
+		const made = await expectBody<{ transfer: { id: string } }>(
+			await send(w, "POST", "/transfers", {
+				fromAccountId: w.wallet,
+				toAccountId: w.card,
+				fromAmount: "100000",
+				fee: { amount: "5000" },
+			}),
+			c.create,
+			201,
+		);
+		const id = made.transfer.id;
+		const temp = await fixtureDb.category.create({
+			data: { name: "Temp", color: "red", userId: w.user.id },
+		});
+		const row = await adminDb.transfer.findUniqueOrThrow({ where: { id } });
+		await adminDb.expense.update({
+			where: { id: row.feeExpenseId as string },
+			data: { categoryId: temp.id },
+		});
+		const deleted = await expectBody<{ undo: string }>(
+			await send(w, "DELETE", `/transfers/${id}`),
+			c.delete,
+		);
+		await adminDb.category.delete({ where: { id: temp.id } });
+		await expectBody(
+			await send(w, "POST", "/transfers/undo", { token: deleted.undo }),
+			c.undo,
+		);
+		const back = await adminDb.transfer.findUniqueOrThrow({ where: { id } });
+		const fee = await adminDb.expense.findUniqueOrThrow({
+			where: { id: back.feeExpenseId as string },
+		});
+		expect(fee.categoryId).toBeNull();
+		expect(fee.amount.toString()).toBe("5000");
 	});
 });
