@@ -75,13 +75,13 @@ const ALLOWED: readonly Allowed[] = [
 		reason: "only asks which ids still exist, through the restorer's client (K7 rows); no name or field leaves",
 	},
 	{
-		file: "src/server/services/project/page-view.ts",
+		file: "src/server/services/project/public-totals.ts",
 		call: "findMany",
 		arg: "where: { id: { in: ids } }",
-		reason: "public page: the ids come from loadPublicTotals's lateral join, which already kept only categories on a split their owner created or is on",
+		reason: "public page: the ids come from loadPublicTotals lateral join, which already kept only categories on a split their owner created or is on",
 	},
 	{
-		file: "src/server/services/project/page-view.ts",
+		file: "src/server/services/project/public-totals.ts",
 		call: "raw",
 		arg: 'FROM "category" c',
 		reason: "the lateral join that applies the K7 rule for the public page (see the page's pg test)",
