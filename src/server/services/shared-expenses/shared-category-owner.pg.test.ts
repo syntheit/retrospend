@@ -25,6 +25,7 @@ import {
 	expectBody,
 	expectProblem,
 } from "~/server/api/v1/core/__tests__/harness";
+import { assertSharedRowCategory } from "~/server/services/category/own";
 import { sharedTx, shareOf } from "~/server/services/category/__tests__/merge-kit";
 import { DAY, makeWorld, type World } from "~/server/services/entry/__tests__/expense-write-kit";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
@@ -348,6 +349,30 @@ describe("a guest", () => {
 		await service.update({ id, description: "Cab" });
 		await service.update({ id, categoryId: hers, description: "Cab 2" });
 		expect(await rowOf(id)).toMatchObject({ categoryId: hers, description: "Cab 2" });
+	});
+});
+
+describe("the rule itself", () => {
+	it("gives a guest or shadow no category even when their id is a user's", async () => {
+		// The lookup is by user id, so this is the only guard that stops a
+		// participant whose id equals a user's id; the other tests never reach it.
+		const owner = await arsUser();
+		const mine = (await category(owner.user.id, "Mine")).id;
+		for (const participantType of ["guest", "shadow"] as const)
+			await expect(
+				assertSharedRowCategory(
+					adminDb,
+					{ participantType, participantId: owner.user.id },
+					mine,
+				),
+			).rejects.toMatchObject({ message: "Category not found" });
+		await expect(
+			assertSharedRowCategory(
+				adminDb,
+				{ participantType: "user", participantId: owner.user.id },
+				mine,
+			),
+		).resolves.toBeUndefined();
 	});
 });
 
