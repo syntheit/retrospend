@@ -195,11 +195,16 @@ describe("auto-finalize of a payment pending for more than 7 days", () => {
 					(e.entity?.id === id || e.data.ids.paymentId === id),
 			);
 		await openTransactionsEnded();
-		await vi.waitFor(async () => {
-			await fanOutEvents();
-			expect(await confirmed(p.payer)).toHaveLength(1);
-			expect(await confirmed(p.payee)).toHaveLength(1);
-		});
+		// Each try fans out and reads two sealed feeds; on a loaded host one try
+		// can outlast vitest's 1 s default, so the wait gets its own ceiling.
+		await vi.waitFor(
+			async () => {
+				await fanOutEvents();
+				expect(await confirmed(p.payer)).toHaveLength(1);
+				expect(await confirmed(p.payee)).toHaveLength(1);
+			},
+			{ timeout: 10_000 },
+		);
 		// The payee's own event carries the figures the payment moved (ARS 37,100
 		// stops being owed to them), as a manual confirm's does; the payer's copy
 		// carries none of the payee's amounts.
