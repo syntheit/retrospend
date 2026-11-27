@@ -173,13 +173,22 @@ describe("what the trigger does to each column", () => {
 
 	it("a reseal-shaped write, the stored name and its index rewritten and no new text, leaves the version", async () => {
 		const { id } = await made();
-		const before = await adminDb.category.findUniqueOrThrow({ where: { id } });
-		await adminDb.$executeRaw`
-			UPDATE "category" SET "name" = 'Other bytes', "nameIndex" = 'aaaaaaaaaaaaaaaa:bb' WHERE "id" = ${id}`;
-		// Put the stored bytes back: the sealed sweep allows no plaintext left behind.
-		await adminDb.$executeRaw`
-			UPDATE "category" SET "name" = ${before.name}::text, "nameIndex" = ${before.nameIndex}::text WHERE "id" = ${id}`;
-		expect(await versionOf(id)).toBe(0);
+		// Rolled back: the sealed sweep allows no plaintext left behind.
+		await inRolledBackTransaction(async (client) => {
+			await client.query(
+				`UPDATE "category" SET "name" = 'Other bytes', "nameIndex" = 'aaaaaaaaaaaaaaaa:bb' WHERE "id" = $1`,
+				[id],
+			);
+			await client.query(
+				`UPDATE "category" SET "name" = 'Sealed bytes' WHERE "id" = $1`,
+				[id],
+			);
+			const { rows } = await client.query(
+				`SELECT "version" FROM "category" WHERE "id" = $1`,
+				[id],
+			);
+			expect(rows[0].version).toBe(0);
+		});
 	});
 
 	it("a null icon that becomes a value, and a value that becomes null, are each a change", async () => {
