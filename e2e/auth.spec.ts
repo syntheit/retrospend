@@ -62,4 +62,40 @@ test.describe("logout", () => {
 		await page.goto("/activity");
 		await expect(page).toHaveURL(/\/login/);
 	});
+
+	test("logout works when the first-visit locale sync reloads Home late", async ({
+		page,
+	}) => {
+		// A browser with no locale cookie gets one from a server action on its
+		// first dashboard page and then reloads (LocaleSync). On a slow machine
+		// that action starts after the page has gone quiet and the reload takes
+		// a while, so it lands after Home first looked ready. Start the action
+		// two seconds late and hold the reloaded document for three.
+		await page.addInitScript(() => {
+			const original = window.fetch;
+			window.fetch = async (input, init) => {
+				if (new Headers(init?.headers).has("next-action"))
+					await new Promise((resolve) => setTimeout(resolve, 2000));
+				return original(input, init);
+			};
+		});
+		let homeDocuments = 0;
+		await page.route("**/home", async (route) => {
+			if (route.request().isNavigationRequest() && ++homeDocuments === 2)
+				await new Promise((resolve) => setTimeout(resolve, 3000));
+			await route.continue();
+		});
+
+		await loginAsTestUser(page);
+		await page.getByRole("button", { name: /Account menu/ }).click();
+		// The menu is open and the reload is on its way: wait until the action
+		// has answered (it sets the cookie), then use the menu.
+		await expect
+			.poll(async () =>
+				(await page.context().cookies()).some((c) => c.name === "locale"),
+			)
+			.toBe(true);
+		await page.getByRole("menuitem", { name: "Sign out" }).click();
+		await expect(page).toHaveURL(/\/login/);
+	});
 });
