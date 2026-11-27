@@ -25,7 +25,12 @@ patchedDependencies:
 # Security fixes in tooling only (Dependabot, owner OK 2026-11-17): hono and
 # its node server come in through the shadcn CLI's MCP SDK, node-forge through
 # @expo/cli. Neither ships in the app.
+# effect (Dependabot #32, owner OK 2026-11-27) does ship: @prisma/config loads
+# prisma.config.ts with it when migrations run on container start. Prisma 7.10.1
+# pins 3.20.0 (ReDoS in Schema.TemplateLiteral, fixed in 3.22.1). Drop this line
+# once Prisma's own pin is at or above 3.22.1.
 overrides:
   hono: ^4.13.16
   '@hono/node-server': ^2.1.6
   node-forge: ^1.4.3
+  effect: ^3.22.1
