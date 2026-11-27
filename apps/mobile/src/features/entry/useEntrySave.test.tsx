@@ -511,6 +511,7 @@ describe("Save an edit", () => {
 			comparePreview: async () => undefined,
 			pullsBegun: () => 1,
 			storedRebase: async () => null,
+			storedAccount: async () => null,
 			absentSince: async () => false,
 			refresh: async () => undefined,
 		});

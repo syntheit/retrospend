@@ -18,6 +18,7 @@
 		"./currency-country": "./src/currency-country.ts",
 		"./currency-format": "./src/currency-format.ts",
 		"./currency-names": "./src/currency-names.ts",
+		"./id-taken": "./src/id-taken.ts",
 		"./decimal": "./src/decimal.ts",
 		"./envelope/*": "./src/envelope/*.ts",
 		"./expense-input": "./src/expense-input.ts",

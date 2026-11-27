@@ -122,6 +122,7 @@ function writesOf(h: Harness): DeviceWrites {
 		absentSince: jest.fn(async (id: string, since: number) =>
 			h.absentSince(id, since),
 		),
+		storedAccount: async () => null,
 		templateSince: async () => null,
 		refresh: async () => undefined,
 	} as DeviceWrites;
@@ -593,7 +594,11 @@ describe.each(harnesses)("the queue over the %s transport", (_name, make) => {
 				reason: entry.lastError,
 				gone: false,
 			});
-			expect(writes.absentSince).toHaveBeenCalledWith(ID, h.pullsBegun());
+			expect(writes.absentSince).toHaveBeenCalledWith(
+				ID,
+				h.pullsBegun(),
+				"expenses",
+			);
 			expect(await outbox.all()).toHaveLength(1);
 			h.pull();
 			expect(await resolveParked(outbox, h.api, entry)).toBeNull();

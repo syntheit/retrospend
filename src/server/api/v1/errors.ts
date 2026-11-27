@@ -5,6 +5,7 @@ import {
 	type ProblemCode,
 	problemType,
 } from "@retrospend/api-contract/common";
+import { ID_TAKEN_MESSAGE } from "@retrospend/domain/id-taken";
 import { PREVIEW_BUSY_MESSAGE } from "~/server/services/preview/busy";
 
 const TITLES: Record<ProblemCode, string> = {
@@ -39,7 +40,7 @@ const TITLES: Record<ProblemCode, string> = {
 	missing_rate: "No rate for that currency",
 	overpay: "More than is owed",
 	rate_out_of_range: "Rate too far from the stored rate",
-	id_taken: "That id is already used",
+	id_taken: ID_TAKEN_MESSAGE,
 	share_locked: "This expense is settled",
 	category_kind_mismatch: "Expense and income categories cannot be merged",
 	category_closed_month: "A closed month files these in different envelopes",

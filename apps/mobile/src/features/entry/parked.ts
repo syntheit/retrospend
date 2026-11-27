@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/auth/session";
 import { deviceWrites } from "@/data/deviceWrites";
 import { transportFor } from "@/data/transport";
+import { accountOffer } from "@/features/wealth/rebaseAccount";
 import { subscribeEntryChanges } from "./events";
 import { type ParkedEntry, parkedFrom } from "./parked-entry";
 import { resolveParked } from "./parked-resolve";
@@ -17,7 +18,15 @@ import { forgetNotFound, isEntryEntity, SEND_TIMEOUT_MS } from "./send";
 
 /** What Try again would do, shown before it is sent. */
 export interface RebaseOffer {
-	kind: "update" | "delete" | "confirm" | "skip";
+	kind:
+		| "update"
+		| "delete"
+		| "confirm"
+		| "skip"
+		| "close"
+		| "reopen"
+		| "balance"
+		| "rateType";
 	/** The server's dry run of the re-based write. */
 	diff: PreviewDto;
 	/** Saves it over the newer version and sends it; true when the server took it. */
@@ -116,12 +125,37 @@ export function useParkedEntries() {
 		async (clientId: string): Promise<RebaseOffer | null> => {
 			const writes = api ? deviceWrites(api) : null;
 			if (!local || !api || !writes) return null;
-			const plan = await planRebase({ outbox: local.outbox, writes, clientId });
-			if (!plan) return null;
+			const parked = (await local.outbox.all()).find(
+				(e) => e.clientId === clientId,
+			);
 			const timeout = new AbortController();
 			const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 			const options = { signal: timeout.signal };
 			try {
+				if (parked?.entity === "accounts")
+					return await accountOffer({
+						outbox: local.outbox,
+						api,
+						writes,
+						clientId,
+						kind: parked.kind,
+						options,
+						done: async (next) => {
+							forgetNotFound(clientId);
+							await flushEntries(local.outbox, api, transportFor(api));
+							const still = (await local.outbox.all()).some(
+								(e) => e.clientId === next,
+							);
+							refresh();
+							return !still;
+						},
+					});
+				const plan = await planRebase({
+					outbox: local.outbox,
+					writes,
+					clientId,
+				});
+				if (!plan) return null;
 				const diff = await dryRunOf(api, plan, options);
 				return {
 					kind: plan.op.kind === "create" ? "update" : plan.op.kind,

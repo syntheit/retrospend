@@ -108,3 +108,25 @@ export function rebaseOf(r: Reader, id: string): Rebase | null {
 		throw error;
 	}
 }
+
+/**
+ * An account as a pull left it, read for a parked write of it: its version
+ * and stored balance (what Try again names as the version and balance it saw)
+ * and whether it is closed.
+ */
+export interface AccountSeen {
+	version: number;
+	balance: string;
+	closed: boolean;
+}
+
+export function accountSeenOf(r: Reader, id: string): AccountSeen | null {
+	const row = r.get("accounts", id);
+	return row
+		? {
+				version: row.version,
+				balance: row.balance,
+				closed: row.closedAt !== null,
+			}
+		: null;
+}

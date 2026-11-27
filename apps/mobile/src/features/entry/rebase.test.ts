@@ -93,6 +93,7 @@ const writes = (
 		pullsBegun: () => 1,
 		storedRebase: async () => ({ body: pulled, version: PULLED_AT }),
 		absentSince: async () => false,
+		storedAccount: async () => null,
 		templateSince: async () => null,
 		refresh: async () => undefined,
 		...over,

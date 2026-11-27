@@ -89,6 +89,7 @@ async function phone(rows: Record<string, unknown>[]) {
 		comparePreview: async () => undefined,
 		pullsBegun: () => engine.pullsBegun,
 		storedRebase: (id) => engine.storedRebase(id),
+		storedAccount: (id) => engine.storedAccount(id),
 		absentSince: (id, pull) => engine.absentSince(id, pull),
 		templateSince: (id, pull, dueAt, expenseId) =>
 			engine.templateSince(id, pull, dueAt, expenseId),

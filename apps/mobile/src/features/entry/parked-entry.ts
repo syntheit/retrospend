@@ -3,6 +3,7 @@ import type { OutboxEntry, OutboxKind } from "@/data/outbox";
 import { PARKED_CHAIN_LOST } from "@/data/outbox-chain";
 import {
 	KEY_REUSED,
+	PARKED_ACCOUNT_CHANGED,
 	PARKED_ID_TAKEN,
 	PARKED_NO_STAMP,
 	PARKED_NOT_FOUND,
@@ -92,6 +93,13 @@ export function parkedFrom(entry: OutboxEntry, gone = false): ParkedEntry {
  */
 function retryableOf(entry: OutboxEntry): boolean {
 	const reason = entry.lastError ?? "";
+	// A new account or transfer that met a taken id, and a whole-account edit
+	// (its changed fields are unknown), can only be refused again.
+	if (entry.entity === "accounts" || entry.entity === "transfers") {
+		if (entry.kind === "create")
+			return reason !== KEY_REUSED && reason !== PARKED_ID_TAKEN;
+		return entry.kind !== "update";
+	}
 	if (entry.entity === "recurring" && entry.kind === "create")
 		return reason !== KEY_REUSED && reason !== PARKED_ID_TAKEN;
 	if (entry.entity === "recurring" && entry.kind === "update")
@@ -121,4 +129,23 @@ const REBASED_TEMPLATE = [...REBASED, RECURRING_CHANGED, PARKED_NOT_FOUND];
 export const rebases = (entry: ParkedEntry): boolean =>
 	entry.kind === "confirm" || entry.kind === "skip"
 		? REBASED_TEMPLATE.includes(entry.reason)
-		: entry.kind !== "create" && REBASED.includes(entry.reason);
+		: ACCOUNT_KINDS.includes(entry.kind)
+			? REBASED_ACCOUNT.includes(entry.reason)
+			: entry.kind !== "create" && REBASED.includes(entry.reason);
+
+/** The kinds only an account has: each states one thing (a balance, a state, a type) that is saved again over the account as pulled. */
+const ACCOUNT_KINDS: readonly OutboxKind[] = [
+	"close",
+	"reopen",
+	"balance",
+	"rateType",
+];
+
+/** Why an account write was parked, that saving it again over the pulled account can change. */
+const REBASED_ACCOUNT = [
+	PARKED_ACCOUNT_CHANGED,
+	PARKED_STAMP,
+	PARKED_CHAIN_LOST,
+	PARKED_NO_STAMP,
+	KEY_REUSED,
+];

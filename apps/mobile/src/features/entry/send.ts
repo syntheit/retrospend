@@ -103,6 +103,8 @@ export const PROTECTED_ACCOUNT = problem("protected_account");
 export const RECURRING_ALREADY_POSTED = problem("recurring_already_posted");
 export const RECURRING_NOT_DUE = problem("recurring_not_due");
 export const RECURRING_CHANGED = problem("recurring_changed");
+/** The account moved (its version, or its stored balance) since the write read it. */
+export const PARKED_ACCOUNT_CHANGED = problem("account_changed");
 
 /** The server answered that it did not take the write, and said nothing of an earlier try. */
 export function notStored(sent: { http?: number; reason: string }): boolean {
@@ -147,6 +149,7 @@ export const MAYBE_GONE: readonly string[] = [
 	PARKED_STAMP,
 	RECURRING_ALREADY_POSTED,
 	RECURRING_CHANGED,
+	PARKED_ACCOUNT_CHANGED,
 ];
 
 /**

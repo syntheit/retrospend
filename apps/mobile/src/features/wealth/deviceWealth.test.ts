@@ -12,6 +12,7 @@ import {
 	type WealthDevice,
 	writeAccountOnDevice,
 } from "./deviceWealth";
+import { commitAccountRebase, planAccountRebase } from "./rebaseAccount";
 
 // A person's account write and transfer under the dev flag: booked on the
 // device, queued with the version it was based on and the stored balance it
@@ -256,6 +257,41 @@ describe("an account write under the flag", () => {
 			state: "conflict",
 			lastError: "account_changed",
 		});
+	});
+
+	it("a stale version parks, and Try again re-bases it on the pulled account and succeeds", async () => {
+		let pulledVersion = 4;
+		const updateBalance = jest.fn(async (body: { expectedVersion: number }) => {
+			if (body.expectedVersion !== 6) throw problem(409, "account_changed");
+			return { undo: "tok", result: { version: 7 } };
+		});
+		const { device, outbox, writes } = deviceWith(
+			{ accounts: { updateBalance } },
+			async () => booked(),
+		);
+		Object.assign(writes, {
+			storedAccount: async () => ({
+				version: pulledVersion,
+				balance: "1100",
+				closed: false,
+			}),
+		});
+		expect(
+			await writeAccountOnDevice({ device, op: balanceOp, opened: 4 }),
+		).toMatchObject({ settled: "parked" });
+		// Another device's change reaches the phone: the account is at version 6.
+		pulledVersion = 6;
+		const clientId = (await outbox.all())[0]?.clientId as string;
+		const plan = await planAccountRebase({ outbox, writes, clientId });
+		if (!plan) throw new Error("no plan");
+		await commitAccountRebase({ outbox, writes, clientId, plan });
+		await flushEntries(outbox, device.api, apiTransport(device.api));
+		expect(updateBalance).toHaveBeenLastCalledWith(
+			expect.objectContaining({ expectedVersion: 6, expectedBalance: "1100" }),
+			expect.anything(),
+		);
+		expect(await outbox.all()).toEqual([]);
+		expect((await outbox.acked())[0]?.ack.version).toBe("7");
 	});
 
 	it("refuses to stack on a parked write to the account", async () => {

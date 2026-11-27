@@ -120,7 +120,7 @@ describe("when the app opens", () => {
 	it("leaves entries of other kinds where they are", async () => {
 		const { api, calls } = fakeApi();
 		world.api = api;
-		await waiting("x", "accounts", { id: "x" });
+		await waiting("x", "envelopes", { id: "x" });
 		await waiting("a", "expenses", YEN);
 		await renderHook(() => useOutboxFlush());
 		await settled();
