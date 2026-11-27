@@ -513,6 +513,13 @@ describe("undoing the delete of a transfer over /api/v1/transfers restores the r
 describe("a stash the undo refuses or repairs", () => {
 	type Edit = (restore: TransferStash) => void;
 
+	/** The stash's one side; a stash with none is a broken fixture. */
+	function firstSide(r: TransferStash) {
+		const side = r.sides[0];
+		if (!side) throw new Error("the stash has no side");
+		return side;
+	}
+
 	async function undoWith(w: World, id: string, edit: Edit) {
 		const deleted = await expectBody<{ undo: string }>(
 			await send(w, "DELETE", `/transfers/${id}`),
@@ -552,7 +559,7 @@ describe("a stash the undo refuses or repairs", () => {
 		const { w, id } = await paid();
 		await expectProblem(
 			await undoWith(w, id, (r) => {
-				r.sides[0].transferId = randomUUID();
+				firstSide(r).transferId = randomUUID();
 			}),
 			400,
 			"bad_request",
@@ -564,7 +571,7 @@ describe("a stash the undo refuses or repairs", () => {
 		const { w, id } = await paid();
 		await expectProblem(
 			await undoWith(w, id, (r) => {
-				r.sides[0].actorUserId = randomUUID();
+				firstSide(r).actorUserId = randomUUID();
 			}),
 			400,
 			"bad_request",
@@ -576,7 +583,7 @@ describe("a stash the undo refuses or repairs", () => {
 		const { w, id } = await paid();
 		await expectProblem(
 			await undoWith(w, id, (r) => {
-				r.sides[0].envelopeId = randomUUID();
+				firstSide(r).envelopeId = randomUUID();
 			}),
 			409,
 			"conflict",
@@ -588,8 +595,8 @@ describe("a stash the undo refuses or repairs", () => {
 		const { w, id } = await paid();
 		await expectProblem(
 			await undoWith(w, id, (r) => {
-				r.sides[0].bookId = randomUUID();
-				r.sides[0].envelopeId = null;
+				firstSide(r).bookId = randomUUID();
+				firstSide(r).envelopeId = null;
 			}),
 			409,
 			"conflict",
@@ -601,7 +608,7 @@ describe("a stash the undo refuses or repairs", () => {
 		const { w, id } = await paid();
 		await expectProblem(
 			await undoWith(w, id, (r) => {
-				r.sides[0].assetAccountId = randomUUID();
+				firstSide(r).assetAccountId = randomUUID();
 			}),
 			409,
 			"conflict",
