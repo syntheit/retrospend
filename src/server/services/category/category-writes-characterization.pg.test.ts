@@ -539,3 +539,29 @@ describe("the name check: index path and plaintext fallback", () => {
 		expect((await rowOf((second as { id: string }).id)).nameIndex).toBeNull();
 	});
 });
+
+describe("a device's UUID id", () => {
+	it("is refused by the web's categories router before it reads anything (cuid only), while v1 takes it", async () => {
+		const user = await createTestUser();
+		const api = trpcOf(user);
+		const uuid = randomUUID();
+		const cuid = `c${uuid.replaceAll("-", "")}`;
+		await expect(
+			api.update({ id: uuid, name: "Food", color: "teal" }),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(
+			api.remove({ id: uuid, targetId: null }),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(
+			api.remove({ id: cuid, targetId: uuid }),
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		// v1 reads the id as any string: the row is simply not found.
+		await expectProblem(
+			await call(`/categories/${uuid}`, {
+				headers: await asMobile(user.user.id),
+			}),
+			404,
+			"not_found",
+		);
+	});
+});
