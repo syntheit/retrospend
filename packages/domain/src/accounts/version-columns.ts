@@ -7,6 +7,7 @@
  * reads the trigger function from the catalog and fails unless it names
  * exactly these columns and every column of the schema is in one list.
  */
+import { CUSTOM_RATE_TYPE } from "../rate-booking";
 
 /** Device-editable columns: a change to any of them is a new version. */
 export const ACCOUNT_VERSION_COLUMNS = [
@@ -24,6 +25,20 @@ export const ACCOUNT_VERSION_COLUMNS = [
 export type AccountVersionColumn = (typeof ACCOUNT_VERSION_COLUMNS)[number];
 
 /**
+ * Columns that move the version only while the account's (new) rate type is
+ * the key: the value is the rate type's name. The stored exchangeRate is a
+ * cached rate that every checkpoint rewrites for the table rate types (blue,
+ * official, mep...), so for those it never counts; for the custom rate type it
+ * is what the person typed through Replace, so a change is an edit.
+ */
+export const ACCOUNT_VERSION_WHEN_RATE_TYPE = {
+	exchangeRate: CUSTOM_RATE_TYPE,
+} as const;
+
+export type AccountVersionConditional =
+	keyof typeof ACCOUNT_VERSION_WHEN_RATE_TYPE;
+
+/**
  * Columns that never move the version, each with the reason it is safe. A
  * pending device edit must not park because of a write the person did not make
  * to the account itself.
@@ -39,8 +54,6 @@ export const ACCOUNT_VERSION_SKIPPED = {
 		"moved by every leg (a transfer, an income leg, a balance update) and compared on its own by expectedBalance, so a leg never spoils a pending rate type or field edit",
 	countedUnits:
 		"moved by the leg trigger and the counted move of a transfer; budget bookkeeping, not an account edit",
-	exchangeRate:
-		"the stored rate of the custom rate type or the rate a checkpoint resolved; it follows the rate type, which is versioned",
 	iconKind:
 		"an icon swap is a picture, not money; it reaches devices through the sync log and must not park an edit",
 	iconValue: "as iconKind",

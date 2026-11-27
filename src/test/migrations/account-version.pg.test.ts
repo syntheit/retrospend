@@ -14,9 +14,12 @@ import { join } from "node:path";
 import {
 	ACCOUNT_VERSION_COLUMNS,
 	ACCOUNT_VERSION_SKIPPED,
+	ACCOUNT_VERSION_WHEN_RATE_TYPE,
 	type AccountVersionColumn,
+	type AccountVersionConditional,
 	type AccountVersionSkipped,
 } from "@retrospend/domain/accounts/version-columns";
+import { CUSTOM_RATE_TYPE } from "@retrospend/domain/rate-booking";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { userTransaction } from "~/server/db-tx";
 import {
@@ -61,31 +64,58 @@ const columns = (model?.fields ?? [])
 	.map((f) => f.name);
 
 describe("which columns move the version", () => {
-	it("the function names exactly ACCOUNT_VERSION_COLUMNS, on the old and the new side", async () => {
+	it("the function names exactly ACCOUNT_VERSION_COLUMNS and the conditional column, on the old and the new side", async () => {
 		const [fn] = await adminDb.$queryRaw<{ src: string }[]>`
 			SELECT prosrc AS src FROM pg_proc
 			WHERE proname = ${FN} AND pronamespace = 'public'::regnamespace`;
 		const named = (side: "OLD" | "NEW") =>
-			[...(fn?.src ?? "").matchAll(new RegExp(`${side}\\."(\\w+)"`, "g"))]
-				.map((m) => m[1] as string)
-				.filter((c) => c !== "version")
-				.sort();
-		const expected = [...ACCOUNT_VERSION_COLUMNS].sort();
+			[
+				...new Set(
+					[...(fn?.src ?? "").matchAll(new RegExp(`${side}\\."(\\w+)"`, "g"))]
+						.map((m) => m[1] as string)
+						.filter((c) => c !== "version"),
+				),
+			].sort();
+		const expected = [
+			...ACCOUNT_VERSION_COLUMNS,
+			...Object.keys(ACCOUNT_VERSION_WHEN_RATE_TYPE),
+		].sort();
 		expect(named("OLD")).toEqual(expected);
 		expect(named("NEW")).toEqual(expected);
 	});
 
-	it("every scalar column of the schema is in exactly one of the two lists, and no list names a column that is gone", () => {
+	it("the conditional column bumps only for the custom rate type, whose name is the domain's", async () => {
+		const [fn] = await adminDb.$queryRaw<{ src: string }[]>`
+			SELECT prosrc AS src FROM pg_proc
+			WHERE proname = ${FN} AND pronamespace = 'public'::regnamespace`;
+		const src = fn?.src ?? "";
+		for (const [column, rateType] of Object.entries(
+			ACCOUNT_VERSION_WHEN_RATE_TYPE,
+		)) {
+			const found = src.match(
+				new RegExp(
+					`NEW\\."exchangeRateType"\\s*=\\s*'([^']*)'\\s+AND\\s+NEW\\."${column}"\\s+IS DISTINCT FROM\\s+OLD\\."${column}"`,
+				),
+			);
+			expect(found?.[1], column).toBe(rateType);
+		}
+		expect(ACCOUNT_VERSION_WHEN_RATE_TYPE.exchangeRate).toBe(CUSTOM_RATE_TYPE);
+	});
+
+	it("every scalar column of the schema is in exactly one of the three lists, and no list names a column that is gone", () => {
 		expect(columns.length).toBeGreaterThan(15);
 		const versioned = new Set<string>(ACCOUNT_VERSION_COLUMNS);
+		const conditional = new Set<string>(
+			Object.keys(ACCOUNT_VERSION_WHEN_RATE_TYPE),
+		);
 		const skipped = new Set<string>(Object.keys(ACCOUNT_VERSION_SKIPPED));
 		for (const column of columns) {
 			expect(
-				[versioned.has(column), skipped.has(column)].filter(Boolean).length,
+				[versioned, conditional, skipped].filter((l) => l.has(column)).length,
 				column,
 			).toBe(1);
 		}
-		for (const listed of [...versioned, ...skipped])
+		for (const listed of [...versioned, ...conditional, ...skipped])
 			expect(columns, listed).toContain(listed);
 		for (const [column, reason] of Object.entries(ACCOUNT_VERSION_SKIPPED))
 			expect(reason.length, column).toBeGreaterThan(10);
@@ -143,6 +173,7 @@ describe("what the trigger does to each column", () => {
 	/** A different value for each column, so a column added to a list needs a probe here. */
 	const CHANGES: Record<
 		| AccountVersionColumn
+		| AccountVersionConditional
 		| Exclude<
 				AccountVersionSkipped,
 				"id" | "userId" | "createdAt" | "version" | "updatedAt"
@@ -170,6 +201,7 @@ describe("what the trigger does to each column", () => {
 		const probed = new Set(Object.keys(CHANGES));
 		const wanted = [
 			...ACCOUNT_VERSION_COLUMNS,
+			...Object.keys(ACCOUNT_VERSION_WHEN_RATE_TYPE),
 			...Object.keys(ACCOUNT_VERSION_SKIPPED).filter(
 				(c) =>
 					!["id", "userId", "createdAt", "version", "updatedAt"].includes(c),
@@ -206,6 +238,43 @@ describe("what the trigger does to each column", () => {
 			expect(await versionOf(id)).toBe(0);
 		});
 	}
+
+	it("a changed exchangeRate moves the version only while the rate type is custom", async () => {
+		const { user, db } = await createTestUser();
+		const make = (exchangeRateType: string | null, name: string) =>
+			db.assetAccount.create({
+				data: {
+					userId: user.id,
+					name,
+					type: "CASH",
+					currency: "USD",
+					balance: "100",
+					exchangeRateType,
+					exchangeRate: "1000",
+				},
+			});
+		const custom = await make(CUSTOM_RATE_TYPE, "Custom");
+		const blue = await make("blue", "Blue");
+		for (const id of [custom.id, blue.id])
+			await db.assetAccount.update({
+				where: { id },
+				data: { exchangeRate: "1500" },
+			});
+		expect(await versionOf(custom.id)).toBe(1);
+		expect(await versionOf(blue.id)).toBe(0);
+		// The same rate again, spelled differently, is not a change.
+		await db.assetAccount.update({
+			where: { id: custom.id },
+			data: { exchangeRate: "1500.000000" },
+		});
+		expect(await versionOf(custom.id)).toBe(1);
+		// Both at once: the new type decides, and it is one bump.
+		await db.assetAccount.update({
+			where: { id: blue.id },
+			data: { exchangeRateType: CUSTOM_RATE_TYPE, exchangeRate: "1600" },
+		});
+		expect(await versionOf(blue.id)).toBe(1);
+	});
 
 	it("a null that stays null and a value written back are not a change", async () => {
 		const { id, db } = await idFor();

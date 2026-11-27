@@ -4705,6 +4705,11 @@
 										],
 										"description": "Only for the custom rate type."
 									},
+									"expectedBalance": {
+										"description": "The stored `balance` you last read (what you hold, or what you owe on a liability). Compared as a number, so 1000 equals 1000.00. If the balance moved since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
+										"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
 									"expectedVersion": {
 										"description": "The `version` you last read. If the account changed since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
 										"maximum": 9007199254740991,
@@ -7390,6 +7395,11 @@
 											}
 										],
 										"description": "Only for the custom rate type."
+									},
+									"expectedBalance": {
+										"description": "The stored `balance` you last read (what you hold, or what you owe on a liability). Compared as a number, so 1000 equals 1000.00. If the balance moved since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
+										"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"expectedVersion": {
 										"description": "The `version` you last read. If the account changed since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",

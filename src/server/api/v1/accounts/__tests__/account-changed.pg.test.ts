@@ -157,6 +157,51 @@ describe("account_changed", () => {
 			expect(done.result.version).toBe(1);
 		});
 
+		it("PUT books its balance as a checkpoint, so a balance that moved since answers 409 and writes no checkpoint", async () => {
+			const a = await open({ name: "A" });
+			const b = await open({ name: "B" });
+			await move(a.body.id, b.body.id, "100");
+			const legsBefore = await legs(a.body.id);
+			// A device that read 1000 sends it back with a new name: booked as it
+			// is, it would write a +100 checkpoint and erase the transfer.
+			const stale = {
+				...a.body,
+				name: "Renamed",
+				balance: "1000",
+				expectedVersion: 0,
+				expectedBalance: "1000",
+			};
+			await expectProblem(
+				await send("PUT", `/accounts/${a.body.id}`, stale),
+				409,
+				"account_changed",
+			);
+			await expectProblem(
+				await send("POST", `/accounts/${a.body.id}/preview`, stale),
+				409,
+				"account_changed",
+			);
+			expect((await row(a.body.id)).balance.toString()).toBe("900");
+			expect(await legs(a.body.id)).toBe(legsBefore);
+		});
+
+		it("PUT with a balance that did not move passes, however the number is spelled", async () => {
+			const a = await open({ name: "A" });
+			const b = await open({ name: "B" });
+			await move(a.body.id, b.body.id, "100");
+			const done = await expectBody<Write>(
+				await send("PUT", `/accounts/${a.body.id}`, {
+					...a.body,
+					name: "Renamed",
+					balance: "900",
+					expectedBalance: "900.0",
+				}),
+				c.update,
+			);
+			expect(done.result.version).toBe(0);
+			expect((await row(a.body.id)).balance.toString()).toBe("900");
+		});
+
 		it("without expectedVersion nothing is checked", async () => {
 			const { body } = await open();
 			await send("POST", `/accounts/${body.id}/rate-type`, {

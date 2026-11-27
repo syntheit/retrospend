@@ -10,10 +10,12 @@
 -- One BEFORE UPDATE row trigger is the one owner of the rule, so every writer
 -- is covered without a list to keep. It adds 1 when one of these columns holds
 -- a different value than before: type, currency, exchangeRateType, closedAt,
--- inBudget, isLiquid, interestRate, minimumPayment, dueDate. It never reads
--- balance, countedUnits, exchangeRate, the icon, name or updatedAt: a transfer,
--- an income leg, a balance update that keeps the rate type, an icon swap or a
--- re-sealed name must not spoil a pending edit. The list lives in
+-- inBudget, isLiquid, interestRate, minimumPayment, dueDate; and exchangeRate
+-- while the new rate type is 'custom' (the rate the person typed; for the table
+-- rate types it is a cached rate every checkpoint rewrites). It never reads
+-- balance, countedUnits, the icon, name or updatedAt: a transfer, an income
+-- leg, a balance update that keeps the rate type, an icon swap or a re-sealed
+-- name must not spoil a pending edit. The list lives in
 -- packages/domain/src/accounts/version-columns.ts; the test
 -- src/test/migrations/account-version.pg.test.ts reads it back from this
 -- function and fails on a difference.
@@ -44,6 +46,8 @@ BEGIN
      (OLD."type", OLD."currency", OLD."exchangeRateType", OLD."closedAt",
       OLD."inBudget", OLD."isLiquid", OLD."interestRate", OLD."minimumPayment",
       OLD."dueDate")
+     OR (NEW."exchangeRateType" = 'custom'
+         AND NEW."exchangeRate" IS DISTINCT FROM OLD."exchangeRate")
   THEN
     NEW."version" := OLD."version" + 1;
   END IF;

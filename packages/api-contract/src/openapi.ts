@@ -29,7 +29,7 @@ type JsonObject = Record<string, unknown>;
  * 1.11.0: GET /server-info features.autoPost says whether the server's recurring auto-post is on.
  * 1.12.0: POST /recurring/{id}/confirm returns expenseUpdatedAt, the booked expense's updatedAt (null for recurring income).
  * 1.13.0: POST /recurring/{id}/confirm and its preview take auto: true, which books the period as the server's auto-post does (recurring income too, as the entry only) and refuses unless the template still pays automatically with a fixed amount; GET /server-info features.autoConfirm says the server takes it.
- * 1.14.0: accounts carry `version` (GET /accounts, the account writes' answers, the sync account row); PUT /accounts/{id}, POST /accounts/{id}/close, /reopen, /rate-type and /balance and their previews take expectedVersion, and /balance also expectedBalance (409 account_changed).
+ * 1.14.0: accounts carry `version` (GET /accounts, the account writes' answers, the sync account row); PUT /accounts/{id}, POST /accounts/{id}/close, /reopen, /rate-type and /balance and their previews take expectedVersion, and PUT /accounts/{id} and /balance also expectedBalance, the stored balance the caller saw (409 account_changed).
  */
 export const CONTRACT_VERSION = "1.14.0";
 

@@ -105,8 +105,18 @@ export const createAccountSchema = accountFieldsSchema
 	})
 	.meta({ id: "CreateAccount" });
 
+/** Update balance and Replace: the stored balance the caller saw, compared as a number. */
+export const expectedBalanceSchema = balanceTextSchema.optional().meta({
+	description:
+		"The stored `balance` you last read (what you hold, or what you owe on a liability). Compared as a number, so 1000 equals 1000.00. If the balance moved since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
+});
+
 export const updateAccountSchema = accountFieldsSchema
-	.extend({ id: idSchema, expectedVersion: expectedVersionSchema })
+	.extend({
+		id: idSchema,
+		expectedVersion: expectedVersionSchema,
+		expectedBalance: expectedBalanceSchema,
+	})
 	.meta({ id: "UpdateAccount" });
 
 export const accountIdParamsSchema = z.object({ id: idSchema });
@@ -383,10 +393,7 @@ export const updateBalanceSchema = z
 			description: "A new rate type switches from today.",
 		}),
 		exchangeRate: accountRateTextSchema.nullish(),
-		expectedBalance: balanceTextSchema.optional().meta({
-			description:
-				"The stored `balance` you last read (what you hold, or what you owe on a liability). Compared as a number, so 1000 equals 1000.00. If the balance moved since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
-		}),
+		expectedBalance: expectedBalanceSchema,
 		expectedVersion: expectedVersionSchema,
 	})
 	.meta({ id: "UpdateBalance" });
