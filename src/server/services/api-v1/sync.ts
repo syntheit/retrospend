@@ -72,6 +72,7 @@ export function toSyncCategory(row: SyncRow<"category">): SyncCategoryDto {
 		isFixed: row.isFixed,
 		excludeByDefault: row.excludeByDefault,
 		kind: row.kind,
+		version: row.version,
 	};
 }
 

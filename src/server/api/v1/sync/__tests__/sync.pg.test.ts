@@ -281,7 +281,9 @@ describe("sync routes: pulls", () => {
 			"isFixed",
 			"kind",
 			"name",
+			"version",
 		]);
+		expect(raw.items[0]).toMatchObject({ version: 0 });
 		const expense = (await rawPull("/sync/expenses", asAlice)).items[0] ?? {};
 		expect(expense).not.toHaveProperty("userId");
 	});

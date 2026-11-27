@@ -15,6 +15,7 @@ const food: Category = {
 	tone: 1,
 	excludeByDefault: false,
 	expenseCount: 3,
+	version: 0,
 };
 
 describe("category draft", () => {

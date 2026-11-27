@@ -32,8 +32,9 @@ type JsonObject = Record<string, unknown>;
  * 1.14.0: accounts carry `version` (GET /accounts, the account writes' answers, the sync account row); PUT /accounts/{id}, POST /accounts/{id}/close, /reopen, /rate-type and /balance and their previews take expectedVersion, and PUT /accounts/{id} and /balance also expectedBalance, the stored balance the caller saw (409 account_changed).
  * 1.15.0: POST /transfers and its preview take fromLegId, toLegId, feeExpenseId and feeLegId, and answer `legs` (the ids of the legs written); POST /accounts/{id}/balance, /rate-type and PUT /accounts/{id} and their previews take legId and rateTypeId. All are client-made uuids: the row is written under the id, and a taken id is 409 id_taken with nothing written.
  * 1.16.0: PUT /accounts/{id} and its preview answer `legId` and `rateTypeId`, the client ids the write used (null when that row was not written); GET /server-info features.wealthWrites says the server takes the account and transfer writes a phone queues.
+ * 1.17.0: categories carry `version` (GET /categories, GET /categories/{id}, the category writes' answers, the sync category row); it moves when the name, color, icon or excludeByDefault changes.
  */
-export const CONTRACT_VERSION = "1.16.0";
+export const CONTRACT_VERSION = "1.17.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

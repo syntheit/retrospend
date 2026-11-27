@@ -176,7 +176,7 @@
 	"info": {
 		"description": "The public Retrospend API. Errors are RFC 9457 problem+json with a stable `code`. Every write needs an `Idempotency-Key`.\n\nAccounts with Advanced protection.\n\nAn account with Advanced protection on can call only the operations marked `x-protected-account: { allowed: true }`. Every other operation answers 403 with the code `protected_account`. A public operation is allowed.\n\nFor an account with Advanced protection on, GET /events returns only the event types that carry no personal ids or amounts, plus the bare copies of other people's shared writes. For every account, `vault.changed` events reach only callers that hold the `vault` scope.\n\nSealed records move through GET /vault/changes and POST /vault/writes. The server stores them and cannot open them.\n\nAn account with protection keys changes its password with POST /me/protection/password/begin and POST /me/protection/password. POST /me/password answers 403 `protected_password` for it. A change that needs a recent sign-in answers 403 `session_not_fresh`.\n\nPOST /auth/prelogin tells a client whether to derive the sign-in secret from the password before it signs in.\n\nA person who forgot the password of an account with protection keys sets a new one with the recovery key, from the link in the reset email: POST /auth/recovery/check, POST /auth/recovery/begin and POST /auth/recovery. They are public, take the token from the link, and ignore any session sent with them. An unusable link is 404 `invalid_token`, a wrong recovery key 400 `wrong_recovery_key`, and keys made before the recovery proof existed 409 `recovery_unavailable`. A successful recovery signs out every session and deletes the account's API keys.\n\nA phone has no link to open. POST /auth/password-reset mails an 8-character code (the same answer for every address), and POST /auth/password-reset/code swaps it for a recovery token that the three recovery routes accept in place of a link's token. The token opens recovery with the recovery key only, never the plain password reset. A code gets 5 tries an hour per account, and the sixth is 429.\n\nAn account with protection keys makes a new recovery key with POST /me/protection/recovery-key, which needs the current sign-in secret and replaces the recovery wrap and proof together; the old recovery key stops working when it commits.",
 		"title": "Retrospend API",
-		"version": "1.16.0"
+		"version": "1.17.0"
 	},
 	"openapi": "3.1.1",
 	"paths": {
@@ -62027,6 +62027,12 @@
 														"maximum": 9007199254740991,
 														"minimum": -9007199254740991,
 														"type": "integer"
+													},
+													"version": {
+														"description": "The category's version. It moves when its name, color, icon or excludeByDefault changes, not when expenses are filed under it or moved.",
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
 													}
 												},
 												"required": [
@@ -62037,7 +62043,8 @@
 													"kind",
 													"tone",
 													"excludeByDefault",
-													"expenseCount"
+													"expenseCount",
+													"version"
 												],
 												"type": "object"
 											},
@@ -62278,6 +62285,12 @@
 											"maximum": 9007199254740991,
 											"minimum": -9007199254740991,
 											"type": "integer"
+										},
+										"version": {
+											"description": "The category's version. It moves when its name, color, icon or excludeByDefault changes, not when expenses are filed under it or moved.",
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -62288,7 +62301,8 @@
 										"kind",
 										"tone",
 										"excludeByDefault",
-										"expenseCount"
+										"expenseCount",
+										"version"
 									],
 									"type": "object"
 								}
@@ -63207,6 +63221,12 @@
 											"maximum": 9007199254740991,
 											"minimum": -9007199254740991,
 											"type": "integer"
+										},
+										"version": {
+											"description": "The category's version. It moves when its name, color, icon or excludeByDefault changes, not when expenses are filed under it or moved.",
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -63217,7 +63237,8 @@
 										"kind",
 										"tone",
 										"excludeByDefault",
-										"expenseCount"
+										"expenseCount",
+										"version"
 									],
 									"type": "object"
 								}
@@ -63451,6 +63472,12 @@
 											"maximum": 9007199254740991,
 											"minimum": -9007199254740991,
 											"type": "integer"
+										},
+										"version": {
+											"description": "The category's version. It moves when its name, color, icon or excludeByDefault changes, not when expenses are filed under it or moved.",
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -63461,7 +63488,8 @@
 										"kind",
 										"tone",
 										"excludeByDefault",
-										"expenseCount"
+										"expenseCount",
+										"version"
 									],
 									"type": "object"
 								}
@@ -64139,6 +64167,12 @@
 											"description": "Valid for 24 hours. Send it to the group's undo route to revert this write.",
 											"minLength": 1,
 											"type": "string"
+										},
+										"version": {
+											"description": "The category's version. It moves when its name, color, icon or excludeByDefault changes, not when expenses are filed under it or moved.",
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -64150,6 +64184,7 @@
 										"tone",
 										"excludeByDefault",
 										"expenseCount",
+										"version",
 										"undo"
 									],
 									"type": "object"
@@ -131667,6 +131702,12 @@
 													},
 													"name": {
 														"type": "string"
+													},
+													"version": {
+														"description": "The version a category write sends as `expectedVersion`. Categories have no updatedAt.",
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
 													}
 												},
 												"required": [
@@ -131676,7 +131717,8 @@
 													"icon",
 													"isFixed",
 													"excludeByDefault",
-													"kind"
+													"kind",
+													"version"
 												],
 												"type": "object"
 											},
