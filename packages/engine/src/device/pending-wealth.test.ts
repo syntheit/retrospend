@@ -171,7 +171,7 @@ describe("the overlay replays an account entry", () => {
 });
 
 describe("the overlay replays a transfer over a pending account write", () => {
-	it("an acked balance update does not hold up the transfer through the same account", async () => {
+	it("an update acked after the transfer was booked over it does not hold the transfer up: the version differs from the placeholder", async () => {
 		const store = await seededTransferStore({
 			name: "kit",
 			seed: ARS_HOME,
@@ -188,8 +188,8 @@ describe("the overlay replays a transfer over a pending account write", () => {
 				rateTypeId: uuid(32),
 			},
 		});
-		const acked = { ...update.entry, ack: { version: "3", pull: 1 } };
-		const move = await entryOver(store, [acked], "e2", {
+		// Booked over the unsent update: the account row it holds has the device's placeholder version.
+		const move = await entryOver(store, [update.entry], "e2", {
 			...create(1, {
 				fromAccountId: ARS1,
 				toAccountId: ARS2,
@@ -197,6 +197,8 @@ describe("the overlay replays a transfer over a pending account write", () => {
 				fee: { amount: "10" },
 			}),
 		});
+		// The update is acked afterwards: the server named version 3, not the placeholder.
+		const acked = { ...update.entry, ack: { version: "3", pull: 1 } };
 		const seen = await readOverlaid(store, [acked, move.entry], 0, (tx) => ({
 			from: tx.get("accounts", ARS1),
 			to: tx.get("accounts", ARS2),

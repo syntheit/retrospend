@@ -275,6 +275,11 @@ function replay(tx: Writer, entry: PendingEntry) {
 				return {
 					...(current ?? createTextOf(c.table)),
 					...c.after,
+					// A write that does not name the account's version (a transfer through
+					// it) leaves the version the account holds; its own count is a placeholder.
+					...(c.table === "accounts" && current && versioned !== "accounts"
+						? { version: (current as { version: number }).version }
+						: {}),
 					...(entry.ack?.version && c.table === versioned
 						? { version: ackedVersion(c.table, entry.ack.version) }
 						: {}),

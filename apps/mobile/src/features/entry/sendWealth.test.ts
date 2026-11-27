@@ -6,6 +6,7 @@ import {
 	forgetUndoTokens,
 	undoFor,
 } from "./send";
+import { dispatchWealth } from "./sendWealth";
 
 // The plain sender for an account write and a transfer delete: the version it
 // checks against, the ids and balance it names, what it adopts from the answer.
@@ -181,6 +182,19 @@ describe("sending an account write", () => {
 			entry({ kind: "close", payload: {} }),
 		);
 		expect(sent.status).toBe("sent");
+	});
+});
+
+describe("the wire itself", () => {
+	it("throws before any request for an account write that names no version", async () => {
+		const updateBalance = jest.fn();
+		const api = { accounts: { updateBalance } } as never as RetrospendClient;
+		const options = { context: { idempotencyKey: KEY } } as never;
+		for (const baseVersion of [null, { after: "x" }, "not-a-number"])
+			await expect(
+				dispatchWealth(api, entry({ baseVersion }), options),
+			).rejects.toThrow(/needs the version it read/);
+		expect(updateBalance).not.toHaveBeenCalled();
 	});
 });
 
