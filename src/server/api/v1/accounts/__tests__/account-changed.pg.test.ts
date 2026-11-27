@@ -99,7 +99,13 @@ describe("account_changed", () => {
 				id: body.id,
 				rateType: "blue",
 			});
-			const next = { ...body, name: "After", isLiquid: true };
+			// The body repeats the rate type: leaving it out would also switch it, a second change.
+			const next = {
+				...body,
+				name: "After",
+				isLiquid: true,
+				rateType: "blue",
+			};
 			await expectProblem(
 				await send("PUT", `/accounts/${body.id}`, {
 					...next,

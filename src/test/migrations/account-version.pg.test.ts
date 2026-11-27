@@ -123,8 +123,9 @@ describe("which columns move the version", () => {
 
 describe("what the trigger does to each column", () => {
 	const idFor = async () => {
-		const { user } = await createTestUser();
-		return adminDb.assetAccount.create({
+		const { user, db } = await createTestUser();
+		// The user-scoped client seals the name, as the sealed suite needs.
+		const made = await db.assetAccount.create({
 			data: {
 				userId: user.id,
 				name: "Probe",
@@ -134,6 +135,7 @@ describe("what the trigger does to each column", () => {
 				isLiquid: false,
 			},
 		});
+		return { id: made.id, db };
 	};
 	const versionOf = async (id: string) =>
 		(await adminDb.assetAccount.findUniqueOrThrow({ where: { id } })).version;
@@ -178,13 +180,13 @@ describe("what the trigger does to each column", () => {
 
 	for (const column of ACCOUNT_VERSION_COLUMNS) {
 		it(`a changed ${column} moves the version by 1, and the same value again does not`, async () => {
-			const { id } = await idFor();
-			await adminDb.assetAccount.update({
+			const { id, db } = await idFor();
+			await db.assetAccount.update({
 				where: { id },
 				data: CHANGES[column],
 			});
 			expect(await versionOf(id)).toBe(1);
-			await adminDb.assetAccount.update({
+			await db.assetAccount.update({
 				where: { id },
 				data: CHANGES[column],
 			});
@@ -196,8 +198,8 @@ describe("what the trigger does to each column", () => {
 		(c) => !(ACCOUNT_VERSION_COLUMNS as readonly string[]).includes(c),
 	)) {
 		it(`a changed ${column} leaves the version alone`, async () => {
-			const { id } = await idFor();
-			await adminDb.assetAccount.update({
+			const { id, db } = await idFor();
+			await db.assetAccount.update({
 				where: { id },
 				data: CHANGES[column as keyof typeof CHANGES],
 			});
@@ -206,8 +208,8 @@ describe("what the trigger does to each column", () => {
 	}
 
 	it("a null that stays null and a value written back are not a change", async () => {
-		const { id } = await idFor();
-		await adminDb.assetAccount.update({
+		const { id, db } = await idFor();
+		await db.assetAccount.update({
 			where: { id },
 			data: {
 				type: "CASH",
@@ -225,8 +227,8 @@ describe("what the trigger does to each column", () => {
 	});
 
 	it("an insert keeps the version it is given", async () => {
-		const { user } = await createTestUser();
-		const made = await adminDb.assetAccount.create({
+		const { user, db } = await createTestUser();
+		const made = await db.assetAccount.create({
 			data: {
 				userId: user.id,
 				name: "Given",
@@ -237,7 +239,7 @@ describe("what the trigger does to each column", () => {
 			},
 		});
 		expect(made.version).toBe(7);
-		await adminDb.assetAccount.update({
+		await db.assetAccount.update({
 			where: { id: made.id },
 			data: { isLiquid: true },
 		});
@@ -272,9 +274,10 @@ describe("what the real writers do to the version", () => {
 	beforeAll(seedArsRates);
 
 	async function world() {
-		const { user } = await arsUser();
+		const { user, db } = await arsUser();
 		const userId = user.id;
 		return {
+			db,
 			userId,
 			ars: await openAccount(userId, "Savings", "CASH", "ARS", 1_000_000),
 			usdA: await openAccount(userId, "USD A", "INVESTMENT", "USD", 100, {
@@ -361,7 +364,7 @@ describe("what the real writers do to the version", () => {
 			kind: "MONOGRAM",
 			value: "avatar-3",
 		});
-		await adminDb.assetAccount.update({
+		await w.db.assetAccount.update({
 			where: { id: w.ars },
 			data: { name: "Renamed" },
 		});
@@ -474,8 +477,8 @@ describe("the rollback snippet", () => {
 
 	it("keeps the rows of the table and the stamp trigger's objects", async () => {
 		const snippet = read(`prisma/rollback/${NAME}.sql`);
-		const { user } = await createTestUser();
-		const made = await adminDb.assetAccount.create({
+		const { user, db } = await createTestUser();
+		const made = await db.assetAccount.create({
 			data: {
 				userId: user.id,
 				name: "Kept",
@@ -530,8 +533,8 @@ describe("the rollback snippet", () => {
 
 	it("an update with the trigger gone stores no version, as the older image never wrote one", async () => {
 		const snippet = read(`prisma/rollback/${NAME}.sql`);
-		const { user } = await createTestUser();
-		const made = await adminDb.assetAccount.create({
+		const { user, db } = await createTestUser();
+		const made = await db.assetAccount.create({
 			data: {
 				userId: user.id,
 				name: "Older",
