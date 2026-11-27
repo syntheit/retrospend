@@ -6,7 +6,6 @@
  * store to a step's hand-derived expectations; `differingRows` holds two
  * stores equal row by row, on every field the engine keeps.
  */
-import { dec } from "@retrospend/domain/precise-decimal";
 import type {
 	AccountVector,
 	ExpectedAccount,
@@ -23,14 +22,35 @@ import { expectEqual } from "./conformance";
 import { seededStore } from "./local-expense-create";
 import { OWED_ID, type Reader, type TableRows } from "./port";
 import { readDeviceFigures } from "./registry";
+import {
+	ACCOUNT_COLUMNS,
+	byKey,
+	type Columns,
+	decimal,
+	differing,
+	exact,
+	instant,
+	LEG_COLUMNS,
+	SNAPSHOT_COLUMNS,
+	SWITCH_COLUMNS,
+	sameDecimal,
+} from "./wealth-columns";
+
+export {
+	ACCOUNT_COLUMNS,
+	byKey,
+	type Columns,
+	decimal,
+	differing,
+	exact,
+	instant,
+	LEG_COLUMNS,
+	SNAPSHOT_COLUMNS,
+};
 
 export const USER = "user";
 
 export const day = (d: Date) => d.toISOString().slice(0, 10);
-
-/** Decimals equal by value, null only to null. */
-const sameDecimal = (a: string | null, b: string | null) =>
-	a === null || b === null ? a === b : dec(a).eq(dec(b));
 
 export function expectDecimal(
 	actual: string | null | undefined,
@@ -165,91 +185,6 @@ export async function checkState(
 			"net worth",
 		);
 	}
-}
-
-/** One comparison per column of a port row: a column added to the row type fails to compile until it is named here. */
-export type Columns<R> = {
-	readonly [K in keyof R]-?: (a: R[K], b: R[K]) => boolean;
-};
-
-export const exact = <T>(a: T, b: T) => (a ?? null) === (b ?? null);
-export const instant = (a: Date | null, b: Date | null) =>
-	(a?.getTime() ?? null) === (b?.getTime() ?? null);
-export const decimal = (
-	a: string | null | undefined,
-	b: string | null | undefined,
-) => sameDecimal(a ?? null, b ?? null);
-/** Compared elsewhere: rows are matched by id (a snapshot by account and day), so the id is the key. */
-export const byKey = () => true;
-
-export const ACCOUNT_COLUMNS: Columns<AccountRow> = {
-	id: byKey,
-	type: exact,
-	currency: exact,
-	name: exact,
-	balance: decimal,
-	exchangeRate: decimal,
-	exchangeRateType: exact,
-	closedAt: instant,
-	inBudget: exact,
-	countedUnits: decimal,
-	isLiquid: exact,
-	interestRate: decimal,
-	minimumPayment: decimal,
-	dueDate: exact,
-	iconKind: exact,
-	version: exact,
-	// The database stamps it; the device writes the instant it booked.
-	createdAt: () => true,
-};
-
-export const LEG_COLUMNS: Columns<LegRow> = {
-	id: byKey,
-	accountId: exact,
-	currency: exact,
-	date: instant,
-	createdAt: instant,
-	amount: decimal,
-	source: exact,
-	homeAmount: decimal,
-	homeCurrency: exact,
-	countedUnits: decimal,
-	transferId: exact,
-	expenseId: exact,
-};
-
-export const SNAPSHOT_COLUMNS: Columns<SnapshotRow> = {
-	id: byKey,
-	accountId: byKey,
-	date: byKey,
-	recordedAt: instant,
-	balance: decimal,
-	currency: exact,
-	exchangeRateType: exact,
-};
-
-const SWITCH_COLUMNS: Columns<RateSwitchRow> = {
-	id: byKey,
-	accountId: exact,
-	from: instant,
-	type: exact,
-	previousType: exact,
-	createdAt: instant,
-};
-
-/** The names of the columns that differ. */
-export function differing<R extends object>(
-	columns: Columns<R>,
-	device: R,
-	server: R,
-): string[] {
-	return (Object.keys(columns) as (keyof R & string)[]).filter(
-		(k) =>
-			!(columns[k] as (a: unknown, b: unknown) => boolean)(
-				device[k],
-				server[k],
-			),
-	);
 }
 
 const differingAccount = (d: AccountRow, s: AccountRow) =>
