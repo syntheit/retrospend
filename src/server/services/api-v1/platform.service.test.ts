@@ -68,6 +68,10 @@ describe("server-info features.autoPost", () => {
 		}
 	});
 
+	it("says the server takes the account and transfer writes a phone queues", async () => {
+		expect((await getServerInfo(NO_PUSH)).features.wealthWrites).toBe(true);
+	});
+
 	it("leaves the other features alone", async () => {
 		env.ADVANCED_PROTECTION_ENABLED = true;
 		const info = await getServerInfo(NO_PUSH);
@@ -75,6 +79,7 @@ describe("server-info features.autoPost", () => {
 			advancedProtection: true,
 			autoPost: true,
 			autoConfirm: true,
+			wealthWrites: true,
 		});
 		env.ADVANCED_PROTECTION_ENABLED = false;
 	});

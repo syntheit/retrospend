@@ -131,7 +131,12 @@ export const createAccountMutation: MoneyMutation<
 	},
 };
 
-export type UpdateResult = { item: AccountItem; previous: UpdateBody | null };
+export type UpdateResult = {
+	item: AccountItem;
+	previous: UpdateBody | null;
+	/** Which of the client ids the write used (a row is written under its id only when it is written). */
+	used: { legId: string | null; rateTypeId: string | null };
+};
 
 export const updateAccountMutation: MoneyMutation<
 	UpdateBody & { timeZone: string },
@@ -164,10 +169,29 @@ export const updateAccountMutation: MoneyMutation<
 					return false;
 				}
 			})();
+		const used = {
+			legId:
+				legId &&
+				(await tx.accountLeg.findFirst({
+					where: { id: legId, accountId: id },
+					select: { id: true },
+				}))
+					? legId
+					: null,
+			rateTypeId:
+				rateTypeId &&
+				(await tx.assetRateType.findFirst({
+					where: { id: rateTypeId, accountId: id },
+					select: { id: true },
+				}))
+					? rateTypeId
+					: null,
+		};
 		return {
 			value: {
 				item: await accountItemIn(tx, actor.userId, id),
 				previous: restorable ? previous : null,
+				used,
 			},
 			undo: { kind: "revert", mutation: "account.update", rows: [] },
 		};

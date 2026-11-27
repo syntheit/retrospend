@@ -1,9 +1,9 @@
 import * as z from "zod";
 import { nonNegativeAmount } from "../budget/basics";
+import { daySchema } from "../common/day";
 import { currencyCodeSchema, moneySchema } from "../common/money";
 import { userText } from "../common/user-text";
 import { idSchema, timestampSchema } from "../core";
-import { daySchema } from "../common/day";
 
 export const ACCOUNT_TYPES = [
 	"CASH",
@@ -185,6 +185,25 @@ export const accountItemSchema = z
 		updatedAt: timestampSchema,
 	})
 	.meta({ id: "Account" });
+
+/**
+ * What PUT /accounts/{id} answers: the account, and which of the client ids
+ * it sent the write used. Each is null when that row was not written (the
+ * balance did not change, or the rate type did not) or no id was sent, so a
+ * client that sent ids knows which of its rows exist.
+ */
+export const accountUpdatedSchema = accountItemSchema
+	.extend({
+		legId: idSchema.nullable().meta({
+			description:
+				"The `legId` sent, when the balance changed and the Not logged leg was written under it; otherwise null.",
+		}),
+		rateTypeId: idSchema.nullable().meta({
+			description:
+				"The `rateTypeId` sent, when the rate type changed and the switch was written under it; otherwise null.",
+		}),
+	})
+	.meta({ id: "AccountUpdated" });
 
 export const accountListSchema = z
 	.object({
