@@ -1,5 +1,5 @@
 import { snapshotDay } from "@retrospend/domain/accounts/snapshot-plan";
-import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 
 /**
@@ -27,21 +27,4 @@ export function moveDay(
 		});
 	}
 	return new Date(`${picked}T00:00:00.000Z`);
-}
-
-/**
- * The date to store on an expense row (an income, a transfer's fee) for a
- * move dated `day` (a moveDay UTC midnight). The ledger keys legs,
- * transfers and checkpoints by that UTC-midnight day, but Activity and the
- * envelope budget read expense rows in the viewer's zone, as rows from the
- * expense form are stored: at the zone's own midnight. Without this, west of
- * UTC an income shows a day early and the 1st falls in the previous month.
- */
-export function rowDateOf(day: Date, timeZone?: string): Date {
-	return parseDateOnlyIn(day.toISOString().slice(0, 10), timeZone);
-}
-
-/** The calendar day of an expense row stored by rowDateOf, as moveDay takes it. */
-export function rowDayOf(date: Date, timeZone?: string): string {
-	return dayKey(date, timeZone);
 }

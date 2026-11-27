@@ -53,6 +53,7 @@
 		"./spend-pace": "./src/spend-pace.ts",
 		"./spent": "./src/spent.ts",
 		"./time-zone": "./src/time-zone.ts",
+		"./transfers/*": "./src/transfers/*.ts",
 		"./vectors/*.json": "./vectors/*.json"
 	},
 	"scripts": {

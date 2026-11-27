@@ -4,9 +4,9 @@
  * Credit card (in), Personal loan (out), USD cash and Wise (USD, out).
  */
 
-import { dec } from "@retrospend/domain/envelope/units";
 import { describe, expect, it } from "vitest";
-import type { AssetType } from "~prisma";
+import type { AssetType } from "../accounts/places";
+import { dec } from "../envelope/units";
 import {
 	budgetEffect,
 	derivedRate,
@@ -232,5 +232,17 @@ describe("typed amounts (I21)", () => {
 		expect(() => planTransfer(move(savings, wallet, "0"))).toThrow(
 			/above zero/,
 		);
+	});
+});
+
+describe("counted units follow cappedCounted", () => {
+	it("a liability holds no counted units: none leave it, whatever the field says", () => {
+		// A loan is outside the budget, so the source branch runs; a plain
+		// min(counted, amount) would let 5 leave it, cappedCounted gives 0.
+		const owed = place("owed", "LIABILITY_LOAN", "ARS", "5");
+		const plan = planTransfer(move(owed, savings, "10"));
+		expect(plan.countedFromUnits.toFixed()).toBe("0");
+		expect(plan.countedToUnits.toFixed()).toBe("0");
+		expect(plan.freshUnits.toFixed()).toBe("10");
 	});
 });

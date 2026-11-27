@@ -32,6 +32,10 @@ import {
 	type SavedRate,
 } from "@retrospend/domain/rate-booking";
 import { RecurringInputRefusal } from "@retrospend/domain/recurring-post/refusals";
+import {
+	NoArrivalRateError,
+	TransferRefusal,
+} from "@retrospend/domain/transfers/refusals";
 import { TRPCError } from "@trpc/server";
 import {
 	CUSTOM_RATE_TYPE,
@@ -56,9 +60,10 @@ export interface RateContext {
 }
 
 /**
- * Bad rate input, or a recurring confirm's bad input (a paid-on day that
- * cannot be, an amount given or missing), is a BAD_REQUEST to the form;
- * everything else passes through.
+ * Bad rate input, a recurring confirm's bad input (a paid-on day that
+ * cannot be, an amount given or missing) or a move the transfer rules refuse
+ * is a BAD_REQUEST to the form; everything else passes through. No cause is
+ * attached: a MissingRateError cause would answer v1 with missing_rate.
  */
 export function asBadRequest<T>(run: () => T): T {
 	try {
@@ -66,7 +71,9 @@ export function asBadRequest<T>(run: () => T): T {
 	} catch (error) {
 		if (
 			error instanceof RateInputError ||
-			error instanceof RecurringInputRefusal
+			error instanceof RecurringInputRefusal ||
+			error instanceof TransferRefusal ||
+			error instanceof NoArrivalRateError
 		)
 			throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
 		throw error;
