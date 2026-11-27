@@ -2,6 +2,7 @@ import * as z from "zod";
 import {
 	ACCOUNT_ICON_KINDS,
 	accountTypeSchema,
+	accountVersionSchema,
 	legSourceSchema,
 } from "../accounts/schemas";
 import { categoryColorSchema } from "../categories";
@@ -147,9 +148,14 @@ export const syncAccountSchema = z
 			description:
 				"As GET /accounts gives it as `icon.value`: a logo slug, an avatar slot, or for IMAGE the picture's URL path like /api/images/accounts/<id>-<ms>.webp.",
 		}),
+		version: accountVersionSchema.meta({
+			description:
+				"The version an account write sends as `expectedVersion`. `updatedAt` is only the 'Updated' date shown on screen.",
+		}),
 		createdAt: timestampSchema,
 		updatedAt: timestampSchema.meta({
-			description: "The version a write sends as its base.",
+			description:
+				"The 'Updated' date of the account; it is not a guard. Writes send `version`.",
 		}),
 	})
 	.meta({ id: "SyncAccount" });

@@ -227,6 +227,7 @@ describe("account sync routes: first pull", () => {
 			closedAt: null,
 			iconKind: null,
 			iconValue: null,
+			version: 0,
 		});
 		expect(cash?.createdAt).toMatch(/^\d{4}-\d\d-\d\dT.*Z$/);
 		expect(cash?.updatedAt).toMatch(/^\d{4}-\d\d-\d\dT.*Z$/);
@@ -318,6 +319,7 @@ describe("account sync routes: first pull", () => {
 				"name",
 				"type",
 				"updatedAt",
+				"version",
 			].sort(),
 		);
 		expect(await keys("snapshots")).toEqual(

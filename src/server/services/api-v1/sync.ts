@@ -121,6 +121,7 @@ export function toSyncAccount(row: SyncRow<"asset_account">): SyncAccountDto {
 		closedAt: row.closedAt ? instant(row.closedAt) : null,
 		iconKind: icon?.kind ?? null,
 		iconValue: icon?.value ?? null,
+		version: row.version,
 		createdAt: instant(row.createdAt),
 		updatedAt: instant(row.updatedAt),
 	};

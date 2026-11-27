@@ -174,6 +174,7 @@ describe("raw row schemas", () => {
 			closedAt: null,
 			iconKind: "BRAND",
 			iconValue: "revolut",
+			version: 0,
 			createdAt: at,
 			updatedAt: at,
 		};

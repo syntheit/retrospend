@@ -51,6 +51,10 @@ export const PROBLEM_STATUS = {
 	// changed since (another device or the web edited, posted or skipped it).
 	// Nothing was written; the client reads the template again and decides.
 	recurring_changed: 409,
+	// An account write that named the version (or, for Update balance, the
+	// balance) it last read, and the account changed since. Nothing was written;
+	// the client reads the account again and decides.
+	account_changed: 409,
 	// A vault write from an account that has no protection key set: nothing a
 	// client sealed could ever be opened, so the server refuses to hold it.
 	protection_keys_missing: 409,
