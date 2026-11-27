@@ -264,6 +264,11 @@ export async function restoreAccount(
 			balance: account.balance,
 			countedUnits: account.countedUnits,
 			updatedAt: account.updatedAt,
+			// The stash copied every column, so a restored account keeps its version
+			// (the trigger moves it for none of these). A stash from before the
+			// column has none: it is bumped, so an edit a device queued against the
+			// account before its delete is refused (account_changed), never applied.
+			...(account.version === undefined ? { version: { increment: 1 } } : {}),
 		},
 	});
 

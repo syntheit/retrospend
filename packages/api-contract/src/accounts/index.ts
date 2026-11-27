@@ -13,6 +13,7 @@ import {
 	accountOrderSchema,
 	accountRateRevertedSchema,
 	accountRemovedSchema,
+	accountStateParamsSchema,
 	balanceUpdateSchema,
 	createAccountSchema,
 	defaultAccountsSchema,
@@ -59,7 +60,7 @@ const close = moneyWrite({
 	previewId: "previewCloseAccount",
 	summary: "Close an account",
 	event: "account.closed",
-	input: accountIdParamsSchema,
+	input: accountStateParamsSchema,
 	result: accountItemSchema,
 });
 const reopen = moneyWrite({
@@ -68,7 +69,7 @@ const reopen = moneyWrite({
 	previewId: "previewReopenAccount",
 	summary: "Reopen a closed account",
 	event: "account.reopened",
-	input: accountIdParamsSchema,
+	input: accountStateParamsSchema,
 	result: accountItemSchema,
 });
 const remove = moneyWrite({

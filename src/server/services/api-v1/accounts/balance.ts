@@ -1,8 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { exactRate } from "~/server/services/accounts/exact-rate";
 import {
+	accountVersionIn,
+	type ExpectedAccountState,
+} from "~/server/services/accounts/expected-state";
+import {
 	type RateTypeSwitch,
-	revertRateType,
+	revertRateType as revertRateTypeCore,
 	setRateType,
 } from "~/server/services/accounts/rate-type.mutation";
 import {
@@ -31,7 +35,7 @@ async function currencyOf(tx: Tx, userId: string, accountId: string) {
 	return account.currency;
 }
 
-export type BalanceBody = {
+export type BalanceBody = ExpectedAccountState & {
 	id: string;
 	balance: string;
 	rateType?: string | null;
@@ -50,6 +54,7 @@ export const updateBalanceMutation: MoneyMutation<
 		rateSwitch: RateTypeSwitch | null;
 		legId: string | null;
 		previousRate: string | null;
+		version: number;
 	}
 > = {
 	id: "account.updateBalance",
@@ -82,6 +87,7 @@ export const updateBalanceMutation: MoneyMutation<
 				rateSwitch: v.rateSwitch,
 				legId: v.legId,
 				previousRate: v.previousRate,
+				version: await accountVersionIn(tx, actor.userId, input.id),
 			},
 			undo: done.undo,
 		};
@@ -98,7 +104,11 @@ export type RevertBalanceBody = {
 
 export const revertBalanceMutation: MoneyMutation<
 	RevertBalanceBody,
-	{ accountId: string; balance: ReturnType<typeof moneyOfText> }
+	{
+		accountId: string;
+		balance: ReturnType<typeof moneyOfText>;
+		version: number;
+	}
 > = {
 	id: revertBalanceUpdate.id,
 	touches: revertBalanceUpdate.touches,
@@ -119,35 +129,62 @@ export const revertBalanceMutation: MoneyMutation<
 			value: {
 				accountId: done.value.accountId,
 				balance: moneyOfText(done.value.balance, currency),
+				version: await accountVersionIn(tx, actor.userId, input.accountId),
 			},
 			undo: done.undo,
 		};
 	},
 };
 
-export type RateTypeBody = {
+export type RateTypeBody = ExpectedAccountState & {
 	id: string;
 	rateType: string | null;
 	from?: string | null;
 	timeZone: string;
 };
 
-export const setRateTypeMutation: MoneyMutation<RateTypeBody, RateTypeSwitch> =
-	{
-		id: setRateType.id,
-		touches: setRateType.touches,
-		scope: (input) => ({ accountId: input.id }),
-		run: (tx, input, actor) =>
-			setRateType.run(
-				tx,
-				{
-					accountId: input.id,
-					rateType: input.rateType,
-					from: input.from,
-					timeZone: input.timeZone,
-				},
-				actor,
-			),
-	};
+export const setRateTypeMutation: MoneyMutation<
+	RateTypeBody,
+	RateTypeSwitch & { version: number }
+> = {
+	id: setRateType.id,
+	touches: setRateType.touches,
+	scope: (input) => ({ accountId: input.id }),
+	run: async (tx, input, actor) => {
+		const done = await setRateType.run(
+			tx,
+			{
+				accountId: input.id,
+				rateType: input.rateType,
+				from: input.from,
+				timeZone: input.timeZone,
+			},
+			actor,
+		);
+		return {
+			value: {
+				...done.value,
+				version: await accountVersionIn(tx, actor.userId, input.id),
+			},
+			undo: done.undo,
+		};
+	},
+};
 
-export { revertRateType };
+export const revertRateType: MoneyMutation<
+	Parameters<typeof revertRateTypeCore.run>[1],
+	{ accountId: string; rateType: string | null; version: number }
+> = {
+	id: revertRateTypeCore.id,
+	touches: revertRateTypeCore.touches,
+	run: async (tx, input, actor) => {
+		const done = await revertRateTypeCore.run(tx, input, actor);
+		return {
+			value: {
+				...done.value,
+				version: await accountVersionIn(tx, actor.userId, done.value.accountId),
+			},
+			undo: done.undo,
+		};
+	},
+};

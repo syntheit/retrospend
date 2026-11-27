@@ -15,6 +15,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { WRITERS } from "./asset-account-writers";
 
 const ROOT = join(__dirname, "../../../..");
 
@@ -85,38 +86,6 @@ function found() {
 	}
 	return writers;
 }
-
-/** file: [statements, class]. */
-const WRITERS: Record<string, readonly [number, string]> = {
-	// Rollback text that restores the leg trigger's function: balance only.
-	"prisma/rollback/20261112100000_account_leg_half_even.sql": [
-		2,
-		"balance-only, trigger rollback",
-	],
-	// create, edit, close, reopen (3 updates) and the web delete: M6a
-	"src/server/services/accounts/manage.ts": [5, "device (M6a), delete online"],
-	"src/server/services/accounts/checkpoint.ts": [1, "device (M6a)"],
-	"src/server/services/accounts/rate-type.mutation.ts": [2, "device (M6a)"],
-	"src/server/services/accounts/update-balance.mutation.ts": [
-		1,
-		"device (M6a)",
-	],
-	"src/server/services/accounts/icon.ts": [1, "online, keeps updatedAt"],
-	"src/server/services/accounts/delete-snapshot.ts": [
-		2,
-		"online, keeps updatedAt",
-	],
-	"src/server/services/envelope/debt.service.ts": [1, "online (terms)"],
-	"src/server/services/income/move-in.mutation.ts": [1, "online, counted only"],
-	"src/server/services/transfers/create.mutation.ts": [
-		1,
-		"device (M6b), counted only",
-	],
-	"src/server/services/transfers/delete.mutation.ts": [
-		2,
-		"device (M6b), counted only",
-	],
-};
 
 describe("asset_account writers", () => {
 	it("are exactly the ones this list names", () => {

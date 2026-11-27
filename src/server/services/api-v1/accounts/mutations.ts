@@ -169,12 +169,14 @@ export const updateAccountMutation: MoneyMutation<
 };
 
 type IdBody = { id: string };
+/** Close and reopen name the version the caller read (guardedAccount checks it). */
+export type StateBody = IdBody & { expectedVersion?: number };
 
 function stateChange(
 	id: string,
 	run: typeof closeAccountIn,
 	undo: string,
-): MoneyMutation<IdBody, AccountItem> {
+): MoneyMutation<StateBody, AccountItem> {
 	return {
 		id,
 		touches: FIGURES,

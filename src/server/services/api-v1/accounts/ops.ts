@@ -14,6 +14,7 @@ import {
 	setRateTypeMutation,
 	updateBalanceMutation,
 } from "./balance";
+import { guardedAccount } from "./guarded";
 import {
 	closeAccountMutation,
 	createAccountMutation,
@@ -76,7 +77,7 @@ export const accountOps = {
 			guard: watch(v.id),
 		}),
 	}),
-	update: moneyOp(updateAccountMutation, {
+	update: moneyOp(guardedAccount(updateAccountMutation), {
 		prep: (caller, input: WithoutZone<typeof updateAccountMutation>) => ({
 			...input,
 			timeZone: caller.timeZone,
@@ -91,14 +92,14 @@ export const accountOps = {
 					}
 				: null,
 	}),
-	close: moneyOp(closeAccountMutation, {
+	close: moneyOp(guardedAccount(closeAccountMutation), {
 		plan: (i): Plan => ({
 			op: "account.reopen",
 			args: { id: i.id },
 			guard: watch(i.id),
 		}),
 	}),
-	reopen: moneyOp(reopenAccountMutation, {
+	reopen: moneyOp(guardedAccount(reopenAccountMutation), {
 		plan: (i): Plan => ({
 			op: "account.close",
 			args: { id: i.id },
@@ -112,7 +113,7 @@ export const accountOps = {
 			args: { stash: v.stash },
 		}),
 	}),
-	updateBalance: moneyOp(updateBalanceMutation, {
+	updateBalance: moneyOp(guardedAccount(updateBalanceMutation), {
 		prep: (caller, input: Omit<BalanceBody, "timeZone">): BalanceBody => ({
 			...input,
 			timeZone: caller.timeZone,
@@ -129,7 +130,7 @@ export const accountOps = {
 			guard: watch(i.id),
 		}),
 	}),
-	setRateType: moneyOp(setRateTypeMutation, {
+	setRateType: moneyOp(guardedAccount(setRateTypeMutation), {
 		prep: (caller, input: Omit<RateTypeBody, "timeZone">): RateTypeBody => ({
 			...input,
 			timeZone: caller.timeZone,

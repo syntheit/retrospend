@@ -36,6 +36,22 @@ export const balanceTextSchema = z
 		examples: ["1234.56"],
 	});
 
+/**
+ * The account's version: it moves by 1 when a device-editable column changes
+ * (type, currency, rate type, closed day, in budget, liquid, interest, minimum
+ * payment, due day), never for a balance, a counted move, an icon or a name.
+ */
+export const accountVersionSchema = z.int().min(0).meta({
+	description:
+		"The account's version. It moves when a field you can edit changes, not when money moves through it, its icon changes or it is renamed.",
+});
+
+/** The guard a write sends: the version it read, refused with 409 account_changed when the account moved. */
+export const expectedVersionSchema = accountVersionSchema.optional().meta({
+	description:
+		"The `version` you last read. If the account changed since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
+});
+
 /** The account's stored rate is Decimal(18,6). */
 export const accountRateTextSchema = z
 	.string()
@@ -89,11 +105,26 @@ export const createAccountSchema = accountFieldsSchema
 	})
 	.meta({ id: "CreateAccount" });
 
+/** Update balance and Replace: the stored balance the caller saw, compared as a number. */
+export const expectedBalanceSchema = balanceTextSchema.optional().meta({
+	description:
+		"The stored `balance` you last read (what you hold, or what you owe on a liability). Compared as a number, so 1000 equals 1000.00. If the balance moved since, the answer is 409 account_changed and nothing is written. Left out, nothing is checked.",
+});
+
 export const updateAccountSchema = accountFieldsSchema
-	.extend({ id: idSchema })
+	.extend({
+		id: idSchema,
+		expectedVersion: expectedVersionSchema,
+		expectedBalance: expectedBalanceSchema,
+	})
 	.meta({ id: "UpdateAccount" });
 
 export const accountIdParamsSchema = z.object({ id: idSchema });
+
+/** Close and reopen: the id, and the version the caller read. */
+export const accountStateParamsSchema = z
+	.object({ id: idSchema, expectedVersion: expectedVersionSchema })
+	.meta({ id: "AccountState" });
 
 export const ACCOUNT_ICON_KINDS = ["BRAND", "MONOGRAM", "IMAGE"] as const;
 
@@ -138,6 +169,7 @@ export const accountItemSchema = z
 		minimumPayment: moneySchema.nullable(),
 		dueDay: z.int().nullable(),
 		icon: accountIconSchema.nullable(),
+		version: accountVersionSchema,
 		updatedAt: timestampSchema,
 	})
 	.meta({ id: "Account" });
@@ -361,6 +393,8 @@ export const updateBalanceSchema = z
 			description: "A new rate type switches from today.",
 		}),
 		exchangeRate: accountRateTextSchema.nullish(),
+		expectedBalance: expectedBalanceSchema,
+		expectedVersion: expectedVersionSchema,
 	})
 	.meta({ id: "UpdateBalance" });
 
@@ -387,6 +421,8 @@ export const balanceUpdateSchema = z
 		legId: idSchema.nullable(),
 		/** The account's stored rate before the update. */
 		previousRate: z.string().nullable(),
+		/** The account's version after the update. */
+		version: accountVersionSchema,
 	})
 	.meta({ id: "BalanceUpdate" });
 
@@ -397,21 +433,27 @@ export const setRateTypeSchema = z
 			description: "Null is the default pick.",
 		}),
 		from: daySchema.nullish().meta({ description: "Today when omitted." }),
+		expectedVersion: expectedVersionSchema,
 	})
 	.meta({ id: "SetAccountRateType" });
 
-export const rateTypeSwitchSchema = rateSwitchSchema.meta({
-	id: "RateTypeSwitch",
-});
+export const rateTypeSwitchSchema = rateSwitchSchema
+	.extend({
+		/** The account's version after the switch. */
+		version: accountVersionSchema,
+	})
+	.meta({ id: "RateTypeSwitch" });
 
 export const accountRemovedSchema = z.object({ id: idSchema });
 
 export const accountBalanceRevertedSchema = z.object({
 	accountId: idSchema,
 	balance: moneySchema,
+	version: accountVersionSchema,
 });
 
 export const accountRateRevertedSchema = z.object({
 	accountId: idSchema,
 	rateType: z.string().nullable(),
+	version: accountVersionSchema,
 });

@@ -61,6 +61,7 @@ export function accountItem(row: Row, home: string, pick: RatePick) {
 			: null,
 		dueDay: row.dueDate,
 		icon: iconOf(row),
+		version: row.version,
 		updatedAt: row.updatedAt.toISOString(),
 	};
 }
