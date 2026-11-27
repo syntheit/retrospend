@@ -66,13 +66,9 @@ describe("the sign-up seed", () => {
 		const user = await createTestUser();
 		expect(await seedDefaultCategories(user.db, user.user.id)).toBe(24);
 		const rows = await rowsOf(user.user.id);
-		expect(
-			rows.map((r) => [r.name, r.color]).sort(([a], [b]) => a.localeCompare(b)),
-		).toEqual(
-			DEFAULT_CATEGORIES.map((d) => [d.name, d.color]).sort(([a], [b]) =>
-				a.localeCompare(b),
-			),
-		);
+		const pairs = (list: readonly { name: string; color: string }[]) =>
+			list.map((r) => `${r.name}:${r.color}`).sort();
+		expect(pairs(rows)).toEqual(pairs(DEFAULT_CATEGORIES));
 		expect(rows).toHaveLength(24);
 		for (const row of rows)
 			expect(row).toMatchObject({
