@@ -390,6 +390,9 @@ describe("account.setRateType", () => {
 			accountId: id,
 			rateType: "official",
 		});
+		// Date is frozen here, and createdAt (which orders two switches on one
+		// day) comes from it: step a millisecond so the second is the later one.
+		vi.setSystemTime(new Date(Date.now() + 1));
 		await run.apply(setRateType, { accountId: id, rateType: "blue" });
 		const rows = () =>
 			adminDb.assetRateType.findMany({
