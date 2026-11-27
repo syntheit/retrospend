@@ -531,7 +531,7 @@ describe("the name check: index path and plaintext fallback", () => {
 		).catch((e) => e as { code?: string });
 		if (sealedSuite) {
 			// A sealed name needs its index beside it: the write is refused, not made plain.
-			expect(second).toMatchObject({ code: expect.any(String) });
+			expect(second).toMatchObject({ code: "category_index_missing" });
 			expect(first.name).toBe("Keyless");
 			return;
 		}
