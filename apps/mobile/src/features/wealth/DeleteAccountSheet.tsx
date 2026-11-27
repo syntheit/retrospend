@@ -38,6 +38,8 @@ export function DeleteAccountSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.delete");
+	// One wording for "Sync first" on every delete that waits for a write.
+	const tSync = useTranslations("mobile.recurring.delete");
 	// The screen leaves once, when the account goes; an Undo only refreshes.
 	const gone = useRef(false);
 	useResetOnOpen(visible, () => {
@@ -64,7 +66,7 @@ export function DeleteAccountSheet({
 		<WriteSheet
 			changes={({ preview, status }) =>
 				syncFirst ? (
-					<Note tone="attention">{t("syncFirst")}</Note>
+					<Note tone="attention">{tSync("syncFirst")}</Note>
 				) : (
 					<PreviewChanges preview={preview} status={status} />
 				)

@@ -111,6 +111,7 @@ function setup({ wealthWrites = true }: { wealthWrites?: boolean } = {}) {
 		refresh: jest.fn(async () => undefined),
 		pullsBegun: () => 1,
 		overlayAccount: jest.fn(async (..._a: unknown[]) => null),
+		storedAccount: jest.fn(async (..._a: unknown[]) => null),
 	};
 	world.api = { accounts, platform } as unknown as RetrospendClient;
 	mockWrites.mockReturnValue(writes);

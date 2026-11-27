@@ -105,6 +105,24 @@ describe("Delete account with writes on the phone", () => {
 		expect(accounts.delete).not.toHaveBeenCalled();
 	});
 
+	it("the same for a transfer delete, which names only the transfer, by the account its booking changed", async () => {
+		const accounts = setup();
+		await queue({
+			entity: "transfers",
+			kind: "delete",
+			targetId: "t9",
+			payload: { id: "t9" },
+			device: {
+				bookedAt: 1,
+				changed: [],
+				changes: [{ table: "accounts", id: ID, before: null, after: null }],
+			},
+		});
+		const tree = await open();
+		expect(textOf(tree.root)).toContain("Sync first");
+		expect(accounts.delete).not.toHaveBeenCalled();
+	});
+
 	it("a write for another account does not stop it", async () => {
 		const accounts = setup();
 		await queue({ entity: "accounts", kind: "balance", targetId: "other" });

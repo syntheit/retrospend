@@ -23,11 +23,12 @@ const info = (features: Record<string, boolean>, down = false) =>
 		platform: { serverInfo: jest.Mock };
 	};
 
-const engine = { overlayAccount: jest.fn() };
+const engine = { overlayAccount: jest.fn(), storedAccount: jest.fn() };
 
 beforeEach(() => {
 	mockWrites.mockReset().mockReturnValue(engine);
 	engine.overlayAccount.mockReset().mockResolvedValue(null);
+	engine.storedAccount.mockReset().mockResolvedValue(null);
 });
 
 describe("useWealthDevice", () => {
@@ -80,6 +81,44 @@ describe("useWealthDevice", () => {
 	});
 });
 
+describe("useWealthDevice order and reopening", () => {
+	it("a late cache never overrides the server's answer", async () => {
+		// The server says off; the cache (which says on) resolves after it.
+		await world.local.cache.write("server.wealthWrites", 1, true);
+		let release: () => void = () => undefined;
+		const cache = world.local.cache;
+		const realRead = cache.read.bind(cache);
+		jest.spyOn(cache, "read").mockImplementation(
+			(...args: Parameters<typeof realRead>) =>
+				new Promise((resolve) => {
+					release = () => resolve(realRead(...args));
+				}) as never,
+		);
+		world.api = info({ wealthWrites: false });
+		const { result } = await renderHook(() => useWealthDevice(true));
+		await flush();
+		release();
+		await flush();
+		expect(result.current).toBeNull();
+	});
+
+	it("forgets what an earlier opening heard", async () => {
+		world.api = info({ wealthWrites: true });
+		const { result, rerender } = await renderHook<
+			ReturnType<typeof useWealthDevice>,
+			boolean
+		>((open) => useWealthDevice(open), true);
+		await flush();
+		expect(result.current).not.toBeNull();
+		await rerender(false);
+		expect(result.current).toBeNull();
+		world.api = info({ wealthWrites: false });
+		await rerender(true);
+		await flush();
+		expect(result.current).toBeNull();
+	});
+});
+
 const account = {
 	id: "a1",
 	name: "Galicia",
@@ -93,6 +132,11 @@ const deviceOf = () =>
 
 describe("useOpenedAccount", () => {
 	it("shows the device's balance and names it with the screen's version", async () => {
+		engine.storedAccount.mockResolvedValue({
+			version: 4,
+			balance: "1000.00",
+			closed: false,
+		});
 		engine.overlayAccount.mockResolvedValue({
 			version: 99,
 			balance: "1200.00000000",
@@ -130,7 +174,33 @@ describe("useOpenedAccount", () => {
 		expect(result.current.shown).toBe(account);
 	});
 
+	it("keeps the screen's balance and version when the screen is ahead of what the device pulled", async () => {
+		// The list says version 4 and 1,000; the engine pulled version 3 and
+		// holds an unsent write over it: its balance belongs to another version.
+		engine.storedAccount.mockResolvedValue({
+			version: 3,
+			balance: "900.00",
+			closed: false,
+		});
+		engine.overlayAccount.mockResolvedValue({
+			version: 3,
+			balance: "950.00",
+			closed: false,
+		});
+		const { result } = await renderHook(() =>
+			useOpenedAccount(deviceOf(), account, true),
+		);
+		await flush();
+		expect(result.current.shown).toBe(account);
+		expect(result.current.opened).toEqual({ version: 4, balance: "1000.00" });
+	});
+
 	it("a balance that does not read stays the screen's own", async () => {
+		engine.storedAccount.mockResolvedValue({
+			version: 4,
+			balance: "1000.00",
+			closed: false,
+		});
 		engine.overlayAccount.mockResolvedValue({
 			version: 1,
 			balance: "12.3456789012345",

@@ -1429,8 +1429,7 @@
 			"submit": "Supprimer le compte",
 			"deleting": "Suppression",
 			"toast": "{name} supprimé",
-			"error": "Impossible de supprimer. Réessaie.",
-			"syncFirst": "Synchronise d'abord : certaines modifications ne sont pas encore synchronisées."
+			"error": "Impossible de supprimer. Réessaie."
 		}
 	},
 	"money": {

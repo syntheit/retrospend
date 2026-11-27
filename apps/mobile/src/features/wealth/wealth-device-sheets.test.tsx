@@ -112,6 +112,15 @@ function setup({ wealthWrites = true }: { wealthWrites?: boolean } = {}) {
 				closed: boolean;
 			} | null> => null,
 		),
+		storedAccount: jest.fn(
+			async (
+				..._a: unknown[]
+			): Promise<{
+				version: number;
+				balance: string;
+				closed: boolean;
+			} | null> => ({ version: 4, balance: "1000.00", closed: false }),
+		),
 	};
 	world.api = { accounts, platform } as unknown as RetrospendClient;
 	mockWrites.mockReturnValue(writes);
@@ -379,6 +388,41 @@ describe("Update balance under the dev flag", () => {
 			// The server's version the screen read, never the device's placeholder.
 			expectedVersion: 4,
 			expectedBalance: "1200.00000000",
+		});
+	});
+
+	it("when the server's copy is ahead of the device's, shows and names the screen's balance and version", async () => {
+		const { accounts, writes } = setup();
+		// Another device moved 1,000 to 1,200 (version 6); the engine still holds version 5.
+		writes.storedAccount.mockResolvedValue({
+			version: 5,
+			balance: "1000.00",
+			closed: false,
+		});
+		writes.overlayAccount.mockResolvedValue({
+			version: 5,
+			balance: "1000.00",
+			closed: false,
+		});
+		const onDone = jest.fn();
+		const tree = await mount(
+			<UpdateBalanceSheet
+				account={{ ...account, version: 6, balance: ars(120_000) } as Account}
+				catalog={catalog}
+				home="ARS"
+				onClose={jest.fn()}
+				onDone={onDone}
+				visible
+			/>,
+		);
+		await wait(100);
+		const shown = textOf(tree.root).replace(/\s/g, " ");
+		expect(shown).toContain("Now ARS 1,200");
+		await typeBalance(tree);
+		await pressAsync(tree, "Update balance");
+		expect(accounts.updateBalance.mock.calls[0]?.[0]).toMatchObject({
+			expectedVersion: 6,
+			expectedBalance: "1200.00",
 		});
 	});
 

@@ -26,12 +26,17 @@ export function useWealthDevice(active: boolean): WealthDevice | null {
 	const [on, setOn] = useState(false);
 	const engine = writes !== null;
 	useEffect(() => {
+		// Each opening asks again: what an earlier opening heard is not kept.
+		setOn(false);
 		if (!active || !api || !local || !engine) return;
 		let live = true;
+		let answered = false;
 		void cachedWealthWrites(local.cache).then((cached) => {
-			if (live && cached) setOn(true);
+			// The cache is only for before the server answers: never over it.
+			if (live && !answered) setOn(cached);
 		});
 		void wealthWritesOn(api, local.cache).then((now) => {
+			answered = true;
 			if (live) setOn(now);
 		});
 		return () => {
@@ -65,9 +70,11 @@ export function useOpenedAccount<A extends Account | null>(
 	account: A,
 	active: boolean,
 ): OpenedAccount<A> {
-	const [stored, setStored] = useState<{ id: string; balance: string } | null>(
-		null,
-	);
+	const [stored, setStored] = useState<{
+		id: string;
+		version: number;
+		balance: string;
+	} | null>(null);
 	// The device is made again on every render: only whether there is one counts.
 	const latest = useRef(device);
 	latest.current = device;
@@ -83,10 +90,14 @@ export function useOpenedAccount<A extends Account | null>(
 		const writes = latest.current?.writes;
 		if (!active || !has || !writes || id === null) return;
 		let live = true;
-		writes
-			.overlayAccount(id)
-			.then((overlay) => {
-				if (live && overlay) setStored({ id, balance: overlay.balance });
+		// The overlay's balance goes with the version it was laid over: the
+		// pulled one. Only when that is the screen's own version do the two
+		// agree; when the screen is ahead (another device moved the account and
+		// the engine has not pulled it yet) the screen's balance and version stand.
+		Promise.all([writes.storedAccount(id), writes.overlayAccount(id)])
+			.then(([pulled, overlay]) => {
+				if (live && pulled && overlay)
+					setStored({ id, version: pulled.version, balance: overlay.balance });
 			})
 			.catch(() => undefined);
 		return () => {
@@ -97,7 +108,10 @@ export function useOpenedAccount<A extends Account | null>(
 		if (!account) return { shown: account, opened: null } as OpenedAccount<A>;
 		const { currency } = account.balance;
 		const own = wireAmount(account.balance.minor, currency);
-		const balance = stored?.id === account.id ? stored.balance : own;
+		const balance =
+			stored?.id === account.id && stored.version === account.version
+				? stored.balance
+				: own;
 		const opened = { version: account.version, balance };
 		try {
 			const minor = toMinor(balance, currency);

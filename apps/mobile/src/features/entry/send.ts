@@ -390,17 +390,29 @@ export interface Created {
 
 export const NO_TOKEN = "";
 
+/**
+ * The entry's payload as the wire takes it: the account's name, the transfer's
+ * or the template's title, kept in the payload for the Sync issues row, is not
+ * part of any body. The one owner of that strip.
+ */
+function withoutTitle<E extends Pick<OutboxEntry, "payload">>(entry: E): E {
+	const { title: _title, ...body } = (entry.payload ?? {}) as Record<
+		string,
+		unknown
+	>;
+	return { ...entry, payload: body };
+}
+
 /** An edit of a template (PATCH), checked against the template version the entry was based on. */
 async function editTemplate(
 	api: RetrospendClient,
 	entry: OutboxEntry,
 	options: CallOptions,
 ): Promise<Created> {
-	// `title` is kept for the Sync issues row and never sent.
-	const { title: _title, ...patch } = entry.payload as Omit<
+	const patch = withoutTitle(entry).payload as Omit<
 		Body<typeof api.recurring.update>,
 		"id" | "expectedUpdatedAt"
-	> & { title?: string };
+	>;
 	const written = await api.recurring.update(
 		{
 			...patch,
@@ -441,19 +453,6 @@ async function change(
 		options,
 	);
 	return { undo: written.undo, version: written.expense?.updatedAt };
-}
-
-/**
- * An account or transfer entry as the wire takes it: the account's name (or
- * the transfer's label), kept in the payload for the Sync issues row, is not
- * part of any body.
- */
-function withoutTitle<E extends Pick<OutboxEntry, "payload">>(entry: E): E {
-	const { title: _title, ...body } = (entry.payload ?? {}) as Record<
-		string,
-		unknown
-	>;
-	return { ...entry, payload: body };
 }
 
 /**

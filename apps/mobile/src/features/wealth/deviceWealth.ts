@@ -264,17 +264,26 @@ export async function accountHasWrites(
 	if (!outbox) return true;
 	try {
 		const { open, acked } = await outbox.snapshot();
-		return [...open, ...acked].some((e) => {
+		const entries = [...open, ...acked];
+		// A transfer is named by its own id: it reaches the account by the ends
+		// its body names, or by the account row its booking changed (a delete).
+		const touching = entries.some((e) => {
 			const body = (e.payload ?? {}) as {
 				fromAccountId?: unknown;
 				toAccountId?: unknown;
 			};
 			return (
-				e.targetId === id ||
 				body.fromAccountId === id ||
-				body.toAccountId === id
+				body.toAccountId === id ||
+				(e.device?.changes ?? []).some(
+					(c) => c.table === "accounts" && c.id === id,
+				)
 			);
 		});
+		return (
+			targetsWithEntries(entries, [id], touching ? new Set([id]) : undefined)
+				.length > 0
+		);
 	} catch {
 		return true;
 	}
