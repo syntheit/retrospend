@@ -33,6 +33,24 @@ export interface SetRateTypeInput extends Moment {
 	readonly from?: string | null;
 }
 
+/**
+ * `now`, or one millisecond after the latest switch the account holds when
+ * that is not before it. Switches of one day are ordered by `createdAt`
+ * alone, and two with the same instant (a frozen clock, two writes in one
+ * millisecond) would leave the order to the database: each local switch is
+ * strictly later than every one the device holds.
+ */
+function laterThanSwitches(
+	now: Date,
+	held: readonly { readonly createdAt: Date }[],
+): Date {
+	const latest = Math.max(
+		Number.NEGATIVE_INFINITY,
+		...held.map((s) => s.createdAt.getTime()),
+	);
+	return new Date(Math.max(now.getTime(), latest + 1));
+}
+
 /** Writes the dated switch and, when it is the latest, the account's type. */
 export async function switchRateIn(
 	r: Repos,
@@ -50,7 +68,10 @@ export async function switchRateIn(
 		id: input.rateTypeId,
 		accountId: account.id,
 		...plan.insert,
-		createdAt: new Date(input.now.getTime()),
+		createdAt: laterThanSwitches(
+			input.now,
+			r.accounts.rateSwitches(account.id),
+		),
 	};
 	r.accounts.addRateSwitch(row);
 	if (plan.repoint) {
