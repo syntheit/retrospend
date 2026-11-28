@@ -84,23 +84,19 @@ export async function assertSharedRowCategory(
 }
 
 /**
- * Whether the writer created the split or is a person on it, once this edit is
- * written (it may add them): the `writerOnSplit` of an update.
+ * Whether the writer created the split or is a person on it once this edit is
+ * written: `peopleAfter` is who the split will have (an edit that names the
+ * people replaces them; one that does not keeps them). The `writerOnSplit` of
+ * an update.
  */
 export function writerOnSplit(
 	actor: ParticipantRef,
-	existing: {
-		createdByType: string;
-		createdById: string;
-		splitParticipants: readonly ParticipantRef[];
-	},
-	addedPeople: readonly ParticipantRef[] = [],
+	existing: { createdByType: string; createdById: string },
+	peopleAfter: readonly ParticipantRef[],
 ): boolean {
 	return (
 		(existing.createdByType === actor.participantType &&
 			existing.createdById === actor.participantId) ||
-		[...existing.splitParticipants, ...addedPeople].some((p) =>
-			sameParticipant(p, actor),
-		)
+		peopleAfter.some((p) => sameParticipant(p, actor))
 	);
 }

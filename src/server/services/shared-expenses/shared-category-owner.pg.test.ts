@@ -30,7 +30,7 @@ import { sharedTx, shareOf } from "~/server/services/category/__tests__/merge-ki
 import { DAY, makeWorld, type World } from "~/server/services/entry/__tests__/expense-write-kit";
 import { adminDb, fixtureDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
-import { seedGuest, seedTrip } from "../project/__tests__/trip-fixture";
+import { seedExpense, seedGuest, seedTrip } from "../project/__tests__/trip-fixture";
 import { SharedTransactionService } from "./transaction.service";
 
 vi.mock("next/headers", () => ({
@@ -365,6 +365,46 @@ describe("an editor's own category on someone else's split", () => {
 			splitWith: [...people, ben],
 		});
 		expect((await rowOf(trip.expenses.boat.id)).categoryId).toBe(mine);
+	});
+});
+
+describe("an edit that replaces the people", () => {
+	it("counts the people after the edit: an editor who removes himself cannot set his own category, and the same edit without a category passes", async () => {
+		const trip = await seedTrip();
+		const ben = {
+			participantType: "user" as const,
+			participantId: trip.ben.user.id,
+		};
+		const mine = (await category(trip.ben.user.id, "Bens")).id;
+		// Ana created it; Ben is on it today (with Ana).
+		const split = await seedExpense(trip.project.id, {
+			description: "Lunch",
+			amount: "20",
+			currency: "BRL",
+			date: "2026-10-14",
+			paidBy: trip.refs.A,
+			splits: [
+				{ ...trip.refs.A, share: "10" },
+				{ ...trip.refs.B, share: "10" },
+			],
+		});
+		const people = [trip.refs.A, trip.refs.C].map((r) => ({
+			participantType: r.type,
+			participantId: r.id,
+		}));
+		const service = new SharedTransactionService(adminDb, ben);
+		const edit = { id: split.id, splitMode: "EQUAL" as const, splitWith: people };
+		await expect(
+			service.update({ ...edit, categoryId: mine }),
+		).rejects.toMatchObject({ message: "Category not found" });
+		expect((await rowOf(split.id)).categoryId).toBeNull();
+		await service.update(edit);
+		const left = await adminDb.splitParticipant.findMany({
+			where: { transactionId: split.id },
+		});
+		expect(left.map((p) => p.participantId).sort()).toEqual(
+			[trip.ana.user.id, trip.cam.user.id].sort(),
+		);
 	});
 });
 

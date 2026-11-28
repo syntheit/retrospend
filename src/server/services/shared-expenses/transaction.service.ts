@@ -230,7 +230,7 @@ export class SharedTransactionService {
 			before = { amount: existing.amount, currency: existing.currency };
 			await assertSharedRowCategory(tx, this.actor, input.categoryId, {
 				unchangedFrom: existing.categoryId, restoredFromServerRecord: input.restoredFromServerRecord,
-				writerOnSplit: writerOnSplit(this.actor, existing, input.splitWith),
+				writerOnSplit: writerOnSplit(this.actor, existing, input.splitWith ?? existing.splitParticipants),
 			});
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};
