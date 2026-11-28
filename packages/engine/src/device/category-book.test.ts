@@ -26,7 +26,7 @@ import {
 import { fixtureRow } from "../fixtures";
 import { ConflictError } from "../errors";
 import { LocalDb } from "../local-db";
-import { InvalidInputError } from "../port";
+import { type CategoryRow, InvalidInputError } from "../port";
 import {
 	type BookedWrite,
 	bookIn,
@@ -225,6 +225,65 @@ describe("the name check sees the device's own unsent names", () => {
 	});
 });
 
+describe("the overlay of a category entry", () => {
+	it("lays the name the entry hands over, keeps the store's text otherwise, and leaves the store alone", async () => {
+		const store = await open();
+		const made = await book(store, makeGifts());
+		const renamed = await book(store, {
+			kind: "categoryUpdate",
+			body: { id: FOOD, color: "red" },
+		});
+		const entries = [
+			entryOf("c1", made, { categoryNames: { [GIFTS]: "Gifts" } }),
+			entryOf("c2", renamed),
+		];
+		const seen = await readOverlaid(store, entries, 0, (tx) => ({
+			gifts: tx.get("categories", GIFTS),
+			food: tx.get("categories", FOOD),
+		}));
+		expect(seen.gifts).toMatchObject({ name: "Gifts", color: "pink" });
+		expect(seen.food).toMatchObject({ name: "Food", color: "red" });
+		expect(store.get("categories", GIFTS)).toBeUndefined();
+		expect(store.get("categories", FOOD)?.color).toBe("teal");
+	});
+
+	it("takes the version from the ack, as a number, not from the device's count", async () => {
+		const store = await open();
+		const renamed = await book(store, {
+			kind: "categoryUpdate",
+			body: { id: FOOD, name: "Meals" },
+		});
+		// The device counted 3 (2 + 1); the server answered 5.
+		const acked = entryOf("c1", renamed, {
+			categoryNames: { [FOOD]: "Meals" },
+			ack: { version: "5", pull: 1 },
+		});
+		const row = await readOverlaid(store, [acked], 0, (tx) =>
+			tx.get("categories", FOOD),
+		);
+		expect(row).toMatchObject({ name: "Meals", version: 5 });
+	});
+
+	it("leaves an entry out whole when a pull moved the category under it", async () => {
+		const store = await open();
+		const renamed = await book(store, {
+			kind: "categoryUpdate",
+			body: { id: FOOD, color: "red" },
+		});
+		await store.transaction((tx) =>
+			tx.put("categories", {
+				...(tx.get("categories", FOOD) as never as CategoryRow),
+				color: "pink",
+				version: 3,
+			}),
+		);
+		const row = await readOverlaid(store, [entryOf("c1", renamed)], 0, (tx) =>
+			tx.get("categories", FOOD),
+		);
+		expect(row).toMatchObject({ color: "pink", version: 3 });
+	});
+});
+
 describe("a write that files into a category the device has not sent", () => {
 	it("books an expense into an unsent create, takes its count default, and chains on it", async () => {
 		const store = await open();
@@ -390,6 +449,12 @@ describe("the create of a category cannot be taken back while a write names it",
 			ConflictError,
 		);
 		expect(() => refuseCategoryUncreate([sent], GIFTS)).not.toThrow();
+		// Both sent and neither pulled back: the server has the expense, so its
+		// uncreate would refuse, and the device refuses first.
+		const sentDependent = { ...dependent, ack: { version: "v", pull: 1 } };
+		expect(() => refuseCategoryUncreate([sent, sentDependent], GIFTS)).toThrow(
+			ConflictError,
+		);
 		expect(entryRowsNamingCategory([create, dependent], GIFTS)).toEqual([
 			{ table: "expenses", id: uuid(10) },
 		]);
