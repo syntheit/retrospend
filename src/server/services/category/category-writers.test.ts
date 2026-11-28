@@ -134,11 +134,14 @@ describe("category writers", () => {
 		expect(found).toEqual(named);
 	});
 
-	it("only the writers VERSION_SETTERS names set the version: updateCategory, a restore's insert, the default-category script", () => {
-		// A write that names the version: an assignment, an increment or another
-		// atomic operation, the insert's pass-through, or raw SQL setting the column.
-		const WRITE =
-			/\bdata\.version\s*=|\bversion\s*:\s*\{\s*(?:increment|decrement|set|multiply|divide)\b|\bversion\s*:\s*input\.version\b|\bSET\b[^;`]*"version"/g;
+	it("only the writers VERSION_SETTERS names set the version: updateCategoryIn, a restore's insert, the default-category script", () => {
+		// A category write that names the version in what it stores, whatever the
+		// value (a number, a stash field, an increment): any `version` key in the
+		// `data` of a client write, an assignment on a `data` object built apart,
+		// or raw SQL setting the column. A `version` in a `where` or `select` only
+		// reads, and a stash field is no write.
+		const DATA_ASSIGN = /\bdata\.version\s*=/g;
+		const RAW_SET = /\bSET\b[^;`]*"version"/g;
 		// The files that write the table or call what does, and any file about categories.
 		const writerFiles = new Set([
 			...Object.keys(WRITERS),
@@ -153,7 +156,10 @@ describe("category writers", () => {
 			const code = text
 				.replace(/\/\*[\s\S]*?\*\//g, "")
 				.replace(/^\s*\/\/.*$/gm, "");
-			const n = code.match(WRITE)?.length ?? 0;
+			const n =
+				dataValues(code).filter((data) => /\bversion\s*:/.test(data)).length +
+				(code.match(DATA_ASSIGN)?.length ?? 0) +
+				(code.match(RAW_SET)?.length ?? 0);
 			if (n > 0) found[rel] = n;
 		}
 		const named = Object.fromEntries(
@@ -163,4 +169,63 @@ describe("category writers", () => {
 		for (const [file, [, what]] of Object.entries(VERSION_SETTERS))
 			expect(what.length, file).toBeGreaterThan(0);
 	});
+
+	it("sees a version key of any shape in a category write's data", () => {
+		const shapes = [
+			"tx.category.update({ where: { id }, data: { version: 5 } })",
+			"tx.category.update({ where: { id }, data: { version: stash.version } })",
+			"tx.category.create({ data: { ...(x ? {} : { version: x }), userId } })",
+			"tx.category.updateMany({ where: {}, data: { name, version: { set: 1 } } })",
+		];
+		for (const shape of shapes)
+			expect(
+				dataValues(shape).filter((data) => /\bversion\s*:/.test(data)),
+				shape,
+			).toHaveLength(1);
+		// Reading the version, or filtering by it, writes nothing.
+		for (const read of [
+			"tx.category.update({ where: { id, version: 3 }, data: { color } })",
+			"tx.category.findMany({ where: { id }, select: { version: true } })",
+		])
+			expect(
+				dataValues(read).filter((data) => /\bversion\s*:/.test(data)),
+				read,
+			).toHaveLength(0);
+	});
 });
+
+/** The value of the `data` argument of every client write in `code` (a braced object, or the bare name). */
+function dataValues(code: string): string[] {
+	const values: string[] = [];
+	for (const call of code.matchAll(CLIENT)) {
+		const open = code.indexOf("(", call.index ?? 0);
+		const args = argsOf(code, open + 1);
+		const at = args.search(/\bdata\s*:/);
+		if (at < 0) continue;
+		const rest = args.slice(args.indexOf(":", at) + 1).trimStart();
+		values.push(rest.startsWith("{") ? braced(rest) : (rest.split(/[,}]/)[0] ?? ""));
+	}
+	return values;
+}
+
+/** The text of a call's arguments, to its closing parenthesis. */
+function argsOf(code: string, from: number): string {
+	let depth = 1;
+	let i = from;
+	while (depth > 0 && i < code.length) {
+		const ch = code[i++];
+		if (ch === "(") depth++;
+		else if (ch === ")") depth--;
+	}
+	return code.slice(from, i - 1);
+}
+
+/** The braced object at the start of `text`, braces included. */
+function braced(text: string): string {
+	let depth = 0;
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === "{") depth++;
+		else if (text[i] === "}" && --depth === 0) return text.slice(0, i + 1);
+	}
+	return text;
+}
