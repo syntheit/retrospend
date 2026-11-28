@@ -12,11 +12,13 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
 import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
+import { CategoryChangedError } from "@retrospend/domain/category-version";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
 	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
+import { IdTakenError } from "@retrospend/domain/id-taken";
 import { MissingRateError } from "@retrospend/domain/money";
 import { RecurringRefusal } from "@retrospend/domain/recurring-post/refusals";
 import { errorFormatter } from "~/server/api/error-formatter";
@@ -241,6 +243,19 @@ const timingMiddleware = t.middleware(async ({ next }) => {
 	}
 	// A category merge or delete the budget refuses; the web words it by its code.
 	if (!result.ok && result.error.cause instanceof CategoryMergeRefusal) {
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: result.error.cause.message,
+			cause: result.error.cause,
+		});
+	}
+	// A category write that named a version the category no longer has, or an id
+	// its own account already holds: the codes `category_changed` and `id_taken`.
+	if (
+		!result.ok &&
+		(result.error.cause instanceof CategoryChangedError ||
+			result.error.cause instanceof IdTakenError)
+	) {
 		throw new TRPCError({
 			code: "CONFLICT",
 			message: result.error.cause.message,

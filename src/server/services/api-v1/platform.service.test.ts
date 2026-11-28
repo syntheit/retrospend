@@ -10,7 +10,13 @@ const env = vi.hoisted(() => ({
 	ADVANCED_PROTECTION_ENABLED: false,
 	RECURRING_AUTO_POST: undefined as string | undefined,
 }));
+const flags = vi.hoisted(() => ({ categoryWrites: true }));
 vi.mock("~/env", () => ({ env }));
+vi.mock("~/server/services/category/category-writes", () => ({
+	get CATEGORY_WRITES() {
+		return flags.categoryWrites;
+	},
+}));
 vi.mock("~/server/db", () => ({ db: {} }));
 vi.mock("~/server/services/preview", () => ({ forUser: vi.fn() }));
 vi.mock("~/server/services/protection/now", () => ({
@@ -72,6 +78,18 @@ describe("server-info features.autoPost", () => {
 		expect((await getServerInfo(NO_PUSH)).features.wealthWrites).toBe(true);
 	});
 
+	it("says whether the server takes the category writes a phone queues, from CATEGORY_WRITES and nowhere else", async () => {
+		expect((await getServerInfo(NO_PUSH)).features.categoryWrites).toBe(true);
+		flags.categoryWrites = false;
+		try {
+			expect((await getServerInfo(NO_PUSH)).features.categoryWrites).toBe(
+				false,
+			);
+		} finally {
+			flags.categoryWrites = true;
+		}
+	});
+
 	it("leaves the other features alone", async () => {
 		env.ADVANCED_PROTECTION_ENABLED = true;
 		const info = await getServerInfo(NO_PUSH);
@@ -80,6 +98,7 @@ describe("server-info features.autoPost", () => {
 			autoPost: true,
 			autoConfirm: true,
 			wealthWrites: true,
+			categoryWrites: true,
 		});
 		env.ADVANCED_PROTECTION_ENABLED = false;
 	});

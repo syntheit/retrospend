@@ -1,4 +1,6 @@
 import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
+import { CategoryChangedError } from "@retrospend/domain/category-version";
+import { IdTakenError } from "@retrospend/domain/id-taken";
 import type { TRPCError } from "@trpc/server";
 import { ZodError, z } from "zod";
 import { uniqueViolation } from "~/server/api/unique-violation";
@@ -30,6 +32,8 @@ export function problemCode(error: TRPCError) {
 	if (error instanceof AdminFailureError) return error.problem;
 	if (error instanceof ShareAnswerRefusedError) return error.problem;
 	if (error.cause instanceof CategoryMergeRefusal) return error.cause.problem;
+	if (error.cause instanceof CategoryChangedError) return "category_changed";
+	if (error.cause instanceof IdTakenError) return "id_taken";
 	if (error.code === "CONFLICT") {
 		const taken = uniqueViolation(error.cause);
 		if (taken) return taken.problem;

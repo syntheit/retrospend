@@ -20,10 +20,21 @@ export const categoriesRouter = {
 			categories.addCategory(signedIn(context), input),
 		),
 	),
+	previewCreate: c.previewCreate.handler(
+		serve(({ context, input }) =>
+			categories.previewAddCategory(signedIn(context), input),
+		),
+	),
 	update: c.update.handler(
 		serve(({ context, input }) => {
 			const { id, ...changes } = input;
 			return categories.changeCategory(signedIn(context), id, changes);
+		}),
+	),
+	previewUpdate: c.previewUpdate.handler(
+		serve(({ context, input }) => {
+			const { id, ...changes } = input;
+			return categories.previewChangeCategory(signedIn(context), id, changes);
 		}),
 	),
 	delete: c.delete.handler(

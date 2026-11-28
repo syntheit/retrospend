@@ -55,6 +55,10 @@ export const PROBLEM_STATUS = {
 	// balance) it last read, and the account changed since. Nothing was written;
 	// the client reads the account again and decides.
 	account_changed: 409,
+	// A category write that named the version it last read, and the category
+	// changed since (another device or the web edited it). Nothing was written;
+	// the client reads the category again and decides.
+	category_changed: 409,
 	// A vault write from an account that has no protection key set: nothing a
 	// client sealed could ever be opened, so the server refuses to hold it.
 	protection_keys_missing: 409,

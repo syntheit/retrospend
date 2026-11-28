@@ -33,7 +33,7 @@ import {
 } from "~/server/api/v1/core/__tests__/harness";
 import { sealedSuite } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
-import { createCategory, updateCategory } from "../category.service";
+import { createCategory, updateCategory } from "~/test/category-writes";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -139,15 +139,15 @@ describe("create", () => {
 		});
 	});
 
-	it("v1 answers the dto with the tone and a zero count, and takes the server's id", async () => {
+	it("v1 answers the dto with the tone, a zero count and version 0, and writes under the client id and kind it is given", async () => {
 		const wanted = randomUUID();
-		const made = await expectBody<Dto>(
+		const made = await expectBody<Dto & { undo: string }>(
 			await post({
 				name: "Utilities-like",
 				color: "teal",
 				icon: "bolt",
 				excludeByDefault: true,
-				// A client id and a kind are not part of today's contract.
+				// M3 PR1b: a client id and a kind are part of the contract now.
 				id: wanted,
 				kind: "income",
 			}),
@@ -155,22 +155,28 @@ describe("create", () => {
 			201,
 		);
 		expect(made).toEqual({
-			id: expect.any(String),
+			id: wanted,
 			name: "Utilities-like",
 			color: "teal",
 			icon: "bolt",
-			kind: "expense",
+			kind: "income",
 			tone: 9,
 			excludeByDefault: true,
 			expenseCount: 0,
 			version: 0,
+			undo: expect.any(String),
 		});
-		expect(made.id).not.toBe(wanted);
+		expect(await rowOf(wanted)).toMatchObject({ kind: "INCOME" });
+	});
+
+	it("v1 makes a cuid and an expense category when no id or kind is sent", async () => {
+		const made = await expectBody<Dto>(
+			await post({ name: "Plain", color: "teal" }),
+			c.create,
+			201,
+		);
 		expect(z.cuid().safeParse(made.id).success).toBe(true);
-		expect(await rowOf(made.id)).toMatchObject({ kind: "EXPENSE" });
-		await expect(
-			fixtureDb.category.count({ where: { id: wanted } }),
-		).resolves.toBe(0);
+		expect(made.kind).toBe("expense");
 	});
 
 	it("v1 replays a create with its key and writes once, and a new key is a new write", async () => {
@@ -316,7 +322,7 @@ describe("edit", () => {
 		});
 	});
 
-	it("v1 PATCH is partial: a flag alone leaves every other field, an empty body changes nothing", async () => {
+	it("v1 PATCH is partial: a flag alone leaves every other field, an empty body is refused", async () => {
 		const made = await fresh("Partial", { icon: "house" });
 		const before = await rowOf(made.id);
 		const flagged = await expectBody<Dto>(
@@ -329,8 +335,8 @@ describe("edit", () => {
 			icon: "house",
 			excludeByDefault: true,
 		});
-		const empty = await expectBody<Dto>(await patch(made.id, {}), c.update);
-		expect(empty).toEqual(flagged);
+		// M3 PR1b: an empty body names no change, so it is a validation error.
+		await expectProblem(await patch(made.id, {}), 400, "validation_failed");
 		// The flag is the one change, so one bump; the empty body wrote nothing.
 		expect(await rowOf(made.id)).toEqual({
 			...before,
@@ -339,14 +345,10 @@ describe("edit", () => {
 		});
 	});
 
-	it("v1 PATCH removes the icon with null, and ignores a kind or an expectedVersion it is sent", async () => {
+	it("v1 PATCH removes the icon with null", async () => {
 		const made = await fresh("Iconic", { icon: "house" });
 		const done = await expectBody<Dto>(
-			await patch(made.id, {
-				icon: null,
-				kind: "income",
-				expectedVersion: 7,
-			}),
+			await patch(made.id, { icon: null }),
 			c.update,
 		);
 		expect(done).toMatchObject({ icon: null, kind: "expense" });

@@ -2,11 +2,20 @@ import type {
 	CategoryDto,
 	CursorQuery,
 	createCategorySchema,
-	updateCategorySchema,
+	patchCategorySchema,
 } from "@retrospend/api-contract";
 import { categoryTone } from "@retrospend/domain/category-tone";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
+import {
+	createCategoryWrite,
+	recreateCategory,
+	uncreateCategory,
+} from "~/server/services/category/create.mutation";
+import {
+	editCategory,
+	revertCategoryEdit,
+} from "~/server/services/category/edit.mutation";
 import {
 	type CategoryMerged,
 	mergeCategories,
@@ -18,11 +27,10 @@ import {
 } from "~/server/services/category/remove";
 import {
 	type CategoryRow,
-	createCategory,
 	getCategory,
 	listCategoriesByName,
-	updateCategory,
 } from "~/server/services/category.service";
+import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Caller } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
@@ -66,23 +74,92 @@ export async function readCategory(caller: Caller, id: string) {
 	return toCategory(await getCategory(caller.db, caller.principal.userId, id));
 }
 
-export async function addCategory(
+const uncreateOp = "category.uncreate";
+const recreateOp = "category.recreate";
+const revertOp = "category.revert";
+
+type Fields = z.infer<typeof createCategorySchema>;
+
+/** The create input as the mutation takes it (the wire's kind is lower case). */
+function createInput(input: Fields) {
+	const { kind, ...rest } = input;
+	return {
+		...rest,
+		...(kind ? { kind: kind === "income" ? ("INCOME" as const) : ("EXPENSE" as const) } : {}),
+	};
+}
+
+/** The edit as the mutation takes it: the fields that change, and the guard apart. */
+function editInput(id: string, input: Omit<z.infer<typeof patchCategorySchema>, "id">) {
+	const { expectedVersion, ...changes } = input;
+	return { id, changes, expectedVersion };
+}
+
+/** A category as a write answers it: the row and the token that takes the write back. */
+function written(row: CategoryRow, undo: string) {
+	return { ...toCategory(row), undo };
+}
+
+/** The token that puts an edit back: the stash holds the replaced fields, the version is the one the edit left. */
+const revertToken = (
 	caller: Caller,
-	input: z.infer<typeof createCategorySchema>,
-) {
-	return toCategory(
-		await createCategory(caller.db, caller.principal.userId, input),
+	done: { category: CategoryRow; stash: string },
+) =>
+	undoFor(caller, "category", revertOp, {
+		id: done.category.id,
+		stash: done.stash,
+		version: done.category.version,
+	});
+
+export async function addCategory(caller: Caller, input: Fields) {
+	const done = await applyWrite(caller, createCategoryWrite, createInput(input));
+	return written(
+		done.category,
+		undoFor(caller, "category", uncreateOp, { id: done.category.id }),
 	);
+}
+
+export async function previewAddCategory(caller: Caller, input: Fields) {
+	const preview = await forUser(caller.principal.userId).preview(
+		createCategoryWrite,
+		createInput(input),
+	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "category.create" as const,
+			id: preview.value.category.id,
+			version: preview.value.category.version,
+		},
+	};
 }
 
 export async function changeCategory(
 	caller: Caller,
 	id: string,
-	changes: z.infer<typeof updateCategorySchema>,
+	changes: Omit<z.infer<typeof patchCategorySchema>, "id">,
 ) {
-	return toCategory(
-		await updateCategory(caller.db, caller.principal.userId, id, changes),
+	const done = await applyWrite(caller, editCategory, editInput(id, changes));
+	return written(done.category, revertToken(caller, done));
+}
+
+export async function previewChangeCategory(
+	caller: Caller,
+	id: string,
+	changes: Omit<z.infer<typeof patchCategorySchema>, "id">,
+) {
+	const preview = await forUser(caller.principal.userId).preview(
+		editCategory,
+		editInput(id, changes),
 	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "category.update" as const,
+			id: preview.value.category.id,
+			version: preview.value.category.version,
+		},
+	};
 }
 
 type Removal = { id: string; targetId: string | null };
@@ -163,6 +240,12 @@ export const previewMergeCategory = (
 
 // ── Undo ────────────────────────────────────────────────────────────────────
 
+/** The id of the category an undo or a redo acted on, whatever shape its mutation answers. */
+function idOfDone(value: unknown): string {
+	const done = value as { id?: string; category?: { id: string } };
+	return (done.id ?? done.category?.id) as string;
+}
+
 /** The inverse call of a token, and the redo token its answer gives. */
 function inverseOf(op: string, input: unknown) {
 	if (op === restoreOp) {
@@ -188,6 +271,40 @@ function inverseOf(op: string, input: unknown) {
 			}),
 		};
 	}
+	if (op === uncreateOp) {
+		return {
+			mutation: uncreateCategory as MoneyMutation<unknown, unknown>,
+			input,
+			redo: (v: unknown) => ({
+				op: recreateOp,
+				input: { stash: (v as { stash: string }).stash },
+			}),
+		};
+	}
+	if (op === recreateOp) {
+		return {
+			mutation: recreateCategory as MoneyMutation<unknown, unknown>,
+			input,
+			redo: (v: unknown) => ({ op: uncreateOp, input: { id: idOfDone(v) } }),
+		};
+	}
+	if (op === revertOp) {
+		return {
+			mutation: revertCategoryEdit as MoneyMutation<unknown, unknown>,
+			input,
+			redo: (v: unknown) => {
+				const done = v as { category: CategoryRow; stash: string };
+				return {
+					op: revertOp,
+					input: {
+						id: done.category.id,
+						stash: done.stash,
+						version: done.category.version,
+					},
+				};
+			},
+		};
+	}
 	throw new TRPCError({
 		code: "BAD_REQUEST",
 		message: "This undo is not valid anymore",
@@ -201,7 +318,7 @@ export async function undoCategoryWrite(caller: Caller, token: string) {
 		const value = await applyWrite(caller, inverse.mutation, inverse.input);
 		const redo = inverse.redo(value);
 		return {
-			id: (value as { id: string }).id,
+			id: idOfDone(value),
 			redo: undoFor(caller, "category", redo.op, redo.input),
 		};
 	});

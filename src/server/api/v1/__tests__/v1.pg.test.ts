@@ -499,6 +499,7 @@ describe("/api/v1 on Postgres", () => {
 				autoPost: autoPostEnabled(),
 				autoConfirm: true,
 				wealthWrites: true,
+				categoryWrites: true,
 			});
 		});
 	});
