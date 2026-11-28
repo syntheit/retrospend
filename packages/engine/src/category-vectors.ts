@@ -336,7 +336,7 @@ export const categoryVectors: CategoryVector[] = [
 		],
 	},
 	{
-		// A taken id is refused whatever the name; an id that is not a uuid is the
+		// A taken id is refused whatever the name (a taken name too: the id is read first); an id that is not a uuid is the
 		// schema's; an edit of a category that is not there is "not found"; an
 		// edit that names kind (even with a color) or names nothing is the
 		// schema's; with the version read (0) a color edit lands (1), and the
@@ -345,6 +345,12 @@ export const categoryVectors: CategoryVector[] = [
 		seed: ARS,
 		categories: [seeded(FOOD, "Food")],
 		steps: [
+			{
+				// The id is read before the name: an id taken and a name taken is id taken.
+				now: NOV10,
+				op: make(FOOD, { name: "Food" }),
+				expect: refused(ID_TAKEN_MESSAGE),
+			},
 			{
 				now: NOV10,
 				op: make(FOOD, { name: "Other" }),

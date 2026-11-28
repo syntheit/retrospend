@@ -27,7 +27,8 @@ import { decodeRow, encodeRow, SerializeError } from "./serialize";
 
 // 3: templates carry `version`, `websiteUrl` and `paymentSource`; older files are wiped and pulled again.
 // 4: accounts, legs, transfers and wealthTransfers carry the fields the Wealth writes read; a version 3 file keeps everything else and pulls those four again (UPGRADES).
-export const SCHEMA_VERSION = "4";
+// 5: categories carry `version` (the one a category edit sends as expectedVersion); a version 4 file keeps everything else and pulls categories again (UPGRADES), since an unchanged category is never sent again.
+export const SCHEMA_VERSION = "5";
 
 /**
  * A file at `from` that gains fields on some entities only: it is not wiped.
@@ -49,6 +50,7 @@ export const UPGRADES: readonly Upgrade[] = [
 		to: "4",
 		repull: ["accounts", "legs", "transfers", "wealthTransfers"],
 	},
+	{ from: "4", to: "5", repull: ["categories"] },
 ];
 
 /** Failed writes in one session after which the disk copy is given up. */

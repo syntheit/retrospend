@@ -405,12 +405,158 @@ describe("loading speed", () => {
 	});
 });
 
+const ENTITIES = [
+	"categories",
+	"recurringTemplates",
+	"expenses",
+	"accounts",
+	"snapshots",
+	"legs",
+	"rateSwitches",
+	"budgetBooks",
+	"envelopeGroups",
+	"envelopes",
+	"envelopeCategories",
+	"budgetMovements",
+	"bookPeriods",
+	"monthCloses",
+	"wealthTransfers",
+	"payoffPlans",
+	"transfers",
+] as const;
+const SAVED: PullCursors = Object.fromEntries(
+	ENTITIES.map((e) => [e, `saved-${e}`]),
+);
+
+describe("a file from before category versions", () => {
+	/** What a version 4 file held: a category with no `version`, and one the server deleted while the file slept. */
+	const narrow = (id: string) => {
+		const row: Record<string, unknown> = { ...fixtureRow("categories", id) };
+		delete row.version;
+		return row;
+	};
+
+	/** A finished pull's file, as the build before this one left it. */
+	const versionFourFile = async () => {
+		const first = boot(file());
+		await first.store.transaction((tx) => {
+			for (const entity of ENTITIES)
+				tx.put(
+					entity,
+					(entity === "categories"
+						? narrow("r1")
+						: fixtureRow(entity, "r1")) as never,
+				);
+			tx.put("categories", narrow("ghost") as never);
+		});
+		first.cursors.current = { ...SAVED };
+		first.persistence.finishPull();
+		first.persistence.close();
+		const driver = nodeDriver(file());
+		driver.run("UPDATE meta SET value = '4' WHERE key = 'schemaVersion'");
+		driver.close();
+	};
+
+	it("keeps every other row and cursor, drops the categories and their cursor, and is not complete", async () => {
+		await versionFourFile();
+		const after = boot(file());
+		expect(after.loaded.wiped).toBe(false);
+		expect(after.loaded.complete).toBe(false);
+		const { categories: _dropped, ...kept } = SAVED;
+		expect(after.loaded.cursors).toEqual(kept);
+		expect(after.store.list("categories")).toEqual([]);
+		for (const entity of ENTITIES.filter((e) => e !== "categories"))
+			expect({ entity, held: after.store.list(entity).length }).toEqual({
+				entity,
+				held: 1,
+			});
+		expect(
+			after.driver.all<{ value: string }>(
+				"SELECT value FROM meta WHERE key = 'schemaVersion'",
+			)[0]?.value,
+		).toBe("5");
+		after.persistence.close();
+	});
+
+	it("pulls the categories again with no cursor, so each has the server's version and the ghost is gone", async () => {
+		await versionFourFile();
+		const after = boot(file());
+		const asked: string[] = [];
+		const empty = (name: string) => async (q: { since?: string }) => {
+			asked.push(`${name}(${q.since ?? "-"})`);
+			return {
+				items: [],
+				tombstones: [],
+				cursor: `new-${name}`,
+				hasMore: false,
+			};
+		};
+		const api = {
+			sync: new Proxy(
+				{
+					settings: async () => ({
+						homeCurrency: "ARS",
+						timeZone: "America/Argentina/Buenos_Aires",
+						startDay: 1,
+						hiddenProjectIds: [],
+						defaultRateTypes: {},
+					}),
+					shares: async () => ({}),
+					categories: async (q: { since?: string }) => {
+						asked.push(`categories(${q.since ?? "-"})`);
+						return {
+							items: [
+								{
+									id: "r1",
+									name: "Food",
+									color: "teal",
+									icon: null,
+									isFixed: false,
+									excludeByDefault: false,
+									kind: "EXPENSE",
+									version: 7,
+								},
+							],
+							tombstones: [],
+							cursor: "new-categories",
+							hasMore: false,
+						};
+					},
+				} as Record<string, unknown>,
+				{ get: (known, name: string) => known[name] ?? empty(name) },
+			),
+			currencies: { dailyRates: async () => ({ asOf: null, rates: [] }) },
+		} as unknown as PullApi;
+
+		await pullAll(after.store, api, after.cursors.current, { shares: false });
+
+		expect(asked).toContain("categories(-)");
+		expect(asked).toContain("expenses(saved-expenses)");
+		expect(after.store.list("categories").map((c) => c.id)).toEqual(["r1"]);
+		expect(after.store.get("categories", "r1")?.version).toBe(7);
+		after.persistence.close();
+	});
+
+	it("a file at version 4 of another owner is emptied, not upgraded", async () => {
+		await versionFourFile();
+		const driver = nodeDriver(file());
+		driver.run("UPDATE meta SET value = 'someone-else' WHERE key = 'origin'");
+		driver.close();
+		const after = boot(file());
+		expect(after.loaded.wiped).toBe(true);
+		expect(after.loaded.rowCount).toBe(0);
+		after.persistence.close();
+	});
+});
+
 describe("a file from before the Wealth fields", () => {
+	// A version 3 file goes 3 -> 4 -> 5, so it pulls categories again as well.
 	const REPULLED = [
 		"accounts",
 		"legs",
 		"transfers",
 		"wealthTransfers",
+		"categories",
 	] as const;
 	/** What a version 3 file held: these rows without the fields version 4 added. */
 	const NARROW: Readonly<Record<string, readonly string[]>> = {
@@ -438,29 +584,6 @@ describe("a file from before the Wealth fields", () => {
 		for (const field of NARROW[table] ?? []) delete row[field];
 		return row;
 	};
-	const ENTITIES = [
-		"categories",
-		"recurringTemplates",
-		"expenses",
-		"accounts",
-		"snapshots",
-		"legs",
-		"rateSwitches",
-		"budgetBooks",
-		"envelopeGroups",
-		"envelopes",
-		"envelopeCategories",
-		"budgetMovements",
-		"bookPeriods",
-		"monthCloses",
-		"wealthTransfers",
-		"payoffPlans",
-		"transfers",
-	] as const;
-	const SAVED: PullCursors = Object.fromEntries(
-		ENTITIES.map((e) => [e, `saved-${e}`]),
-	);
-
 	/** A finished pull's file, as the build before this one left it. */
 	const versionThreeFile = async () => {
 		const first = boot(file());
@@ -478,12 +601,19 @@ describe("a file from before the Wealth fields", () => {
 		driver.close();
 	};
 
-	it("names version 3 as the one step to the current version, with exactly these four entities", () => {
-		expect(UPGRADES).toEqual([{ from: "3", to: "4", repull: [...REPULLED] }]);
-		expect(SCHEMA_VERSION).toBe("4");
+	it("names the steps to the current version, with exactly these entities", () => {
+		expect(UPGRADES).toEqual([
+			{
+				from: "3",
+				to: "4",
+				repull: ["accounts", "legs", "transfers", "wealthTransfers"],
+			},
+			{ from: "4", to: "5", repull: ["categories"] },
+		]);
+		expect(SCHEMA_VERSION).toBe("5");
 	});
 
-	it("keeps every other row and cursor, drops those four entities' rows and cursors, and is not complete", async () => {
+	it("keeps every other row and cursor, drops those entities' rows and cursors, and is not complete", async () => {
 		await versionThreeFile();
 		const after = boot(file());
 		expect(after.loaded.wiped).toBe(false);
@@ -504,11 +634,11 @@ describe("a file from before the Wealth fields", () => {
 			after.driver.all<{ value: string }>(
 				"SELECT value FROM meta WHERE key = 'schemaVersion'",
 			)[0]?.value,
-		).toBe("4");
+		).toBe("5");
 		after.persistence.close();
 	});
 
-	it("pulls those four again with no cursor, the rest from their cursors, and ends with complete rows and no ghost", async () => {
+	it("pulls those again with no cursor, the rest from their cursors, and ends with complete rows and no ghost", async () => {
 		await versionThreeFile();
 		const after = boot(file());
 		const asked: string[] = [];

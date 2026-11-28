@@ -11,6 +11,7 @@ import { seededCategoryStore } from "./category-conformance";
 import { ARS, uuid } from "./category-vector-types";
 import {
 	CategoryNameTakenError,
+	CategoryVersionUnknownError,
 	createCategory,
 	nameTaken,
 	updateCategory,
@@ -57,6 +58,12 @@ describe("category.create", () => {
 		expect(error).toBeInstanceOf(IdTakenError);
 		expect(store.get("categories", FOOD)?.name).toBe("Food");
 		expect(store.list("categories")).toHaveLength(2);
+	});
+
+	it("checks the id before the name: an id taken with a name taken is id taken", async () => {
+		const { db } = await open();
+		const error = await create(db, FOOD, "Food").catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(IdTakenError);
 	});
 
 	it("refuses a name the store holds, trimmed, with case counting", async () => {
@@ -139,6 +146,46 @@ describe("category.update", () => {
 		await expect(
 			db.write("category.update", updateCategory({ id: BILLS, name: "Food" })),
 		).rejects.toBeInstanceOf(CategoryNameTakenError);
+	});
+});
+
+describe("a category the device holds with no version", () => {
+	// A row an older build pulled, before the server sent a version: it reads
+	// back with none, and an edit would book NaN and send no expectedVersion.
+	async function unversioned() {
+		const { store, db } = await open();
+		const { version: _gone, ...bare } = store.get(
+			"categories",
+			FOOD,
+		) as never as {
+			version: number;
+		} & Record<string, unknown>;
+		await store.transaction((tx) => tx.put("categories", bare as never));
+		return { store, db };
+	}
+
+	it("is not edited: the write is refused as sync first and nothing changes", async () => {
+		const { store, db } = await unversioned();
+		const before = store.get("categories", FOOD);
+		const error = await db
+			.write("category.update", updateCategory({ id: FOOD, color: "red" }))
+			.catch((e: unknown) => e);
+		expect(error).toBeInstanceOf(CategoryVersionUnknownError);
+		expect((error as Error).message).toBe("Sync first");
+		expect(store.get("categories", FOOD)).toEqual(before);
+	});
+
+	it("is not a fault on the engine: the booking is refused, so the entry carries none", async () => {
+		const { isDeviceRefusal } = await import("./device/book");
+		expect(isDeviceRefusal(new CategoryVersionUnknownError())).toBe(true);
+	});
+
+	it("does not stop a create or the edit of a category that has a version", async () => {
+		const { db } = await unversioned();
+		await expect(create(db, NEW, "Gifts")).resolves.toBeDefined();
+		await expect(
+			db.write("category.update", updateCategory({ id: BILLS, color: "red" })),
+		).resolves.toBeDefined();
 	});
 });
 

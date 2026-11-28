@@ -267,9 +267,11 @@ const BEFORE_SKIPPED: Partial<Record<WealthTable, readonly string[]>> = {
 };
 
 /**
- * The same for a category: every column the entry keeps but the name (a
- * stored row's text is the store's) and the version (a placeholder on the
- * device until the ack names it; a changed category differs in a column).
+ * The same for a category: every column the entry keeps. The name is the one
+ * column not compared (it is never kept; the store's text stands), and a
+ * rename moves the version, which is compared, so a category another device
+ * renamed is a changed row. A stacked entry's `before` version is the one its
+ * predecessor left (a placeholder, or the ack's once the outbox stamps it).
  */
 function isBeforeCategory(current: unknown, expected: unknown): boolean {
 	if (current === null || expected === null) return current === expected;
@@ -279,7 +281,8 @@ function isBeforeCategory(current: unknown, expected: unknown): boolean {
 		stored.kind === wanted.kind &&
 		stored.color === wanted.color &&
 		(stored.icon ?? null) === (wanted.icon ?? null) &&
-		stored.excludeByDefault === wanted.excludeByDefault
+		stored.excludeByDefault === wanted.excludeByDefault &&
+		stored.version === wanted.version
 	);
 }
 

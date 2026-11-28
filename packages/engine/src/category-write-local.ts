@@ -38,6 +38,7 @@ import { CATEGORY_NOT_FOUND } from "@retrospend/domain/expense-write/refusals";
 import { IdTakenError } from "@retrospend/domain/id-taken";
 import { withLocalCategoryVersion } from "./category-version";
 import { NotFoundError } from "./errors";
+import { SYNC_FIRST } from "./expense-write-local";
 import type { WriteFn } from "./local-db";
 import { type CategoryRow, InvalidInputError } from "./port";
 import type { Repos } from "./repos";
@@ -49,6 +50,18 @@ export const CATEGORY_UPDATE = "category.update";
 export class CategoryNameTakenError extends InvalidInputError {
 	constructor() {
 		super(CATEGORY_NAME_TAKEN_MESSAGE);
+	}
+}
+
+/**
+ * The category the device holds has no version (a row an older build pulled,
+ * before the server sent one): an edit would go out with no `expectedVersion`
+ * and overwrite another device's change. Refused, never booked on a guess;
+ * a pull brings the version.
+ */
+export class CategoryVersionUnknownError extends InvalidInputError {
+	constructor() {
+		super(SYNC_FIRST);
 	}
 }
 
@@ -140,6 +153,8 @@ export function updateCategory(
 		refuseBadBody(patchCategorySchema, input);
 		const before = r.categories.get(input.id);
 		if (!before) throw new NotFoundError(CATEGORY_NOT_FOUND);
+		if (!Number.isInteger(before.version))
+			throw new CategoryVersionUnknownError();
 		if (
 			input.expectedVersion !== undefined &&
 			input.expectedVersion !== before.version

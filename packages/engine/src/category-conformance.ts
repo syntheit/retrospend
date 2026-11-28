@@ -97,7 +97,12 @@ export async function checkCategoryState(
 	for (const [id, expected] of Object.entries(want.expenses ?? {})) {
 		const row = need(store.get("expenses", id), `expense ${id}`);
 		expectEqual(
-			[row.categoryId, row.categoryKind, row.excludeFromAnalytics, row.currency],
+			[
+				row.categoryId,
+				row.categoryKind,
+				row.excludeFromAnalytics,
+				row.currency,
+			],
 			[
 				expected.categoryId,
 				expected.categoryKind,
@@ -109,7 +114,9 @@ export async function checkCategoryState(
 		expectDecimal(String(row.amount), expected.amount, `expense ${id} amount`);
 		expectDecimal(
 			row.homeAmount == null ? null : String(row.homeAmount),
-			expected.homeAmount, `expense ${id} homeAmount`);
+			expected.homeAmount,
+			`expense ${id} homeAmount`,
+		);
 	}
 	if (want.spent !== undefined) {
 		const read = await readDeviceFigures(store, USER, ["spent"], {}, () => now);

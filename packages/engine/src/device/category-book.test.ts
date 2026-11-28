@@ -264,6 +264,25 @@ describe("the overlay of a category entry", () => {
 		expect(row).toMatchObject({ name: "Meals", version: 5 });
 	});
 
+	it("leaves an entry out whole when another device only renamed the category (the version moved, no other column)", async () => {
+		const store = await open();
+		const edited = await book(store, {
+			kind: "categoryUpdate",
+			body: { id: FOOD, color: "red" },
+		});
+		await store.transaction((tx) =>
+			tx.put("categories", {
+				...(tx.get("categories", FOOD) as CategoryRow),
+				name: "Meals",
+				version: 3,
+			}),
+		);
+		const row = await readOverlaid(store, [entryOf("c1", edited)], 0, (tx) =>
+			tx.get("categories", FOOD),
+		);
+		expect(row).toMatchObject({ name: "Meals", color: "teal", version: 3 });
+	});
+
 	it("leaves an entry out whole when a pull moved the category under it", async () => {
 		const store = await open();
 		const renamed = await book(store, {
@@ -458,6 +477,73 @@ describe("the create of a category cannot be taken back while a write names it",
 		expect(entryRowsNamingCategory([create, dependent], GIFTS)).toEqual([
 			{ table: "expenses", id: uuid(10) },
 		]);
+	});
+
+	it("refuses for an entry the device could not book, reading its payload: no rate, offline", async () => {
+		// Offline with no USD rate: Gifts is made, then a USD expense is filed in
+		// it. The expense cannot be booked (no rate), so the entry has no rows.
+		const store = await seededCategoryStore({ seed: { ...ARS, rates: [] } });
+		const made = await book(store, makeGifts());
+		const create = {
+			...entryOf("c1", made),
+			entity: "categories",
+			payload: { id: GIFTS },
+		};
+		const filed = await book(store, { kind: "create", body: lunch() }, [
+			create,
+		]);
+		expect(filed).toMatchObject({ unbooked: "no_rate", changes: [] });
+		const dependent = {
+			...entryOf("e1", filed),
+			entity: "expenses",
+			payload: { id: uuid(10), categoryId: GIFTS, currency: "USD" },
+			unbooked: "no_rate" as const,
+		};
+		const sent = { ...create, ack: { version: "0", pull: 1 } };
+		// The old guard read only booked rows: it saw nothing here.
+		expect(entryRowsNamingCategory([sent, dependent], GIFTS)).toEqual([
+			{ table: "expenses", id: uuid(10) },
+		]);
+		expect(() => refuseCategoryUncreate([sent, dependent], GIFTS)).toThrow(
+			ConflictError,
+		);
+		// Another category, and a delete, name none.
+		expect(() =>
+			refuseCategoryUncreate(
+				[sent, { ...dependent, payload: { id: uuid(10), categoryId: FOOD } }],
+				GIFTS,
+			),
+		).not.toThrow();
+		// A template entry reads as a template.
+		expect(
+			entryRowsNamingCategory(
+				[
+					{
+						...dependent,
+						entity: "recurring",
+						payload: { id: uuid(20), categoryId: GIFTS },
+					},
+				],
+				GIFTS,
+			),
+		).toEqual([{ table: "recurringTemplates", id: uuid(20) }]);
+	});
+
+	it("chains on a category entry the device could not book, by its payload", () => {
+		const refused = {
+			clientId: "c1",
+			entity: "categories",
+			payload: { id: GIFTS, name: "Gifts" },
+			bookedAt: NOW,
+			changes: [],
+			changed: [],
+			parked: false,
+		};
+		expect(chainOnCategory([refused], GIFTS)).toEqual(["c1"]);
+		expect(chainOnCategory([refused], FOOD)).toEqual([]);
+		expect(
+			chainOnCategory([{ ...refused, ack: { version: "0", pull: 1 } }], GIFTS),
+		).toEqual([]);
 	});
 
 	it("refuses for a template too, and not for an entry in another category", async () => {

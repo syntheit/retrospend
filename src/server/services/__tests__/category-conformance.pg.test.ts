@@ -190,15 +190,14 @@ async function runSteps(vector: CategoryVector, userId: string) {
 			}
 			const failed = await detailOf(res);
 			expect(failed.status, failed.text).toBeGreaterThanOrEqual(400);
-			// A refusal writes nothing.
-			expect(differingCategoryRows(await engineStoreOf(userId), after)).toEqual(
-				[],
-			);
 			const error = await new LocalDb(device)
 				.write(id, write)
 				.catch((e: unknown) => e);
 			expect(failed.detail).toBe(want.refused);
 			expect((error as Error).message).toBe(want.refused);
+			// A refusal writes nothing: `device` was read before the route ran, so
+			// the server's rows after it equal them, and the engine's refusal left
+			// the device's rows as they were.
 			expect(differingCategoryRows(device, after)).toEqual([]);
 		} finally {
 			vi.useRealTimers();

@@ -77,9 +77,17 @@ export function categoryChangeOf(c: RowChange): CategoryChange | null {
 	};
 }
 
-/** What an entry or a queued write may name, as the checks below read it. */
+/**
+ * What an entry or a queued write may name, as the checks below read it. The
+ * phone's outbox entries have this shape. `payload` is the request the entry
+ * sends: an entry the device could not book (no rate) or that a booking
+ * refused has no `changes`, but its payload still names its category.
+ */
 export interface CategoryHolderEntry {
 	readonly clientId: string;
+	/** The server's entity name ("categories", "expenses", "recurring"), when known. */
+	readonly entity?: string;
+	readonly payload?: unknown;
 	readonly ack?: unknown;
 	readonly unbooked?: unknown;
 	readonly changes: readonly {
@@ -105,33 +113,58 @@ export function chainOnCategory(
 		.filter(
 			(e) =>
 				e.ack === undefined &&
-				!e.unbooked &&
-				e.changes.some((c) => c.table === "categories" && c.id === categoryId),
+				(e.changes.some(
+					(c) => c.table === "categories" && c.id === categoryId,
+				) ||
+					(e.entity === "categories" && payloadField(e, "id") === categoryId)),
 		)
 		.map((e) => e.clientId);
 }
 
+/** A field of an entry's payload, or undefined. */
+function payloadField(e: CategoryHolderEntry, field: string): unknown {
+	const p = e.payload;
+	return typeof p === "object" && p !== null
+		? (p as Record<string, unknown>)[field]
+		: undefined;
+}
+
 /**
- * The rows that name `categoryId` in the entries' bookings, whatever state
- * the entry is in (open, parked, or accepted and not pulled back yet): an
- * expense or a template an entry wrote into it. The category's create cannot
- * be taken back while any is left, before or after it was sent: sent, the
- * server's undo would succeed over the entry that is still on its way and
- * leave the dependent without a category.
+ * The rows that name `categoryId` in the entries, whatever state the entry is
+ * in (open, parked, or accepted and not pulled back yet): an expense or a
+ * template an entry wrote into it, read from its booked rows AND from its
+ * payload, so an entry the device could not book (no rate) or that a booking
+ * refused still counts. The category's create cannot be taken back while any
+ * is left, before or after it was sent: sent, the server's undo would succeed
+ * over the entry that is still on its way and leave the dependent without a
+ * category. A payload row is named by the payload's `id`, or by the entry's
+ * client id when it names none.
  */
 export function entryRowsNamingCategory(
 	entries: readonly CategoryHolderEntry[],
 	categoryId: string,
 ): { table: "expenses" | "recurringTemplates"; id: string }[] {
-	return entries.flatMap((e) =>
-		e.changes.flatMap((c) =>
+	return entries.flatMap((e) => {
+		const booked = e.changes.flatMap((c) =>
 			(c.table === "expenses" || c.table === "recurringTemplates") &&
 			(c.after as { categoryId?: string | null } | null)?.categoryId ===
 				categoryId
-				? [{ table: c.table, id: c.id }]
+				? [{ table: c.table as "expenses" | "recurringTemplates", id: c.id }]
 				: [],
-		),
-	);
+		);
+		if (booked.length > 0 || payloadField(e, "categoryId") !== categoryId)
+			return booked;
+		const id = payloadField(e, "id");
+		return [
+			{
+				table:
+					e.entity === "recurring"
+						? ("recurringTemplates" as const)
+						: ("expenses" as const),
+				id: typeof id === "string" ? id : e.clientId,
+			},
+		];
+	});
 }
 
 /**

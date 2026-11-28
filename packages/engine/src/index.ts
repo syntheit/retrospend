@@ -49,6 +49,7 @@ export {
 	CATEGORY_CREATE,
 	CATEGORY_UPDATE,
 	CategoryNameTakenError,
+	CategoryVersionUnknownError,
 	type CategoryKindOnWire,
 	type CreateCategoryInput,
 	createCategory,
