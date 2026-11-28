@@ -1,8 +1,9 @@
 /**
  * The reader side of "where may a category be shown": a category may appear on
- * a split its owner created or is a person on. The rule is one SQL function,
- * category_shown_on_split (migration 20261127300000), which the category
- * policy's K7 function and the public page's totals call too. Readers that
+ * a split its owner created or is a person on. The rule is the SQL function
+ * category_shown_on_split (migration 20261127300000), which the public page's
+ * totals call too; the read policy states the same rule as a set
+ * (categories_shown_to) and a test keeps the two equal. Readers that
  * run as the owner (guests, viewer links, the public page, the audit log) get
  * no row level security, so every category they show passes through here. A
  * pair the function does not confirm, a split that is gone or a lookup that
