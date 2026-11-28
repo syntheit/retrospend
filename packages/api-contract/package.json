@@ -9,6 +9,7 @@
 		".": "./src/index.ts",
 		"./accounts": "./src/accounts/schemas.ts",
 		"./budget": "./src/budget/schemas.ts",
+		"./categories": "./src/categories/schemas.ts",
 		"./common": "./src/common/index.ts",
 		"./errors": "./src/common/errors.ts",
 		"./feedback-client": "./src/feedback/client.ts",
