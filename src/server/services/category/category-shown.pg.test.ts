@@ -15,7 +15,7 @@ import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { sharedTransactionRouter } from "~/server/api/routers/shared-transaction";
 import { verificationRouter } from "~/server/api/routers/verification";
 import { createCallerFactory } from "~/server/api/trpc";
-import { adminDb, fixtureDb } from "~/test/pg-harness";
+import { adminDb, fixtureDb, sealedSuite } from "~/test/pg-harness";
 import {
 	anonymousCaller,
 	seedExpense,
@@ -287,22 +287,112 @@ describe("the readers that run as the owner", () => {
 				],
 			});
 		}
+		// Cam is on both splits and does not own the category.
 		const history = (id: string) =>
-			createCallerFactory(auditLogRouter)(ctxOf({}, trip.ana.user)).transactionHistory({
+			createCallerFactory(auditLogRouter)(ctxOf({}, trip.cam.user)).transactionHistory({
 				transactionId: id,
 			});
 		const text = async (id: string) => JSON.stringify(await history(id));
 		// A category that resolves shows its name (empty when sealed and the log has
-		// no key); one that does not shows the id it was stored with, as a deleted
-		// category always did. So the ids tell the two apart in both suites.
+		// no key); one that may not be shown shows a neutral label, never the id.
 		const shown = await text(hotel.id);
 		expect(shown).not.toContain(trip.travel.id);
 		expect(shown).not.toContain(other.id);
+		expect(shown).not.toContain("Unknown category");
 		const hidden = await text(fuel.id);
-		expect(hidden).toContain(trip.travel.id);
-		expect(hidden).toContain(other.id);
+		expect(hidden).toContain("Unknown category");
+		expect(hidden).not.toContain(trip.travel.id);
+		expect(hidden).not.toContain(other.id);
 		expect(hidden).not.toContain("Travel");
 		expect(hidden).not.toContain("Beach");
 	});
 });
 
+describe("the audit log of a hard-deleted split", () => {
+	// Ann owns Dining and Beach and filed a split under Dining that she shared with Ben, then deleted it.
+	async function deleted() {
+		const trip = await seedTrip();
+		const dining = await fixtureDb.category.create({
+			data: { name: "Dining", color: "teal", userId: trip.ana.user.id },
+		});
+		const beach = await fixtureDb.category.create({
+			data: { name: "Beach", color: "blue", userId: trip.ana.user.id },
+		});
+		const splitId = randomUUID();
+		const snapshot = {
+			amount: 10,
+			currency: "BRL",
+			description: "x",
+			categoryId: dining.id,
+			paidByType: "user",
+			paidById: trip.ana.user.id,
+			createdByType: "user",
+			createdById: trip.ana.user.id,
+			splitParticipants: [
+				{ participantType: "user", participantId: trip.ana.user.id, shareAmount: 5 },
+				{ participantType: "user", participantId: trip.ben.user.id, shareAmount: 5 },
+			],
+		};
+		const base = {
+			actorType: "user" as const,
+			actorId: trip.ana.user.id,
+			targetType: "SHARED_TRANSACTION" as const,
+			targetId: splitId,
+			projectId: trip.project.id,
+		};
+		await adminDb.auditLogEntry.createMany({
+			data: [
+				{ ...base, action: "CREATED", changes: snapshot },
+				{
+					...base,
+					action: "EDITED",
+					timestamp: new Date(Date.now() + 1000),
+					changes: { categoryId: { old: dining.id, new: beach.id } },
+				},
+				{
+					...base,
+					action: "DELETED",
+					timestamp: new Date(Date.now() + 2000),
+					changes: snapshot,
+				},
+			],
+		});
+		const text = async (user: Trip["ana"]["user"]) =>
+			JSON.stringify(
+				await createCallerFactory(auditLogRouter)(ctxOf({}, user)).transactionHistory({
+					transactionId: splitId,
+				}),
+			);
+		return { trip, dining, beach, text };
+	}
+
+	it("shows its owner their own category on the created, edited and deleted lines", async () => {
+		const { trip, dining, beach, text } = await deleted();
+		const mine = await text(trip.ana.user);
+		// A name when the log can open it (empty when sealed); never the id, never the neutral label.
+		expect(mine).not.toContain(dining.id);
+		expect(mine).not.toContain(beach.id);
+		expect(mine).not.toContain("Unknown category");
+		// The label is ours: Dining and Beach are named where the suite stores names in plain text.
+		if (!sealedSuite) {
+			expect(mine).toContain("Dining");
+			expect(mine).toContain("Beach");
+		}
+	});
+
+	it("gives anyone else the neutral label and never the id", async () => {
+		const { trip, dining, beach, text } = await deleted();
+		const theirs = await text(trip.ben.user);
+		expect(theirs).toContain("Unknown category");
+		expect(theirs).not.toContain(dining.id);
+		expect(theirs).not.toContain(beach.id);
+		expect(theirs).not.toContain("Dining");
+		expect(theirs).not.toContain("Beach");
+	});
+
+	it("keeps showing the stored id for a category that is gone", async () => {
+		const { trip, beach, text } = await deleted();
+		await adminDb.category.delete({ where: { id: beach.id } });
+		expect(await text(trip.ben.user)).toContain(beach.id);
+	});
+});
