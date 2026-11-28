@@ -1,4 +1,6 @@
 import { toBookingInput } from "@retrospend/domain/expense-input";
+import { CategoryChangedError } from "@retrospend/domain/category-version";
+import { IdTakenError } from "@retrospend/domain/id-taken";
 import { MissingRateError } from "@retrospend/domain/money";
 import { dec } from "@retrospend/domain/precise-decimal";
 import {
@@ -32,7 +34,15 @@ import {
 	isAccountOp,
 	wealthChangeOf,
 } from "./account-book";
-import type { ExpenseChange, PendingChange } from "./pending";
+import {
+	type CategoryOp,
+	categoryChangeOf,
+	categoryPlanOf,
+	chainOnCategory,
+	isCategoryOp,
+	namedFieldsOf,
+} from "./category-book";
+import type { ExpenseChange, PendingChange, PendingEntry } from "./pending";
 import { recurringPlanOf } from "./recurring-book";
 import {
 	type TemplateCreateBody,
@@ -99,7 +109,8 @@ export type WriteOp =
 	| { kind: "templateCreate"; body: TemplateCreateBody }
 	| { kind: "templateUpdate"; body: TemplateUpdateBody }
 	| AccountOp
-	| TransferOp;
+	| TransferOp
+	| CategoryOp;
 
 /** The writes whose row is a recurring template. */
 type TemplateOp = Extract<
@@ -114,7 +125,7 @@ const isTemplateOp = (op: WriteOp): op is TemplateOp =>
 
 /** The row id the write is about: the expense, or the template of a confirm, skip, create or edit. */
 export const targetOf = (op: WriteOp): string =>
-	isAccountOp(op) || isTransferOp(op)
+	isAccountOp(op) || isTransferOp(op) || isCategoryOp(op)
 		? op.body.id
 		: op.kind === "delete"
 			? op.id
@@ -142,6 +153,20 @@ export interface BookedWrite {
 	 */
 	base: string | null;
 	/**
+	 * The version of the category as the overlay holds it, which the send names
+	 * as `expectedVersion`; absent for a create or a write that is not a
+	 * category's.
+	 */
+	categoryBase?: { version: number };
+	/**
+	 * The client ids of the unsent category entries (a create or an edit) this
+	 * write names a category of, oldest first: an expense or template create or
+	 * edit that files into it. The sender chains the write on them and parks it
+	 * with them (name taken, id taken, category changed). Absent when the write
+	 * names no category with an unsent entry.
+	 */
+	chainOn?: readonly string[];
+	/**
 	 * The version and stored balance of the account as the overlay holds it,
 	 * which the send names as `expectedVersion` and `expectedBalance`; absent
 	 * for a create or a write that is not an account's.
@@ -160,6 +185,7 @@ export function planOf(
 	cursors: WriteCursors,
 	now: Date,
 ): { id: string; touches: readonly string[]; write: WriteFn<unknown> } {
+	if (isCategoryOp(op)) return categoryPlanOf(op);
 	if (isAccountOp(op)) return accountPlanOf(op, now);
 	if (isTransferOp(op))
 		return transferPlanOf(op, now, budgetFamilyPulled(cursors));
@@ -172,7 +198,7 @@ export function planOf(
 }
 
 function expensePlanOf(
-	op: Exclude<WriteOp, TemplateOp | AccountOp | TransferOp>,
+	op: Exclude<WriteOp, TemplateOp | AccountOp | TransferOp | CategoryOp>,
 	r: Reader,
 	cursors: WriteCursors,
 ): { id: string; write: WriteFn<ExpenseRow> } {
@@ -268,6 +294,8 @@ export function bookedChangesOf(undo: UndoToken): PendingChange[] {
 			return expenses.filter((e) => e.id === c.id).slice(0, 1);
 		const wealth = wealthChangeOf(c);
 		if (wealth) return [wealth];
+		const category = categoryChangeOf(c);
+		if (category) return [category];
 		if (c.table !== "recurringTemplates") return [];
 		return [
 			{
@@ -284,6 +312,8 @@ export function bookedChangesOf(undo: UndoToken): PendingChange[] {
 export const isDeviceRefusal = (error: unknown): boolean =>
 	error instanceof InvalidInputError ||
 	error instanceof NotFoundError ||
+	error instanceof IdTakenError ||
+	error instanceof CategoryChangedError ||
 	error instanceof RecurringRefusal ||
 	error instanceof RecurringInputRefusal;
 
@@ -297,8 +327,11 @@ export async function bookIn(
 	op: WriteOp,
 	cursors: WriteCursors,
 	bookedAt: number,
+	/** The phone's unsent and unpulled entries, for the writes that chain on a category's. */
+	pending: readonly PendingEntry[] = [],
 ): Promise<BookedWrite> {
 	const { id, write } = planOf(op, tx, cursors, new Date(bookedAt));
+	if (isCategoryOp(op)) return bookCategoryIn(tx, op, id, write, bookedAt);
 	if (isAccountOp(op)) return bookAccountIn(tx, op, id, write, bookedAt);
 	if (isTransferOp(op)) return bookTransferIn(tx, id, write, bookedAt);
 	const row =
@@ -308,7 +341,13 @@ export async function bookIn(
 				? tx.get("recurringTemplates", targetOf(op))
 				: tx.get("expenses", targetOf(op));
 	const zone = tx.get("settings", SETTINGS_ID)?.timeZone ?? "";
-	const base = { bookedAt, base: row?.version ?? null };
+	const named = categoryNamedBy(op);
+	const chainOn = named ? chainOnCategory(pending, named) : [];
+	const base = {
+		bookedAt,
+		base: row?.version ?? null,
+		...(chainOn.length > 0 ? { chainOn } : {}),
+	};
 	const changed =
 		op.kind === "update" && row
 			? changedOf(row as ExpenseRow, op.body, zone)
@@ -322,6 +361,39 @@ export async function bookIn(
 			return { ...base, changes: [], changed, unbooked: "no_rate" };
 		throw error;
 	}
+}
+
+/**
+ * The category an expense or template write files into (a create or an edit
+ * that names one), which it may have to wait for. A bulk move names its own
+ * (bulk.ts); a delete, a confirm and a skip name none of their own.
+ */
+const categoryNamedBy = (op: WriteOp): string | null | undefined =>
+	op.kind === "create" ||
+	op.kind === "update" ||
+	op.kind === "templateCreate" ||
+	op.kind === "templateUpdate"
+		? op.body.categoryId
+		: undefined;
+
+/** `bookIn` for a category write: its row (never its name) is a change, and its base is the version the overlay holds. */
+async function bookCategoryIn(
+	tx: Writer,
+	op: CategoryOp,
+	id: string,
+	write: WriteFn<unknown>,
+	bookedAt: number,
+): Promise<BookedWrite> {
+	const category =
+		op.kind === "categoryCreate" ? undefined : tx.get("categories", op.body.id);
+	const { undo } = await recordWrite(tx, id, write);
+	return {
+		bookedAt,
+		base: null,
+		changed: namedFieldsOf(op),
+		...(category ? { categoryBase: { version: category.version } } : {}),
+		changes: bookedChangesOf(undo),
+	};
 }
 
 /** `bookIn` for an account write: its rows are `wealth`, and its base is the account's version and balance. */

@@ -20,6 +20,29 @@ const LINKS: readonly Link[] = [
 		child: "shares",
 		parentId: (r: { expenseId: string }) => r.expenseId,
 	},
+	// A category made on the device can be taken back only while nothing is
+	// filed under it (the server's uncreate counts every holder; these are the
+	// ones a device store holds).
+	{
+		parent: "categories",
+		child: "expenses",
+		parentId: (r: { categoryId?: string | null }) => r.categoryId ?? null,
+	},
+	{
+		parent: "categories",
+		child: "recurringTemplates",
+		parentId: (r: { categoryId?: string | null }) => r.categoryId ?? null,
+	},
+	{
+		parent: "categories",
+		child: "shares",
+		parentId: (r: { categoryId: string | null }) => r.categoryId,
+	},
+	{
+		parent: "categories",
+		child: "envelopeCategories",
+		parentId: (r: { categoryId: string }) => r.categoryId,
+	},
 	{
 		parent: "accounts",
 		child: "legs",

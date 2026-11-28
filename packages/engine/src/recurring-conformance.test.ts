@@ -70,6 +70,7 @@ function localAdapter(): RecurringAdapter {
 						color: "blue",
 						icon: null,
 						excludeByDefault: false,
+						version: 0,
 					});
 			});
 		},

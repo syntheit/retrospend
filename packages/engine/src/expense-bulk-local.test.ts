@@ -43,6 +43,7 @@ const category = (id: string, kind: string, excludeByDefault = false) => ({
 	color: "teal",
 	icon: null,
 	excludeByDefault,
+	version: 0,
 });
 
 const dump = (store: Awaited<ReturnType<typeof seededStore>>) =>

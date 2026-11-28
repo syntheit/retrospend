@@ -11,6 +11,7 @@ import { movementReads, movementRepo } from "./movements";
 import type { Reader, Writer } from "./port";
 import {
 	categoryReads,
+	categoryRepo,
 	rateReads,
 	settingsReads,
 	transferReads,
@@ -27,7 +28,8 @@ export interface Repos {
 	/** Read-only: a write prices with them and never changes them. */
 	settings: ReturnType<typeof settingsReads>;
 	rates: ReturnType<typeof rateReads>;
-	categories: ReturnType<typeof categoryReads>;
+	/** Read by every write; only a category create or edit changes them. */
+	categories: ReturnType<typeof categoryRepo>;
 	transfers: ReturnType<typeof transferRepo>;
 	/** Read-only: the budget's side of a move arrives with a pull. */
 	wealthMoves: ReturnType<typeof wealthMoveReads>;
@@ -55,7 +57,7 @@ export const repos = (w: Writer): Repos => ({
 	recurringTemplates: templateRepo(w),
 	settings: settingsReads(w),
 	rates: rateReads(w),
-	categories: categoryReads(w),
+	categories: categoryRepo(w),
 	transfers: transferRepo(w),
 	wealthMoves: wealthMoveReads(w),
 	budget: budgetReads(w),

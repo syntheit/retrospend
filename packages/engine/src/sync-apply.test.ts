@@ -55,7 +55,12 @@ const expense = (id: string, o: Partial<WireExpense> = {}) =>
 		...o,
 	}) as WireExpense;
 
-const category = (id: string, kind = "EXPENSE", excludeByDefault = false) =>
+const category = (
+	id: string,
+	kind = "EXPENSE",
+	excludeByDefault = false,
+	version = 0,
+) =>
 	({
 		id,
 		name: `Name ${id}`,
@@ -63,6 +68,7 @@ const category = (id: string, kind = "EXPENSE", excludeByDefault = false) =>
 		icon: null,
 		kind,
 		excludeByDefault,
+		version,
 	}) as WireCategory;
 
 const template = (id: string, categoryId: string | null) =>
@@ -144,6 +150,18 @@ describe("applySyncPage", () => {
 		);
 		expect(store.get("categories", "c1")?.excludeByDefault).toBe(true);
 		expect(store.get("categories", "c2")?.excludeByDefault).toBe(false);
+	});
+
+	it("carries a category's version, the one an edit sends as expectedVersion", async () => {
+		const store = new MemoryStore();
+		await apply(store, (tx) =>
+			applySyncPage(tx, "categories", {
+				items: [category("c1", "EXPENSE", false, 7), category("c2")],
+				tombstones: [],
+			}),
+		);
+		expect(store.get("categories", "c1")?.version).toBe(7);
+		expect(store.get("categories", "c2")?.version).toBe(0);
 	});
 
 	it("puts the rows of a page by id and deletes its tombstones", async () => {

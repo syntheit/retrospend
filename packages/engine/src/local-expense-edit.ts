@@ -96,6 +96,7 @@ export function localExpenseEditAdapter(): ExpenseEditAdapter {
 					color: "teal",
 					icon: null,
 					excludeByDefault: false,
+					version: 0,
 				}),
 			);
 		},

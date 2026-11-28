@@ -8,6 +8,15 @@ export type {
 	AccountUpdateBody,
 	WealthChange,
 } from "./account-book";
+export {
+	type CategoryCreateBody,
+	type CategoryHolderEntry,
+	type CategoryOp,
+	type CategoryUpdateBody,
+	chainOnCategory,
+	entryRowsNamingCategory,
+	refuseCategoryUncreate,
+} from "./category-book";
 export type {
 	BookedWrite,
 	ConfirmBody,
@@ -58,6 +67,7 @@ export {
 	type WriteParity,
 } from "./engine";
 export type {
+	CategoryChange,
 	ExpenseChange,
 	PendingChange,
 	PendingEntry,

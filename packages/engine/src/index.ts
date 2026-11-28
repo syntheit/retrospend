@@ -37,6 +37,26 @@ export {
 	updateAccount,
 } from "./account-write-local";
 export {
+	CATEGORY_CREATE_MUTATION,
+	CATEGORY_UPDATE_MUTATION,
+} from "./category-mutations";
+export {
+	CATEGORY_TEXT_COLUMNS,
+	categoryWithoutText,
+	type TextFreeCategoryRow,
+} from "./category-rows";
+export {
+	CATEGORY_CREATE,
+	CATEGORY_UPDATE,
+	CategoryNameTakenError,
+	type CategoryKindOnWire,
+	type CreateCategoryInput,
+	createCategory,
+	nameTaken,
+	type UpdateCategoryInput,
+	updateCategory,
+} from "./category-write-local";
+export {
 	type CreateTransferInput,
 	createTransfer,
 	TRANSFER_CREATE,

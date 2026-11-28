@@ -101,6 +101,12 @@ export interface CategoryRow extends WithId {
 	readonly icon: string | null;
 	/** A new expense in it stays out of analytics unless the person says otherwise. */
 	readonly excludeByDefault: boolean;
+	/**
+	 * The server's version of the category (0 when new): what an edit sends as
+	 * `expectedVersion`. On a category the device made or edited it is a
+	 * placeholder until the server's answer names one (category-version.ts).
+	 */
+	readonly version: number;
 }
 
 /**

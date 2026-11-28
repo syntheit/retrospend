@@ -106,6 +106,7 @@ function deviceSide(): Side {
 					color: "teal",
 					icon: null,
 					excludeByDefault,
+					version: 0,
 				}),
 			);
 		},

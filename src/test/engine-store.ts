@@ -245,6 +245,7 @@ export async function engineStoreOf(
 				color: c.color,
 				icon: c.icon,
 				excludeByDefault: c.excludeByDefault,
+				version: c.version,
 			})),
 			expenses: expenses.map((r) => ({
 				id: r.id,

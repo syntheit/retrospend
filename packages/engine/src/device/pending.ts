@@ -1,5 +1,6 @@
 import { ackedTableOf } from "@retrospend/domain/recurring-post/acked-table";
 import { filterFieldsOf } from "../budget-book";
+import type { CategoryChange } from "../category-rows";
 import type { RowChange } from "../changes";
 import { ConflictError } from "../errors";
 import {
@@ -7,7 +8,7 @@ import {
 	type TextFreeExpenseRow,
 	withoutText,
 } from "../expenses";
-import type { Store, TableName, Tx, Writer } from "../port";
+import type { CategoryRow, Store, TableName, Tx, Writer } from "../port";
 import {
 	type TemplateRow,
 	type TextFreeTemplateRow,
@@ -54,7 +55,14 @@ export interface TemplateChange {
  */
 export type { WealthChange };
 
-export type PendingChange = ExpenseChange | TemplateChange | WealthChange;
+/** One category an entry created or edited: no name (the overlay gets it from `PendingEntry.categoryNames`). */
+export type { CategoryChange };
+
+export type PendingChange =
+	| ExpenseChange
+	| TemplateChange
+	| WealthChange
+	| CategoryChange;
 
 /** One write in the outbox or the acked list; the engine reads it and never changes it. */
 export interface PendingEntry {
@@ -65,6 +73,15 @@ export interface PendingEntry {
 	readonly changes: readonly PendingChange[];
 	/** The names of the fields the person changed. The phone's re-base reads it; the overlay does not. */
 	readonly changed: readonly string[];
+	/**
+	 * The names an entry gives categories (a create's, a rename's), by category
+	 * id. The phone reads them from the entry's payload and holds them in
+	 * memory only: a `change` never keeps text. The overlay lays them over the
+	 * category rows it replays, so a name check sees the device's own unsent
+	 * names beside the pulled ones. Absent, a created category reads with no
+	 * name (and so takes no name from a later check).
+	 */
+	readonly categoryNames?: Readonly<Record<string, string>>;
 	/** Waiting for the person: its send was refused. Its rows may never reach the server. */
 	readonly parked: boolean;
 	/** The device could not book it (no rate); the server will, and the overlay never counts it. */
@@ -163,9 +180,14 @@ function settled(row: TextFreeExpenseRow): Record<string, unknown> {
 	};
 }
 
+/** The same for a created category: no name until the entry's `categoryNames` gives one. */
+export const CREATE_CATEGORY_TEXT = { name: "" };
+
 /** The text a created row of `table` has in an overlay (none for rows without text). */
 function createTextOf(table: TableName): Record<string, unknown> {
 	switch (table) {
+		case "categories":
+			return CREATE_CATEGORY_TEXT;
 		case "recurringTemplates":
 			return CREATE_TEMPLATE_TEXT;
 		case "accounts":
@@ -181,9 +203,9 @@ function createTextOf(table: TableName): Record<string, unknown> {
 	}
 }
 
-/** An account's version is a number; every other row's is the `updatedAt` text. */
+/** An account's and a category's version is a number; every other row's is the `updatedAt` text. */
 const ackedVersion = (table: TableName, version: string) =>
-	table === "accounts" ? Number(version) : version;
+	table === "accounts" || table === "categories" ? Number(version) : version;
 
 /**
  * Whether the stored expense is the one an entry's `before` names: every
@@ -244,12 +266,31 @@ const BEFORE_SKIPPED: Partial<Record<WealthTable, readonly string[]>> = {
 	transfers: ["note"],
 };
 
+/**
+ * The same for a category: every column the entry keeps but the name (a
+ * stored row's text is the store's) and the version (a placeholder on the
+ * device until the ack names it; a changed category differs in a column).
+ */
+function isBeforeCategory(current: unknown, expected: unknown): boolean {
+	if (current === null || expected === null) return current === expected;
+	const stored = current as CategoryRow;
+	const wanted = expected as Omit<CategoryRow, "name">;
+	return (
+		stored.kind === wanted.kind &&
+		stored.color === wanted.color &&
+		(stored.icon ?? null) === (wanted.icon ?? null) &&
+		stored.excludeByDefault === wanted.excludeByDefault
+	);
+}
+
 const isBefore = (current: unknown, expected: unknown, table: TableName) =>
 	table === "recurringTemplates"
 		? isBeforeTemplate(current, expected)
-		: isWealthTable(table)
-			? isBeforeWealth(current, expected, table)
-			: isBeforeExpense(current, expected);
+		: table === "categories"
+			? isBeforeCategory(current, expected)
+			: isWealthTable(table)
+				? isBeforeWealth(current, expected, table)
+				: isBeforeExpense(current, expected);
 
 /**
  * Replays one entry over `tx`. A row it would change must equal its `before`
@@ -275,6 +316,11 @@ function replay(tx: Writer, entry: PendingEntry) {
 				return {
 					...(current ?? createTextOf(c.table)),
 					...c.after,
+					// A category's name comes from the entry's memory-only names, else the store's.
+					...(c.table === "categories" &&
+					entry.categoryNames?.[c.id] !== undefined
+						? { name: entry.categoryNames[c.id] }
+						: {}),
 					// A write that does not name the account's version (a transfer through
 					// it) leaves the version the account holds; its own count is a placeholder.
 					...(c.table === "accounts" && current && versioned !== "accounts"
