@@ -77,7 +77,7 @@ async function namedCategories(userId: string) {
 /** One row under each foreign-key holder, put in with the owner connection, naming the category. */
 async function seedHolders(owner: string, categoryId: string) {
 	const other = (await createTestUser()).user.id;
-	const tx = await adminDb.sharedTransaction.create({
+	const tx = await fixtureDb.sharedTransaction.create({
 		data: {
 			description: "Dinner",
 			amount: "30",
@@ -101,7 +101,7 @@ async function seedHolders(owner: string, categoryId: string) {
 	const envelope = book.envelopes[0] as { id: string };
 	const seeds: Record<ForeignKeyHolderId, () => Promise<unknown>> = {
 		expense: () =>
-			adminDb.expense.create({
+			fixtureDb.expense.create({
 				data: {
 					userId: owner,
 					title: "x",
@@ -115,7 +115,7 @@ async function seedHolders(owner: string, categoryId: string) {
 				},
 			}),
 		template: () =>
-			adminDb.recurringTemplate.create({
+			fixtureDb.recurringTemplate.create({
 				data: {
 					userId: owner,
 					name: "Gym",
@@ -127,7 +127,7 @@ async function seedHolders(owner: string, categoryId: string) {
 			}),
 		sharedTransaction: async () => tx,
 		share: () =>
-			adminDb.splitParticipant.create({
+			fixtureDb.splitParticipant.create({
 				data: {
 					transactionId: tx.id,
 					participantType: "user",
@@ -138,7 +138,7 @@ async function seedHolders(owner: string, categoryId: string) {
 				},
 			}),
 		budget: () =>
-			adminDb.budget.create({
+			fixtureDb.budget.create({
 				data: {
 					userId: owner,
 					categoryId,
@@ -147,11 +147,11 @@ async function seedHolders(owner: string, categoryId: string) {
 				},
 			}),
 		envelopeLink: () =>
-			adminDb.envelopeCategory.create({
+			fixtureDb.envelopeCategory.create({
 				data: { bookId: book.id, envelopeId: envelope.id, categoryId },
 			}),
 		preference: () =>
-			adminDb.analyticsCategoryPreference.create({
+			fixtureDb.analyticsCategoryPreference.create({
 				data: { userId: owner, categoryId, isFlexible: true },
 			}),
 	};
