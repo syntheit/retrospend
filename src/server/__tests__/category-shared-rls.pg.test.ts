@@ -48,7 +48,7 @@ async function world() {
 		})
 	).id;
 	const e1 = await sharedTx(ann.user.id, ann.dining);
-	await shareOf(e1.id, ann.user.id, null);
+	// Ann created E1 and is not on it (I paid for you): the owner-created branch alone shows Dining to Ben.
 	await shareOf(e1.id, ben.user.id, null);
 	return { ann, ben, cy, linkId, budgetId, prefId };
 }
