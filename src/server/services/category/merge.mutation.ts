@@ -34,6 +34,7 @@ import { FIGURE_BUDGET_HOLDS } from "../envelope/figures";
 import { forgetMonthViews } from "../envelope/month-read";
 import type { MoneyMutation } from "../preview/types";
 import { assertNoClosedMonthChange } from "./closed-months";
+import { lockedCategory } from "./lock";
 import { type MergeCtx, staleUndo } from "./holder";
 import { HOLDERS, MOVE_ORDER } from "./holders";
 import { ownCategoryWhere } from "~/server/services/category/own";
@@ -104,17 +105,6 @@ function stashedInsert(body: Stash): StashedCategory & { version: number } {
 		version:
 			body.v === 3 ? body.category.version : LEGACY_STASH_CATEGORY_VERSION,
 	};
-}
-
-const notFound = () =>
-	new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
-
-/** The category row, locked: no row can be filed under it or taken from it until this transaction ends. */
-async function lockedCategory(tx: MergeCtx["tx"], userId: string, id: string) {
-	const [row] = await tx.$queryRaw<{ id: string }[]>`
-		SELECT "id" FROM "category" WHERE "id" = ${id} AND "userId" = ${userId} FOR UPDATE`;
-	if (!row) throw notFound();
-	return tx.category.findFirstOrThrow({ where: ownCategoryWhere(userId, id) });
 }
 
 async function checkedTarget(

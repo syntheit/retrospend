@@ -3,6 +3,7 @@
 	"appExecutable": [
 		"can_write_transaction_splits",
 		"categories_shown_to",
+		"category_holder_count",
 		"claim_header_back_ok",
 		"co_participant_counts",
 		"has_self_removal_record",

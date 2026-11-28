@@ -39,6 +39,10 @@ export const serverInfoSchema = z
 					description:
 						"Whether account and transfer writes take the client-made ids (contract 1.15.0), `expectedVersion` and `expectedBalance` (1.14.0), and PUT /accounts/{id} answers the ids it used (1.16.0). A server before 1.16.0 leaves this out and ignores ids it does not know. An app books and queues these writes on the device only when this is true.",
 				}),
+				categoryWrites: z.boolean().optional().meta({
+					description:
+						"Whether category writes take a client-made id (contract 1.18.0), `expectedVersion` on PATCH (409 category_changed), and answer undo tokens. A server before 1.18.0 leaves this out and ignores an id it does not know. An app books and queues these writes on the device only when this is true.",
+				}),
 			})
 			.meta({ description: "Optional server capabilities." }),
 		auth: z.object({

@@ -33,8 +33,9 @@ type JsonObject = Record<string, unknown>;
  * 1.15.0: POST /transfers and its preview take fromLegId, toLegId, feeExpenseId and feeLegId, and answer `legs` (the ids of the legs written); POST /accounts/{id}/balance, /rate-type and PUT /accounts/{id} and their previews take legId and rateTypeId. All are client-made uuids: the row is written under the id, and a taken id is 409 id_taken with nothing written.
  * 1.16.0: PUT /accounts/{id} and its preview answer `legId` and `rateTypeId`, the client ids the write used (null when that row was not written); GET /server-info features.wealthWrites says the server takes the account and transfer writes a phone queues.
  * 1.17.0: categories carry `version` (GET /categories, GET /categories/{id}, the category writes' answers, the sync category row); it moves when the name, color, icon or excludeByDefault changes.
+ * 1.18.0: POST /categories takes a client id (`id`, a uuid; a taken one is 409 id_taken) and `kind`, and answers an undo token; PATCH /categories/{id} takes `expectedVersion` (409 category_changed), refuses `kind` and an empty body, and answers an undo token; both have preview twins; POST /categories/undo also takes back a create or an edit; GET /server-info features.categoryWrites says the server takes these writes.
  */
-export const CONTRACT_VERSION = "1.17.0";
+export const CONTRACT_VERSION = "1.18.0";
 
 const PROTECTION_OVERVIEW = [
 	"Accounts with Advanced protection.",

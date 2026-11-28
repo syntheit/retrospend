@@ -42,7 +42,8 @@ import {
 	userKeyring,
 } from "~/test/sealed-fixture";
 import { makeSession } from "~/test/trpc-test-utils";
-import { createCategory, seedDefaultCategories } from "../category.service";
+import { createCategory } from "~/test/category-writes";
+import { seedDefaultCategories } from "../category.service";
 import { CATEGORY_NAME_INDEX_LABEL } from "../category-name-index.service";
 import {
 	destroyDataKeys,

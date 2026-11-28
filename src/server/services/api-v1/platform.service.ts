@@ -3,6 +3,7 @@ import { env } from "~/env";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
 import { WEALTH_WRITES } from "~/server/services/accounts/wealth-writes";
+import { CATEGORY_WRITES } from "~/server/services/category/category-writes";
 import { type PushConfig, pushConfig } from "~/server/services/push/config";
 import {
 	AUTO_CONFIRM,
@@ -40,6 +41,7 @@ export async function getServerInfo(
 			autoPost: autoPostEnabled(),
 			autoConfirm: AUTO_CONFIRM,
 			wealthWrites: WEALTH_WRITES,
+			categoryWrites: CATEGORY_WRITES,
 		},
 		auth: {
 			methods: ["password", "totp", "bearer", "apiKey", "deviceAuthorization"],

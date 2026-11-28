@@ -71,11 +71,28 @@ export const categoryNameSchema = userText("category.name", 64).refine(
 );
 const iconSchema = z.string().max(50);
 
+/** The guard a PATCH sends: the version it read, refused with 409 category_changed when the category moved. */
+export const categoryExpectedVersionSchema = categoryVersionSchema
+	.optional()
+	.meta({
+		description:
+			"The `version` you last read. If the category changed since, the answer is 409 category_changed and nothing is written. Left out, nothing is checked.",
+	});
+
+const categoryKindSchema = z.enum(["expense", "income"]);
+
 export const createCategorySchema = z
 	.object({
+		/** A client-made id, so a device can book the category before it is sent. */
+		id: z.uuid().optional().meta({
+			description:
+				"A client-made id (a uuid). The category is written under it, and an id already in use is 409 id_taken with nothing written. Left out, the server makes one.",
+		}),
 		name: categoryNameSchema,
 		color: categoryColorSchema,
 		icon: iconSchema.optional(),
+		/** Whether it files expenses or income. Left out, expense. It is set here and never edited. */
+		kind: categoryKindSchema.optional(),
 		excludeByDefault: z.boolean().optional(),
 	})
 	.meta({ id: "CreateCategory" });
@@ -91,6 +108,29 @@ export const updateCategorySchema = z
 	.partial()
 	.meta({ id: "UpdateCategory" });
 
+/** PATCH /categories/{id}: the fields to change, the guard, and the one field it refuses. */
+export const patchCategorySchema = idParamsSchema
+	.extend({
+		...updateCategorySchema.shape,
+		expectedVersion: categoryExpectedVersionSchema,
+		kind: categoryKindSchema.optional().meta({
+			description:
+				"Never accepted. A category's kind is set when it is made; sending it is a validation error.",
+		}),
+	})
+	.refine((value) => value.kind === undefined, {
+		path: ["kind"],
+		message: "A category's kind cannot be changed",
+	})
+	.refine(
+		(value) =>
+			value.name !== undefined ||
+			value.color !== undefined ||
+			value.icon !== undefined ||
+			value.excludeByDefault !== undefined,
+		{ message: "Name at least one field to change" },
+	);
+
 export const deleteCategorySchema = z
 	.object({
 		/**
@@ -101,6 +141,11 @@ export const deleteCategorySchema = z
 		uncategorize: z.boolean().optional(),
 	})
 	.meta({ id: "DeleteCategory" });
+
+/** The category as it is after a create or an edit, with the token that takes the write back. */
+export const categoryWrittenSchema = categorySchema
+	.extend(undoField)
+	.meta({ id: "CategoryWritten" });
 
 export const categoryDeleteResultSchema = okSchema
 	.extend(undoField)
@@ -152,12 +197,21 @@ export const categoriesContract = {
 			operationId: "createCategory",
 			tags: TAG,
 			summary: "Add a category",
-			description: "A name the caller already uses is a conflict.",
+			description:
+				"A name the caller already uses is a conflict (names are compared after trimming spaces at both ends, and case counts: Food and food are two). A client id already in use is 409 id_taken. The answer carries version 0 and an undo token that takes the category back while nothing is filed under it.",
 			successStatus: 201,
 		})
 		.meta({ scope: "write:expenses", event: "category.created" })
 		.input(createCategorySchema)
-		.output(categorySchema),
+		.output(categoryWrittenSchema),
+	previewCreate: previewTwin({
+		path: "/categories",
+		of: "POST /categories",
+		operationId: "previewCreateCategory",
+		tags: TAG,
+		scope: "write:expenses",
+		input: createCategorySchema,
+	}),
 	update: v1
 		.route({
 			method: "PATCH",
@@ -165,10 +219,20 @@ export const categoriesContract = {
 			operationId: "updateCategory",
 			tags: TAG,
 			summary: "Rename, recolor or change a category",
+			description:
+				"Name only the fields that change: a `name` sent is a rename and moves the version, even when it equals the stored one. At least one field is required, and `kind` is refused. With `expectedVersion`, the write lands only while the category still has that version (409 category_changed otherwise). The answer carries the new version and an undo token that puts the replaced fields back while the version is still the one this write left.",
 		})
 		.meta({ scope: "write:expenses", event: "category.updated" })
-		.input(idParamsSchema.extend(updateCategorySchema.shape))
-		.output(categorySchema),
+		.input(patchCategorySchema)
+		.output(categoryWrittenSchema),
+	previewUpdate: previewTwin({
+		path: "/categories/{id}",
+		of: "PATCH /categories/{id}",
+		operationId: "previewUpdateCategory",
+		tags: TAG,
+		scope: "write:expenses",
+		input: patchCategorySchema,
+	}),
 	delete: v1
 		.route({
 			method: "DELETE",
@@ -218,9 +282,9 @@ export const categoriesContract = {
 			path: "/categories/undo",
 			operationId: "undoCategoryWrite",
 			tags: TAG,
-			summary: "Take back a category delete or merge from its undo token",
+			summary: "Take back a category write from its undo token",
 			description:
-				"The category comes back under its own id with its rows, budgets, envelope links, rules and drafts. Refused with a conflict, changing nothing, when any of them changed since, when the target is gone, or when the name was taken again. A shared expense you cannot edit that went to no category is not brought back.",
+				"Takes back a delete, a merge, a create or an edit. A delete or merge: the category comes back under its own id with its rows, budgets, envelope links, rules and drafts; refused with a conflict, changing nothing, when any of them changed since, when the target is gone, or when the name was taken again; a shared expense you cannot edit that went to no category is not brought back. A create: the category is deleted, and refused with a conflict, changing nothing, when anything is filed under it or uses it (an expense, a draft, a budget, a share, anyone's). An edit: the replaced fields are put back as a write, and refused with 409 category_changed when the category has another version than the edit left.",
 		})
 		.meta({ scope: "write:expenses", event: "category.undone" })
 		.input(undoInputSchema)

@@ -23,7 +23,7 @@ import {
 import { adminDb, createTestUser, fixtureDb } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
 import { migrateUserCategories } from "../../../../scripts/migrate-default-categories";
-import { createCategory, updateCategory } from "../category.service";
+import { createCategory, updateCategory } from "~/test/category-writes";
 import { arsUser, category, run, undo } from "./__tests__/merge-kit";
 
 vi.mock("next/headers", () => ({

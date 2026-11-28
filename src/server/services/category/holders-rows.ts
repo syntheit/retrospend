@@ -9,6 +9,8 @@
 import type { ShareCategorySource } from "~prisma";
 import { assertOwnExpenseCategory } from "../envelope/splits.service";
 import {
+	countForeignKeyRows,
+	type ForeignKeyHolderId,
 	groupByStamp,
 	type HolderAdapter,
 	heldCount,
@@ -39,10 +41,12 @@ const idsOf = async (table: Table, where: object) =>
 	(await table.findMany({ where, select: { id: true } })).map((r) => r.id);
 
 function stampedHolder(
+	holder: ForeignKeyHolderId,
 	table: (tx: Tx) => Table,
 	own: (c: MergeCtx) => object,
 ): HolderAdapter<Stamped> {
 	return {
+		count: (c) => countForeignKeyRows(c, holder),
 		async move(c) {
 			const t = table(c.tx);
 			const ids = await idsOf(t, { ...own(c), categoryId: c.sourceId });
@@ -71,11 +75,13 @@ function stampedHolder(
 }
 
 export const expenseHolder = stampedHolder(
+	"expense",
 	(tx) => asTable(tx.expense),
 	(c) => ({ userId: c.userId }),
 );
 
 export const templateHolder = stampedHolder(
+	"template",
 	(tx) => asTable(tx.recurringTemplate),
 	(c) => ({ userId: c.userId }),
 );
@@ -93,6 +99,7 @@ export interface SharedHeld extends Stamped {
  * does not abort the rest.
  */
 export const sharedTransactionHolder: HolderAdapter<SharedHeld> = {
+	count: (c) => countForeignKeyRows(c, "sharedTransaction"),
 	async move(c) {
 		const t = asTable(c.tx.sharedTransaction);
 		const ids = await idsOf(t, { categoryId: c.sourceId });
@@ -161,6 +168,7 @@ export interface ShareHeld {
  * source of the pick stays as it was; a share with no category has no source.
  */
 export const shareHolder: HolderAdapter<ShareHeld> = {
+	count: (c) => countForeignKeyRows(c, "share"),
 	async move(c) {
 		const own = { participantType: "user" as const, participantId: c.userId };
 		const rows = await c.tx.splitParticipant.findMany({

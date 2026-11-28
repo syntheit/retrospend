@@ -15,7 +15,7 @@ export type WriterClass = "device-covered" | "online" | "not versioned";
 
 /** file: [statements, class, which statements]. */
 export const WRITERS: Record<string, readonly [number, WriterClass, string]> = {
-	// insertCategory (create, and the restore's insert) and updateCategory:
+	// insertCategory (create, and the restore's insert) and updateCategoryIn:
 	// device-covered; insertCategoriesOnce (seed, income names) is online.
 	"src/server/services/category.service.ts": [
 		3,
@@ -30,6 +30,13 @@ export const WRITERS: Record<string, readonly [number, WriterClass, string]> = {
 	],
 	// Delete and merge stay online; the restore inserts through insertCategory.
 	"src/server/services/category/merge.mutation.ts": [1, "online", "delete"],
+	// The undo of a create deletes the empty category it made (it never goes
+	// through merge, which would uncategorize rows it cannot restore).
+	"src/server/services/category/create.mutation.ts": [
+		1,
+		"device-covered",
+		"delete of a category nothing holds (the undo of a create)",
+	],
 	// Two deletes, two updates (rename, color), two creates, run by hand.
 	"scripts/migrate-default-categories.ts": [
 		6,
@@ -43,15 +50,13 @@ export const WRITERS: Record<string, readonly [number, WriterClass, string]> = {
  * above, by function. Another caller is a new path to the table.
  */
 export const CALLERS: Record<string, readonly string[]> = {
-	createCategory: [
-		"src/server/api/routers/categories.ts",
-		"src/server/services/api-v1/categories.ts",
+	// The two mutations: create and the undo of an uncreate.
+	insertCategory: [
+		"src/server/services/category/create.mutation.ts",
+		"src/server/services/category/merge.mutation.ts",
 	],
-	updateCategory: [
-		"src/server/api/routers/categories.ts",
-		"src/server/services/api-v1/categories.ts",
-	],
-	insertCategory: ["src/server/services/category/merge.mutation.ts"],
+	// The edit and its revert share one write.
+	updateCategoryIn: ["src/server/services/category/edit.mutation.ts"],
 	insertCategoriesOnce: ["src/server/services/money-in.service.ts"],
 	seedDefaultCategories: [
 		"scripts/sync-default-categories.ts",
@@ -65,7 +70,7 @@ export const CALLERS: Record<string, readonly string[]> = {
 
 /**
  * Where `category.version` is written by code (M3 PR1a, Revisions 2 and 3):
- * category.service.ts in two statements (updateCategory's SQL increment on a
+ * category.service.ts in two statements (updateCategoryIn's SQL increment on a
  * rename, the only update there that sets it; insertCategory passing the
  * version a restore brings back, which merge.mutation.ts takes from the
  * stash), and scripts/migrate-default-categories.ts, whose rename writes the
@@ -78,7 +83,7 @@ export const CALLERS: Record<string, readonly string[]> = {
 export const VERSION_SETTERS: Record<string, readonly [number, string]> = {
 	"src/server/services/category.service.ts": [
 		2,
-		"updateCategory's `data.version = { increment: 1 }` on a rename; insertCategory's `version: input.version` for a restore",
+		"updateCategoryIn's `data.version = { increment: 1 }` on a rename; insertCategory's `version: input.version` for a restore",
 	],
 	"scripts/migrate-default-categories.ts": [
 		1,

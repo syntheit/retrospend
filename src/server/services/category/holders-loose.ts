@@ -28,6 +28,10 @@ import {
  * silently stopped matching would send money to the wrong envelope.
  */
 export const incomeRuleHolder: HolderAdapter<Stamped> = {
+	count: (c) =>
+		c.tx.incomeRule.count({
+			where: { matchKind: "CATEGORY", matchValue: c.sourceId },
+		}),
 	async move(c) {
 		const rules = await c.tx.incomeRule.findMany({
 			where: { matchKind: "CATEGORY", matchValue: c.sourceId },
@@ -75,6 +79,15 @@ const asJson = (value: unknown) => value as Prisma.InputJsonValue;
 
 /** Every draft of the caller's book, whatever its status, so none keeps naming a category that is gone. */
 export const draftHolder: HolderAdapter<DraftHeld> = {
+	async count(c) {
+		const book = await findPersonalBook(c.tx, c.userId);
+		if (!book) return 0;
+		const drafts = await c.tx.budgetDraft.findMany({
+			where: { bookId: book.id },
+			select: { id: true, expectedIn: true, pretend: true },
+		});
+		return drafts.filter((d) => moveDraftCategory(d, c.sourceId, null)).length;
+	},
 	async move(c) {
 		const book = await findPersonalBook(c.tx, c.userId);
 		const drafts = book

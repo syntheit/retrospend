@@ -1,11 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
 import { CategoryMergeRefusal } from "@retrospend/domain/category-merge/refusals";
+import { CategoryChangedError } from "@retrospend/domain/category-version";
 import {
 	AmountRefusedError,
 	CategoryNotFoundError,
 	EditRefusal,
 } from "@retrospend/domain/expense-write/refusals";
+import { IdTakenError } from "@retrospend/domain/id-taken";
 import { MissingRateError } from "@retrospend/domain/money";
 import {
 	RecurringRefusal,
@@ -170,6 +172,18 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// to Ask to fix, so a client words it.
 	if (error instanceof ShareAnswerRefusedError)
 		return problem(error.problem, error.message);
+	// A category write that named a version the category no longer has, and an
+	// id its own account already holds.
+	const categoryWrite = [
+		error,
+		(error as { cause?: unknown } | null)?.cause,
+	].find(
+		(e) => e instanceof CategoryChangedError || e instanceof IdTakenError,
+	);
+	if (categoryWrite instanceof CategoryChangedError)
+		return problem("category_changed", categoryWrite.message);
+	if (categoryWrite instanceof IdTakenError)
+		return problem("id_taken", categoryWrite.message);
 	const merge = [error, (error as { cause?: unknown } | null)?.cause].find(
 		(e) => e instanceof CategoryMergeRefusal,
 	);

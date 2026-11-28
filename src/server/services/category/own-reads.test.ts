@@ -35,7 +35,7 @@ const ALLOWED: readonly Allowed[] = [
 	{
 		file: "src/server/services/category.service.ts",
 		call: "update",
-		arg: "where: { id, userId }",
+		arg: "where: { id, userId,",
 		reason: "the owner's own edit, userId in the filter",
 	},
 	{
@@ -51,7 +51,13 @@ const ALLOWED: readonly Allowed[] = [
 		reason: "deletes the locked source, which lockedCategory found by owner",
 	},
 	{
-		file: "src/server/services/category/merge.mutation.ts",
+		file: "src/server/services/category/create.mutation.ts",
+		call: "delete",
+		arg: "where: { id: source.id, userId }",
+		reason: "deletes the locked source, which lockedCategory found by owner",
+	},
+	{
+		file: "src/server/services/category/lock.ts",
 		call: "raw",
 		arg: '"userId" = ${userId} FOR UPDATE',
 		reason: "the owner's row lock, userId in the filter",

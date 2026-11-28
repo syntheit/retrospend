@@ -5,6 +5,7 @@
  * keep a write exact. A holder's `held` is what its undo needs, ids and
  * stamps only (never names or text), kept in the sealed undo stash.
  */
+import type { CATEGORY_HOLDERS } from "@retrospend/domain/category-merge/holders";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 
@@ -31,6 +32,13 @@ export interface Moved<H> {
 }
 
 export interface HolderAdapter<H> {
+	/**
+	 * How many rows of this holder name the source category right now, whoever
+	 * wrote them. Nothing is written. A delete would drop or uncategorize each
+	 * of them (the foreign keys act on every row), so the undo of a create
+	 * counts them all before it deletes anything.
+	 */
+	count(c: MergeCtx): Promise<number>;
 	move(c: MergeCtx): Promise<Moved<H>>;
 	/** Puts back what `move` held, or throws `staleUndo` and changes nothing. */
 	restore(c: MergeCtx, held: H): Promise<void>;
@@ -78,6 +86,28 @@ export const staleUndo = () =>
 		code: "CONFLICT",
 		message: "This changed since. Undo is no longer safe.",
 	});
+
+/** A holder with a foreign key to Category: the ids the database's count function knows. */
+export type ForeignKeyHolderId = (typeof CATEGORY_HOLDERS)[number]["id"];
+
+/**
+ * Every row of a foreign-key holder that names the source category, rows the
+ * caller cannot read included. The delete's foreign keys act on all of them, so
+ * a count through the caller's client (row level security hides a shared
+ * expense of a project the caller left) would be short. The database function
+ * (20261127400000_category_holder_count) answers only for a category the
+ * caller owns and a holder it knows; anything else is null, and null is
+ * refused here as stale, never read as zero.
+ */
+export async function countForeignKeyRows(
+	c: MergeCtx,
+	holder: ForeignKeyHolderId,
+): Promise<number> {
+	const [row] = await c.tx.$queryRaw<{ n: bigint | null }[]>`
+		SELECT category_holder_count(${c.sourceId}, ${holder}) AS "n"`;
+	if (row?.n === null || row?.n === undefined) throw staleUndo();
+	return Number(row.n);
+}
 
 /** Keeps a parameter list well under the database's limit. */
 const CHUNK = 5000;
