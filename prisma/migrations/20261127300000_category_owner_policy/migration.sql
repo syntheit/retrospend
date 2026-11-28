@@ -13,14 +13,45 @@
 --
 -- is_category_in_user_shared_transaction matched any split the person is on
 -- that carries the category, so a category attached to a split by someone who
--- is not its owner showed its name to everyone on that split. It now matches
--- only when the category's owner created that split or is a person on it.
+-- is not its owner showed its name to everyone on that split. It now asks
+-- category_shown_on_split: the category's owner created that split or is a
+-- person on it.
 -- Nothing is rewritten: old rows that hold such a category stay, and are
 -- simply not readable by the people the owner never shared with.
 --
 -- Grants are unchanged (retrospend_app keeps DELETE, INSERT, SELECT, UPDATE on
 -- the table; the policies decide the rows). CREATE OR REPLACE keeps the
 -- function's grants; the signature and the search_path pin are as before.
+
+-- The one rule for where a category may be shown: on a split its owner created
+-- or is a person on. Every reader asks this function (the policy below through
+-- the K7 function, the public page, and the server readers that bypass row
+-- level security through category-shown.ts). Owner only: nothing reaches it as
+-- retrospend_app except through the definer function that follows.
+CREATE OR REPLACE FUNCTION category_shown_on_split(p_category_id TEXT, p_split_id TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM "shared_transaction" st
+    INNER JOIN "category" c ON c."id" = p_category_id
+    WHERE st."id" = p_split_id
+      AND (
+        (st."createdByType" = 'user' AND st."createdById" = c."userId")
+        OR EXISTS (
+          SELECT 1 FROM "split_participant" owner_share
+          WHERE owner_share."transactionId" = st."id"
+            AND owner_share."participantType" = 'user'
+            AND owner_share."participantId" = c."userId"
+        )
+      )
+  )
+$$;
+REVOKE ALL ON FUNCTION category_shown_on_split(TEXT, TEXT) FROM PUBLIC, retrospend_app;
 
 CREATE OR REPLACE FUNCTION is_category_in_user_shared_transaction(p_category_id TEXT, p_user_id TEXT)
 RETURNS BOOLEAN
@@ -32,21 +63,12 @@ AS $$
   SELECT EXISTS (
     SELECT 1
     FROM "shared_transaction" st
-    INNER JOIN "category" c ON c."id" = st."categoryId"
     INNER JOIN "split_participant" me
       ON me."transactionId" = st."id"
      AND me."participantType" = 'user'
      AND me."participantId" = p_user_id
     WHERE st."categoryId" = p_category_id
-      AND (
-        (st."createdByType" = 'user' AND st."createdById" = c."userId")
-        OR EXISTS (
-          SELECT 1 FROM "split_participant" owner_share
-          WHERE owner_share."transactionId" = st."id"
-            AND owner_share."participantType" = 'user'
-            AND owner_share."participantId" = c."userId"
-        )
-      )
+      AND category_shown_on_split(p_category_id, st."id")
   )
 $$;
 

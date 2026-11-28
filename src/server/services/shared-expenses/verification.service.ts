@@ -9,6 +9,7 @@ import { removeSelfIn } from "./remove-self";
 import { autoAcceptSplits } from "./split-sweep";
 import type { ParticipantRef } from "./types";
 import { serializeDecimal } from "./serialize";
+import { withShownCategoryOn } from "~/server/services/category/category-shown";
 
 type AppDb = PrismaClient;
 
@@ -23,8 +24,6 @@ export function computeTransactionStatus(
 		return "pending";
 	return "active";
 }
-
-
 
 function serializeParticipant(p: {
 	id: string;
@@ -107,7 +106,7 @@ export class VerificationService {
 		// TODO: Move to a scheduled job. For now, run cleanup on every queue load.
 		await this.findAndAutoAcceptExpired();
 
-		const participants = await this.db.splitParticipant.findMany({
+		const found = await this.db.splitParticipant.findMany({
 			where: {
 				participantType: this.actor.participantType,
 				participantId: this.actor.participantId,
@@ -130,6 +129,7 @@ export class VerificationService {
 				transaction: { date: "desc" },
 			},
 		});
+		const participants = await withShownCategoryOn(found, "transaction", this.actor);
 
 		// Batch-resolve user info for creators/payers so the frontend
 		// can render without additional calls.

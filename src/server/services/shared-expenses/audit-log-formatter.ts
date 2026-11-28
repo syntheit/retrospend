@@ -9,6 +9,7 @@ import {
 	DELETED_USER_SENTINEL,
 } from "~/server/services/user-deletion.service";
 import { type DecimalInput, toFloat } from "@retrospend/domain/precise-decimal";
+import { resolveCategoryName } from "./audit-category-name";
 
 // ── Output Types ──────────────────────────────────────────────────────────────
 
@@ -168,34 +169,6 @@ export async function resolveActorName(
 	return resolved;
 }
 
-// Null sentinel stored in cache so we don't re-query deleted categories
-const NULL_SENTINEL = "\x00";
-
-async function resolveCategoryName(
-	db: PrismaClient,
-	categoryId: string | null | undefined,
-	cache: Map<string, string>,
-): Promise<string | null> {
-	if (!categoryId) return null;
-
-	const key = `category:${categoryId}`;
-	const hit = cache.get(key);
-	if (hit !== undefined) return hit === NULL_SENTINEL ? null : hit;
-
-	try {
-		const c = await db.category.findUnique({
-			where: { id: categoryId },
-			select: { name: true },
-		});
-		const name = c?.name ?? null;
-		cache.set(key, name ?? NULL_SENTINEL);
-		return name;
-	} catch {
-		cache.set(key, NULL_SENTINEL);
-		return null;
-	}
-}
-
 // ── Creation / Deletion Snapshot ──────────────────────────────────────────────
 
 /**
@@ -209,6 +182,7 @@ async function resolveCategoryName(
  */
 export async function buildCreationSnapshot(
 	changesJson: unknown,
+	splitId: string,
 	db: PrismaClient,
 	nameCache: Map<string, string>,
 ): Promise<CreationSnapshot | null> {
@@ -230,7 +204,7 @@ export async function buildCreationSnapshot(
 
 		const [paidByName, categoryName] = await Promise.all([
 			resolveActorName(db, paidByType, paidById, nameCache),
-			resolveCategoryName(db, categoryId, nameCache),
+			resolveCategoryName(db, splitId, categoryId, nameCache),
 		]);
 
 		const participants: { name: string; share: string }[] = [];
@@ -281,6 +255,7 @@ export async function buildCreationSnapshot(
  */
 export async function formatFieldChanges(
 	changesJson: unknown,
+	splitId: string,
 	defaultCurrency: string,
 	db: PrismaClient,
 	nameCache: Map<string, string>,
@@ -351,11 +326,11 @@ export async function formatFieldChanges(
 		if (catChange && typeof catChange === "object") {
 			const { old: oldId, new: newId } = catChange;
 			const oldName = oldId
-				? ((await resolveCategoryName(db, String(oldId), nameCache)) ??
+				? ((await resolveCategoryName(db, splitId, String(oldId), nameCache)) ??
 					String(oldId))
 				: "None";
 			const newName = newId
-				? ((await resolveCategoryName(db, String(newId), nameCache)) ??
+				? ((await resolveCategoryName(db, splitId, String(newId), nameCache)) ??
 					String(newId))
 				: "None";
 			result.push({
@@ -761,6 +736,7 @@ export async function formatAuditEntry(
 			case "CREATED": {
 				const snapshot = await buildCreationSnapshot(
 					entry.changes,
+					entry.targetId,
 					db,
 					nameCache,
 				);
@@ -770,6 +746,7 @@ export async function formatAuditEntry(
 			case "DELETED": {
 				const snapshot = await buildCreationSnapshot(
 					entry.changes,
+					entry.targetId,
 					db,
 					nameCache,
 				);
@@ -779,6 +756,7 @@ export async function formatAuditEntry(
 			case "EDITED": {
 				fieldChanges = await formatFieldChanges(
 					entry.changes,
+					entry.targetId,
 					defaultCurrency,
 					db,
 					nameCache,

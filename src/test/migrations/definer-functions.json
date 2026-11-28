@@ -45,6 +45,7 @@
 		"budget_dirty_user",
 		"budget_dirty_wealth",
 		"budget_party_user",
+		"category_shown_on_split",
 		"claim_put_back_ok",
 		"keystore_drop_user_keys",
 		"payment_back_check",

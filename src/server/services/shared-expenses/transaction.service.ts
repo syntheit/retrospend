@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { noticeChanges } from "~/server/services/notification-text";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
-import { assertSharedRowCategory } from "~/server/services/category/own";
+import { assertSharedRowCategory, writerOnSplit } from "~/server/services/category/own";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
 	notifyExpenseDeleted,
@@ -99,7 +99,7 @@ export class SharedTransactionService {
 			let billingPeriodId: string | null = null;
 			let backdatedWarning: { periodLabel: string } | null = null;
 
-			await assertSharedRowCategory(tx, this.actor, input.categoryId);
+			await assertSharedRowCategory(tx, this.actor, input.categoryId, { writerOnSplit: true }); // the writer creates the split
 
 			if (input.projectId) {
 				// Validate caller is at least CONTRIBUTOR on this project
@@ -229,8 +229,8 @@ export class SharedTransactionService {
 			);
 			before = { amount: existing.amount, currency: existing.currency };
 			await assertSharedRowCategory(tx, this.actor, input.categoryId, {
-				unchangedFrom: existing.categoryId,
-				restoredFromServerRecord: input.restoredFromServerRecord,
+				unchangedFrom: existing.categoryId, restoredFromServerRecord: input.restoredFromServerRecord,
+				writerOnSplit: writerOnSplit(this.actor, existing, input.splitWith),
 			});
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};

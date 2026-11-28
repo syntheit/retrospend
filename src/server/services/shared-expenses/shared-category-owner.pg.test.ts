@@ -318,6 +318,56 @@ describe("the web's shared expense writes", () => {
 	});
 });
 
+describe("an editor's own category on someone else's split", () => {
+	// The write rule is the read rule: a category is shown on a split its owner
+	// created or is a person on, so an editor sets theirs only on such a split.
+	it("is taken when the editor is a person on it, refused when they are not on it and did not create it", async () => {
+		const trip = await seedTrip();
+		const ben = {
+			participantType: "user" as const,
+			participantId: trip.ben.user.id,
+		};
+		const service = new SharedTransactionService(adminDb, ben);
+		const mine = (await category(trip.ben.user.id, "Bens")).id;
+		// Hotel: Ana created it, Ben is on it. Boat: Cam created it, Ben is not on it.
+		await service.update({ id: trip.expenses.hotel.id, categoryId: mine });
+		expect((await rowOf(trip.expenses.hotel.id)).categoryId).toBe(mine);
+		await expect(
+			service.update({ id: trip.expenses.boat.id, categoryId: mine }),
+		).rejects.toMatchObject({ message: "Category not found" });
+		expect((await rowOf(trip.expenses.boat.id)).categoryId).toBeNull();
+	});
+
+	it("is taken when the edit also puts the editor on the split", async () => {
+		const trip = await seedTrip();
+		const ben = {
+			participantType: "user" as const,
+			participantId: trip.ben.user.id,
+		};
+		const mine = (await category(trip.ben.user.id, "Bens")).id;
+		const people = [trip.refs.C, trip.refs.A].map((r) => ({
+			participantType: r.type,
+			participantId: r.id,
+		}));
+		const service = new SharedTransactionService(adminDb, ben);
+		await expect(
+			service.update({
+				id: trip.expenses.boat.id,
+				categoryId: mine,
+				splitMode: "EQUAL",
+				splitWith: people,
+			}),
+		).rejects.toMatchObject({ message: "Category not found" });
+		await service.update({
+			id: trip.expenses.boat.id,
+			categoryId: mine,
+			splitMode: "EQUAL",
+			splitWith: [...people, ben],
+		});
+		expect((await rowOf(trip.expenses.boat.id)).categoryId).toBe(mine);
+	});
+});
+
 describe("a guest", () => {
 	it("has no category: none or the one the row has, nothing else", async () => {
 		const trip = await seedTrip();
@@ -368,6 +418,7 @@ describe("the rule itself", () => {
 					adminDb,
 					{ participantType, participantId: owner.user.id },
 					mine,
+					{ writerOnSplit: true },
 				),
 			).rejects.toMatchObject({ message: "Category not found" });
 		await expect(
@@ -375,8 +426,18 @@ describe("the rule itself", () => {
 				adminDb,
 				{ participantType: "user", participantId: owner.user.id },
 				mine,
+				{ writerOnSplit: true },
 			),
 		).resolves.toBeUndefined();
+		// Their own category, but not on the split: refused (the write rule is the read rule).
+		await expect(
+			assertSharedRowCategory(
+				adminDb,
+				{ participantType: "user", participantId: owner.user.id },
+				mine,
+				{ writerOnSplit: false },
+			),
+		).rejects.toMatchObject({ message: "Category not found" });
 	});
 });
 
