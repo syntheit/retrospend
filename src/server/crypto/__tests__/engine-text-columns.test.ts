@@ -8,6 +8,8 @@
 import {
 	ACCOUNT_TEXT_COLUMNS,
 	accountWithoutText,
+	CATEGORY_TEXT_COLUMNS,
+	categoryWithoutText,
 	EXPENSE_TEXT_COLUMNS,
 	TEMPLATE_JOINED_COLUMNS,
 	TEMPLATE_STRIPPED_COLUMNS,
@@ -122,5 +124,30 @@ describe("the device's account and transfer text columns", () => {
 		expect(JSON.stringify([account, transfer])).not.toContain("secret");
 		expect(account.id).toBe("a1");
 		expect(transfer.id).toBe("t1");
+	});
+});
+
+describe("the device's category text columns", () => {
+	it("CATEGORY_TEXT_COLUMNS equals FIELD_MAP.Category", () => {
+		expect([...CATEGORY_TEXT_COLUMNS].sort()).toEqual(
+			Object.keys(FIELD_MAP.Category.columns).sort(),
+		);
+	});
+
+	it("categoryWithoutText drops every column the field map names", () => {
+		// Built from the map, not from the engine list, so a column missing from
+		// the engine list survives the strip and fails this too.
+		const text = Object.fromEntries(
+			Object.keys(FIELD_MAP.Category.columns).map((c) => [c, `secret ${c}`]),
+		);
+		const bare = categoryWithoutText({
+			...fixtureRow("categories", "c1"),
+			...text,
+		}) as Record<string, unknown>;
+		for (const column of Object.keys(FIELD_MAP.Category.columns))
+			expect(bare, column).not.toHaveProperty(column);
+		expect(JSON.stringify(bare)).not.toContain("secret");
+		expect(bare.id).toBe("c1");
+		expect(bare.version).toBe(0);
 	});
 });

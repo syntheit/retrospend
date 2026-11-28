@@ -1,5 +1,6 @@
 import {
 	ACCOUNT_TEXT_COLUMNS,
+	CATEGORY_TEXT_COLUMNS,
 	EXPENSE_TEXT_COLUMNS,
 	TEMPLATE_STRIPPED_COLUMNS,
 	TRANSFER_TEXT_COLUMNS,
@@ -151,6 +152,9 @@ describe("device field", () => {
 		]);
 		expect([...DEVICE_TEXT_COLUMNS.transfers]).toEqual([
 			...TRANSFER_TEXT_COLUMNS,
+		]);
+		expect([...DEVICE_TEXT_COLUMNS.categories]).toEqual([
+			...CATEGORY_TEXT_COLUMNS,
 		]);
 		// Legs, snapshots and rate switches hold no person's text.
 		expect(DEVICE_TEXT_COLUMNS.legs).toEqual([]);
