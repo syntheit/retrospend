@@ -13,34 +13,25 @@
 --
 -- is_category_in_user_shared_transaction matched any split the person is on
 -- that carries the category, so a category attached to a split by someone who
--- is not its owner showed its name to everyone on that split. It now needs the
--- category's owner to be a person the split is shown with (split_people): they
--- created it or are on it.
+-- is not its owner showed its name to everyone on that split. The read policy
+-- now needs the category's owner to have created the split or be a person on
+-- it.
 -- Nothing is rewritten: old rows that hold such a category stay, and are
 -- simply not readable by the people the owner never shared with.
 --
--- Grants are unchanged (retrospend_app keeps DELETE, INSERT, SELECT, UPDATE on
--- the table; the policies decide the rows). CREATE OR REPLACE keeps the
--- function's grants; the signature and the search_path pin are as before.
+-- Grants on the table are unchanged (retrospend_app keeps DELETE, INSERT,
+-- SELECT, UPDATE on it; the policies decide the rows). category_shown_on_split
+-- is owner only; categories_shown_to is the one function the policy calls as
+-- retrospend_app (definer-functions.json, prisma/grants/app-role.sql). The old
+-- per-row is_category_in_user_shared_transaction is dropped: nothing uses it.
 
--- The one rule for where a category may be shown: on a split its owner created
--- or is a person on. It is written once, as this view of the users a split is
--- shown with; the function after it, the policy's K7 function and the public
--- page's totals all read it (the server readers that bypass row level security
--- ask the function, through category-shown.ts). A view, not a per-split
--- function call, so the policy's check stays one set-based query however many
--- splits a category is filed on. Owner only: nothing reaches it as
--- retrospend_app except through the definer functions that follow.
-CREATE OR REPLACE VIEW split_people AS
-  SELECT "id" AS split_id, "createdById" AS user_id
-  FROM "shared_transaction"
-  WHERE "createdByType" = 'user'
-  UNION
-  SELECT "transactionId", "participantId"
-  FROM "split_participant"
-  WHERE "participantType" = 'user';
-REVOKE ALL ON "split_people" FROM PUBLIC, retrospend_app;
-
+-- The rule for where a category may be shown: on a split its owner created or
+-- is a person on. It is asked of one (category, split) pair here, by the
+-- server readers that bypass row level security (through category-shown.ts)
+-- and by the public page's totals. categories_shown_to below states the same
+-- rule as a set for the read policy; src/test/migrations/
+-- category-shown-agree.pg.test.ts fails if the two ever disagree. Owner only:
+-- nothing reaches this one as retrospend_app.
 CREATE OR REPLACE FUNCTION category_shown_on_split(p_category_id TEXT, p_split_id TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -50,32 +41,53 @@ SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM "category" c
-    INNER JOIN "split_people" sp ON sp.user_id = c."userId"
-    WHERE c."id" = p_category_id
-      AND sp.split_id = p_split_id
+    FROM "shared_transaction" st
+    INNER JOIN "category" c ON c."id" = p_category_id
+    WHERE st."id" = p_split_id
+      AND (
+        (st."createdByType" = 'user' AND st."createdById" = c."userId")
+        OR EXISTS (
+          SELECT 1 FROM "split_participant" owner_share
+          WHERE owner_share."transactionId" = st."id"
+            AND owner_share."participantType" = 'user'
+            AND owner_share."participantId" = c."userId"
+        )
+      )
   )
 $$;
 REVOKE ALL ON FUNCTION category_shown_on_split(TEXT, TEXT) FROM PUBLIC, retrospend_app;
 
-CREATE OR REPLACE FUNCTION is_category_in_user_shared_transaction(p_category_id TEXT, p_user_id TEXT)
-RETURNS BOOLEAN
+-- The categories a person may read through the splits they are on: those filed
+-- on a split the category's owner created or is a person on (the rule above, as
+-- a set). A set, not a per-row check: the policy below reads it as one hashed subquery per
+-- statement, so a query over thousands of shares asks it once. (The old
+-- is_category_in_user_shared_transaction ran per category row; with the rule in
+-- it, an order of magnitude slower on 10,000 shares.)
+CREATE OR REPLACE FUNCTION categories_shown_to(p_user_id TEXT)
+RETURNS SETOF TEXT
 LANGUAGE SQL
 SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
 AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM "split_participant" me
-    INNER JOIN "shared_transaction" st ON st."id" = me."transactionId"
-    INNER JOIN "category" c ON c."id" = p_category_id
-    INNER JOIN "split_people" sp ON sp.split_id = st."id" AND sp.user_id = c."userId"
-    WHERE me."participantType" = 'user'
-      AND me."participantId" = p_user_id
-      AND st."categoryId" = p_category_id
-  )
+  SELECT DISTINCT st."categoryId"
+  FROM "split_participant" me
+  INNER JOIN "shared_transaction" st ON st."id" = me."transactionId"
+  INNER JOIN "category" c ON c."id" = st."categoryId"
+  WHERE me."participantType" = 'user'
+    AND me."participantId" = p_user_id
+    AND (
+      (st."createdByType" = 'user' AND st."createdById" = c."userId")
+      OR EXISTS (
+        SELECT 1 FROM "split_participant" owner_share
+        WHERE owner_share."transactionId" = st."id"
+          AND owner_share."participantType" = 'user'
+          AND owner_share."participantId" = c."userId"
+      )
+    )
 $$;
+REVOKE ALL ON FUNCTION categories_shown_to(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION categories_shown_to(TEXT) TO retrospend_app;
 
 DROP POLICY IF EXISTS category_isolation ON "category";
 CREATE POLICY category_isolation ON "category"
@@ -87,5 +99,8 @@ DROP POLICY IF EXISTS category_shared_read ON "category";
 CREATE POLICY category_shared_read ON "category"
   AS PERMISSIVE FOR SELECT TO retrospend_app
   USING (
-    is_category_in_user_shared_transaction("id", current_setting('app.current_user_id', TRUE))
+    "id" IN (SELECT categories_shown_to(current_setting('app.current_user_id', TRUE)))
   );
+
+-- Nothing uses the per-row check any more.
+DROP FUNCTION IF EXISTS is_category_in_user_shared_transaction(TEXT, TEXT);

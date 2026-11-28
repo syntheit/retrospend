@@ -16,7 +16,11 @@ import { REPO_ROOT } from "~/test/uiRules/paths";
 const read = (path: string) => readFileSync(join(REPO_ROOT, path), "utf8");
 const NAME = "20261127300000_category_owner_policy";
 const VERSION = "20261127200000_category_version";
-const FN = "is_category_in_user_shared_transaction";
+/** The shared-split clause of the old policy and of category_shared_read. */
+const SHARED_CLAUSES = [
+	"is_category_in_user_shared_transaction",
+	"categories_shown_to",
+];
 
 type Q = { query: (sql: string) => Promise<{ rows: Record<string, unknown>[] }> };
 
@@ -25,7 +29,8 @@ const SQL_POLICIES = `
 	FROM pg_policies WHERE schemaname = 'public' AND tablename = 'category'
 	ORDER BY policyname`;
 
-const usesShared = (text: unknown) => String(text ?? "").includes(FN);
+const usesShared = (text: unknown) =>
+	SHARED_CLAUSES.some((fn) => String(text ?? "").includes(fn));
 
 describe("the category policies in the catalog", () => {
 	it("category_isolation is the owner's alone for every command and the shared clause only reads", async () => {
