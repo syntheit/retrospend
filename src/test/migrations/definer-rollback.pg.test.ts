@@ -78,15 +78,15 @@ describe("rollback of 20261109500000_definer_hygiene", () => {
 		expect(restored.defaults).toEqual(before.defaults);
 
 		// The migration, run on top of the snippet, lands where it started. Only
-		// for the functions it knew: it revokes retrospend_app from every other
-		// one, including a function a later migration added for the app to call
-		// (category_holder_count), whose grant app-role.sql restores on every start.
-		const known = new Set(before.functions.map((f) => f.sig));
-		const knownOnly = (catalog: FunctionCatalog) => ({
+		// for the functions of the earlier catalog: the migration's keep list names
+		// those, and revokes any later definer function that is not on it (a later
+		// migration's own grants are checked by definer-functions.pg.test.ts).
+		const sigs = new Set(before.functions.map((f) => f.sig));
+		const only = (catalog: FunctionCatalog) => ({
 			...catalog,
-			functions: catalog.functions.filter((f) => known.has(f.sig)),
+			functions: catalog.functions.filter((f) => sigs.has(f.sig)),
 		});
-		expect(knownOnly(reapplied)).toEqual(knownOnly(migrated));
+		expect(only(reapplied)).toEqual(only(migrated));
 	}, 60_000);
 
 	it("left the worker's database as the migration made it", async () => {

@@ -5,28 +5,20 @@
  * every write that names a category asks here, with the actor's id in the query.
  *
  * `ownCategoryWhere` is the filter for any lookup by id (a site keeps its own
- * select). `assertOwnCategory(ies)` refuses with CategoryNotFoundError, which
- * says nothing about whether the id exists; tRPC maps it to FORBIDDEN and v1 to
- * the code the call site passes. `assertSharedRowCategory` is the rule for the
- * category on a shared expense (create, edit, correction).
+ * select). `assertSharedRowCategory` is the rule for the category on a shared
+ * expense (create, edit, correction); it refuses with CategoryNotFoundError,
+ * which says nothing about whether the id exists (tRPC FORBIDDEN, v1 404
+ * not_found). Where a category may be shown is a separate rule, written once
+ * in SQL (category_shown_on_split) and read through category-shown.ts.
  *
  * The domain's `expenseCategory` is a different rule (an expense category's
  * kind, from a row already looked up) and stays pure.
  */
-import {
-	CategoryNotFoundError,
-	type CategoryRefusalCode,
-} from "@retrospend/domain/expense-write/refusals";
+import { CategoryNotFoundError } from "@retrospend/domain/expense-write/refusals";
 import type { CategoryKind, Prisma } from "~prisma";
+import { type ParticipantRef, sameParticipant } from "../shared-expenses/types";
 
 type Db = Pick<Prisma.TransactionClient, "category">;
-
-export interface OwnOptions {
-	/** Only categories of this kind; unset means any kind. */
-	readonly kind?: CategoryKind;
-	/** The v1 answer when refused: write routes say not_found, categorize says forbidden. */
-	readonly v1Code?: CategoryRefusalCode;
-}
 
 /** The filter for the actor's own category (or categories) by id. */
 export function ownCategoryWhere(
@@ -50,32 +42,6 @@ export async function isOwnCategory(
 	return (await db.category.count({ where: ownCategoryWhere(userId, id, kind) })) > 0;
 }
 
-export async function assertOwnCategory(
-	db: Db,
-	userId: string,
-	id: string,
-	options: OwnOptions = {},
-): Promise<void> {
-	if (!(await isOwnCategory(db, userId, id, options.kind)))
-		throw new CategoryNotFoundError(options.v1Code ?? "not_found");
-}
-
-/** Every id is the actor's own (a repeated id counts once). */
-export async function assertOwnCategories(
-	db: Db,
-	userId: string,
-	ids: readonly string[],
-	options: OwnOptions = {},
-): Promise<void> {
-	const wanted = [...new Set(ids)];
-	if (wanted.length === 0) return;
-	const found = await db.category.count({
-		where: ownCategoryWhere(userId, wanted, options.kind),
-	});
-	if (found !== wanted.length)
-		throw new CategoryNotFoundError(options.v1Code ?? "not_found");
-}
-
 export interface SharedRowCategoryContext {
 	/** The row's category now (an update), so a request that keeps it passes. */
 	readonly unchangedFrom?: string | null;
@@ -85,26 +51,56 @@ export interface SharedRowCategoryContext {
 	 * schema never carries it.
 	 */
 	readonly restoredFromServerRecord?: boolean;
+	/**
+	 * The writer created the split or is a person on it (after this write). The
+	 * write rule is the read rule (category_shown_on_split): an owner's category
+	 * is shown only on a split they created or are on, so anyone else setting
+	 * theirs would set a category no one can see.
+	 */
+	readonly writerOnSplit: boolean;
 }
 
 /**
  * The category on a shared expense: none, the one it already has, one from a
- * server-held record, or the actor's own. A guest or shadow has no categories,
- * so for them only none or the unchanged one. Fails closed: anything else, or a
- * lookup that finds nothing, is refused.
+ * server-held record, or the writer's own on a split they created or are on. A
+ * guest or shadow has no categories, so for them only none or the unchanged
+ * one. Fails closed: anything else, or a lookup that finds nothing, is refused.
  */
 export async function assertSharedRowCategory(
 	db: Db,
 	actor: { participantType: "user" | "guest" | "shadow"; participantId: string },
 	categoryId: string | null | undefined,
-	context: SharedRowCategoryContext = {},
+	context: SharedRowCategoryContext,
 ): Promise<void> {
 	if (categoryId == null) return;
 	if (categoryId === context.unchangedFrom) return;
 	if (context.restoredFromServerRecord === true) return;
 	if (
+		!context.writerOnSplit ||
 		actor.participantType !== "user" ||
 		!(await isOwnCategory(db, actor.participantId, categoryId))
 	)
 		throw new CategoryNotFoundError("not_found");
+}
+
+/**
+ * Whether the writer created the split or is a person on it, once this edit is
+ * written (it may add them): the `writerOnSplit` of an update.
+ */
+export function writerOnSplit(
+	actor: ParticipantRef,
+	existing: {
+		createdByType: string;
+		createdById: string;
+		splitParticipants: readonly ParticipantRef[];
+	},
+	addedPeople: readonly ParticipantRef[] = [],
+): boolean {
+	return (
+		(existing.createdByType === actor.participantType &&
+			existing.createdById === actor.participantId) ||
+		[...existing.splitParticipants, ...addedPeople].some((p) =>
+			sameParticipant(p, actor),
+		)
+	);
 }

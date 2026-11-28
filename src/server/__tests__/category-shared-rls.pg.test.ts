@@ -48,7 +48,7 @@ async function world() {
 		})
 	).id;
 	const e1 = await sharedTx(ann.user.id, ann.dining);
-	await shareOf(e1.id, ann.user.id, null);
+	// Ann created E1 and is not on it (I paid for you): the owner-created branch alone shows Dining to Ben.
 	await shareOf(e1.id, ben.user.id, null);
 	return { ann, ben, cy, linkId, budgetId, prefId };
 }
@@ -145,5 +145,37 @@ describe("a category filed on a split its owner is not on", () => {
 		await expect(
 			cy.db.category.findUnique({ where: { id: ann.dining } }),
 		).resolves.not.toBeNull();
+	});
+});
+
+describe("a participant of another type with the owner's id is not the owner", () => {
+	it("a split a guest created, with the owner's id, does not show the owner's category", async () => {
+		const { ann, ben } = await world();
+		const e = await sharedTx(ann.user.id, ann.dining, {
+			createdByType: "guest",
+			createdById: ann.user.id,
+			paidById: ann.user.id,
+		});
+		await shareOf(e.id, ben.user.id, null);
+		// Ben reads Dining through E1 (Ann created it), so look at the new split alone:
+		await adminDb.sharedTransaction.deleteMany({
+			where: { categoryId: ann.dining, id: { not: e.id } },
+		});
+		await expect(
+			ben.db.category.findUnique({ where: { id: ann.dining } }),
+		).resolves.toBeNull();
+	});
+
+	it("a shadow on the split with the owner's id is not the owner either", async () => {
+		const { ann, ben, cy } = await world();
+		await adminDb.sharedTransaction.deleteMany({
+			where: { categoryId: ann.dining },
+		});
+		const e = await sharedTx(ben.user.id, ann.dining);
+		await shareOf(e.id, cy.user.id, null);
+		await shareOf(e.id, ann.user.id, null, { participantType: "shadow" });
+		await expect(
+			cy.db.category.findUnique({ where: { id: ann.dining } }),
+		).resolves.toBeNull();
 	});
 });

@@ -245,26 +245,13 @@ async function formatActivityEntry(
 	try {
 		if (entry.targetType === "SHARED_TRANSACTION") {
 			if (entry.action === "CREATED") {
-				const snapshot = await buildCreationSnapshot(
-					entry.changes,
-					globalDb,
-					nameCache,
-				);
+				const snapshot = await buildCreationSnapshot(entry.changes, entry.targetId, globalDb, nameCache);
 				if (snapshot) detail = { type: "creation_snapshot", snapshot };
 			} else if (entry.action === "DELETED") {
-				const snapshot = await buildCreationSnapshot(
-					entry.changes,
-					globalDb,
-					nameCache,
-				);
+				const snapshot = await buildCreationSnapshot(entry.changes, entry.targetId, globalDb, nameCache);
 				if (snapshot) detail = { type: "deletion_snapshot", snapshot };
 			} else if (entry.action === "EDITED") {
-				const fieldChanges = await formatFieldChanges(
-					entry.changes,
-					txnCurrency ?? "USD",
-					globalDb,
-					nameCache,
-				);
+				const fieldChanges = await formatFieldChanges(entry.changes, entry.targetId, txnCurrency ?? "USD", globalDb, nameCache);
 				if (fieldChanges?.length)
 					detail = { type: "field_changes", changes: fieldChanges };
 			} else if (entry.action === "REJECTED") {

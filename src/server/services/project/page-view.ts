@@ -23,6 +23,7 @@ import { refKey } from "~/server/services/shared-expenses/ledger-posting";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
+import { withShownCategory } from "~/server/services/category/category-shown";
 import { askingOf } from "./asking";
 import { batchResolveIdentities, type Identity } from "./identities";
 import { membershipOf } from "./membership";
@@ -58,8 +59,14 @@ function loadProject(db: PrismaClient, projectId: string) {
  * all) and shows the newest PAGE_ROWS; the public page, which anyone on the
  * internet can ask for, loads only the newest `take`.
  */
-function loadExpenses(db: PrismaClient, projectId: string, take?: number) {
-	return db.sharedTransaction.findMany({
+async function loadExpenses(
+	db: PrismaClient,
+	projectId: string,
+	take: number | undefined,
+	/** A guest, a link or the public: the client has no row level security, so categories are checked (category-shown.ts). */
+	checkCategories: boolean,
+) {
+	const rows = await db.sharedTransaction.findMany({
 		where: { projectId },
 		...(take ? { take } : {}),
 		orderBy: [{ date: "desc" }, { createdAt: "desc" }],
@@ -87,6 +94,7 @@ function loadExpenses(db: PrismaClient, projectId: string, take?: number) {
 			},
 		},
 	});
+	return checkCategories ? withShownCategory(rows) : rows;
 }
 
 type Expense = Awaited<ReturnType<typeof loadExpenses>>[number];
@@ -256,7 +264,12 @@ async function readPage(
 	const [project, expenses, payments, isMe, numbers, publicTotals] =
 		await Promise.all([
 			loadProject(db, projectId),
-			loadExpenses(db, projectId, isPublic ? PAGE_ROWS : undefined),
+			loadExpenses(
+				db,
+				projectId,
+				isPublic ? PAGE_ROWS : undefined,
+				viewer.kind !== "user",
+			),
 			noMoneyBetween ? Promise.resolve([]) : loadPayments(db, projectId),
 			isMeFor(db, me),
 			isPublic

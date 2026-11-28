@@ -41,23 +41,13 @@ export async function loadPublicTotals(projectId: string) {
 			rows: bigint;
 		}[]
 	>(Prisma.sql`
-		SELECT t."currency", shown."categoryId", t."amount"::text AS "amount",
+		SELECT t."currency",
+			CASE WHEN category_shown_on_split(t."categoryId", t."id") THEN t."categoryId" END AS "categoryId",
+			t."amount"::text AS "amount",
 			COUNT(*) AS "rows"
 		FROM "shared_transaction" t
-		LEFT JOIN LATERAL (
-			-- A category counts only on a split its owner created or is on: one
-			-- attached by someone else is not the owner's to show (K7's rule).
-			SELECT c."id" AS "categoryId" FROM "category" c
-			WHERE c."id" = t."categoryId"
-				AND ((t."createdByType" = 'user' AND t."createdById" = c."userId")
-					OR EXISTS (
-						SELECT 1 FROM "split_participant" sp
-						WHERE sp."transactionId" = t."id"
-							AND sp."participantType" = 'user'
-							AND sp."participantId" = c."userId"))
-		) shown ON TRUE
 		WHERE t."projectId" = ${projectId}
-		GROUP BY t."currency", shown."categoryId", t."amount"
+		GROUP BY t."currency", 2, t."amount"
 	`);
 	const ids = groups.flatMap((g) => (g.categoryId ? [g.categoryId] : []));
 	const categories = ids.length

@@ -327,7 +327,7 @@ export async function correctSplit(
 		tx,
 		{ participantType: "user", participantId: userId },
 		input.categoryId,
-		{ unchangedFrom: split.original.categoryId },
+		{ unchangedFrom: split.original.categoryId, writerOnSplit: true },
 	);
 
 	const desired = desiredOf(split, input);
