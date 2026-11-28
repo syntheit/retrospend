@@ -294,13 +294,11 @@ describe("the readers that run as the owner", () => {
 			});
 		const text = async (id: string) => JSON.stringify(await history(id));
 		// A category that resolves shows its name (empty when sealed and the log has
-		// no key); one that may not be shown shows a neutral label, never the id.
+		// no key); one that may not be shown gets an empty name, never the id.
 		const shown = await text(hotel.id);
 		expect(shown).not.toContain(trip.travel.id);
 		expect(shown).not.toContain(other.id);
-		expect(shown).not.toContain("Unknown category");
 		const hidden = await text(fuel.id);
-		expect(hidden).toContain("Unknown category");
 		expect(hidden).not.toContain(trip.travel.id);
 		expect(hidden).not.toContain(other.id);
 		expect(hidden).not.toContain("Travel");
@@ -369,10 +367,9 @@ describe("the audit log of a hard-deleted split", () => {
 	it("shows its owner their own category on the created, edited and deleted lines", async () => {
 		const { trip, dining, beach, text } = await deleted();
 		const mine = await text(trip.ana.user);
-		// A name when the log can open it (empty when sealed); never the id, never the neutral label.
+		// A name when the log can open it (empty when sealed); never the id.
 		expect(mine).not.toContain(dining.id);
 		expect(mine).not.toContain(beach.id);
-		expect(mine).not.toContain("Unknown category");
 		// The label is ours: Dining and Beach are named where the suite stores names in plain text.
 		if (!sealedSuite) {
 			expect(mine).toContain("Dining");
@@ -380,10 +377,9 @@ describe("the audit log of a hard-deleted split", () => {
 		}
 	});
 
-	it("gives anyone else the neutral label and never the id", async () => {
+	it("gives anyone else an empty name and never the id", async () => {
 		const { trip, dining, beach, text } = await deleted();
 		const theirs = await text(trip.ben.user);
-		expect(theirs).toContain("Unknown category");
 		expect(theirs).not.toContain(dining.id);
 		expect(theirs).not.toContain(beach.id);
 		expect(theirs).not.toContain("Dining");

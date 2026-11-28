@@ -1,16 +1,19 @@
 /**
  * A category's name for an audit line (category-shown.ts). The log reads as the
  * owner, with no row level security, so the name goes out only to the
- * category's owner (always, even on a split that is gone) and to anyone it may
- * be shown to on that split. Anyone else gets a neutral label, never the id; a
- * category that no longer exists is null, and the formatter then keeps showing
- * the stored id as it always did. Split out of audit-log-formatter.ts to keep
- * that file small.
+ * category's owner (even on a split that is gone) and to anyone it may be
+ * shown to on that split. Anyone else gets an empty name, never the id: the same
+ * neutral form a sealed name takes when the log cannot open it, so there is one
+ * neutral form and no extra copy to translate. With sealing on the owner's own
+ * name is empty too, since the log reads without the person's key. A category
+ * that no longer exists is null, and the formatter then keeps showing the stored
+ * id as it always did. Split out of audit-log-formatter.ts to keep that file
+ * small.
  */
 import { shownCategoryPairs } from "~/server/services/category/category-shown";
 import type { PrismaClient } from "~prisma";
 
-export const HIDDEN_CATEGORY = "Unknown category";
+export const HIDDEN_CATEGORY = "";
 
 // Null sentinel stored in cache so we don't re-query deleted categories
 const NULL_SENTINEL = "\x00";
