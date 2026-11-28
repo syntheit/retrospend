@@ -1,4 +1,7 @@
-import { sameCategoryName } from "@retrospend/domain/category-name";
+import {
+	CATEGORY_NAME_TAKEN_MESSAGE,
+	sameCategoryName,
+} from "@retrospend/domain/category-name";
 import { CategoryChangedError } from "@retrospend/domain/category-version";
 import { IdTakenError } from "@retrospend/domain/id-taken";
 import { TRPCError } from "@trpc/server";
@@ -104,7 +107,7 @@ export async function getCategory(
 }
 
 const nameTaken = () =>
-	new TRPCError({ code: "CONFLICT", message: "Category name already exists" });
+	new TRPCError({ code: "CONFLICT", message: CATEGORY_NAME_TAKEN_MESSAGE });
 
 /**
  * Names are stored as typed, but "Food " and "Food" are the same name to the
