@@ -44,7 +44,7 @@ CREATE POLICY category_isolation ON "category"
 
 GRANT EXECUTE ON FUNCTION is_category_in_user_shared_transaction(TEXT, TEXT) TO retrospend_app;
 
-DROP FUNCTION IF EXISTS categories_shown_to(TEXT);
+DROP FUNCTION IF EXISTS categories_shown_to();
 DROP FUNCTION IF EXISTS category_shown_on_split(TEXT, TEXT);
 
 DELETE FROM "_prisma_migrations" WHERE "migration_name" = '20261127300000_category_owner_policy';

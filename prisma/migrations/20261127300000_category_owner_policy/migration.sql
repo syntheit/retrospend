@@ -57,13 +57,14 @@ AS $$
 $$;
 REVOKE ALL ON FUNCTION category_shown_on_split(TEXT, TEXT) FROM PUBLIC, retrospend_app;
 
--- The categories a person may read through the splits they are on: those filed
+-- The categories the signed-in person (app.current_user_id; none set, none
+-- shown) may read through the splits they are on: those filed
 -- on a split the category's owner created or is a person on (the rule above, as
 -- a set). A set, not a per-row check: the policy below reads it as one hashed subquery per
 -- statement, so a query over thousands of shares asks it once. (The old
 -- is_category_in_user_shared_transaction ran per category row; with the rule in
 -- it, an order of magnitude slower on 10,000 shares.)
-CREATE OR REPLACE FUNCTION categories_shown_to(p_user_id TEXT)
+CREATE OR REPLACE FUNCTION categories_shown_to()
 RETURNS SETOF TEXT
 LANGUAGE SQL
 SECURITY DEFINER
@@ -75,7 +76,7 @@ AS $$
   INNER JOIN "shared_transaction" st ON st."id" = me."transactionId"
   INNER JOIN "category" c ON c."id" = st."categoryId"
   WHERE me."participantType" = 'user'
-    AND me."participantId" = p_user_id
+    AND me."participantId" = current_setting('app.current_user_id', TRUE)
     AND (
       (st."createdByType" = 'user' AND st."createdById" = c."userId")
       OR EXISTS (
@@ -86,8 +87,8 @@ AS $$
       )
     )
 $$;
-REVOKE ALL ON FUNCTION categories_shown_to(TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION categories_shown_to(TEXT) TO retrospend_app;
+REVOKE ALL ON FUNCTION categories_shown_to() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION categories_shown_to() TO retrospend_app;
 
 DROP POLICY IF EXISTS category_isolation ON "category";
 CREATE POLICY category_isolation ON "category"
@@ -99,7 +100,7 @@ DROP POLICY IF EXISTS category_shared_read ON "category";
 CREATE POLICY category_shared_read ON "category"
   AS PERMISSIVE FOR SELECT TO retrospend_app
   USING (
-    "id" IN (SELECT categories_shown_to(current_setting('app.current_user_id', TRUE)))
+    "id" IN (SELECT categories_shown_to())
   );
 
 -- Nothing uses the per-row check any more.

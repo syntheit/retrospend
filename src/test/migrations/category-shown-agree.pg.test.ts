@@ -1,7 +1,7 @@
 /**
  * The shown rule is stated twice in SQL: category_shown_on_split asks it of one
  * (category, split) pair (readers that bypass row level security, the public
- * totals), categories_shown_to as a set for the read policy. They may never
+ * totals), categories_shown_to as a set for the read policy (it reads the signed-in person from app.current_user_id). They may never
  * disagree. Every combination of who created the split and who is on it, with
  * a guest or shadow carrying the owner's id among them, gets its own category;
  * for the person on it, the pair answer must equal "the category is in their
@@ -58,8 +58,10 @@ describe("category_shown_on_split and categories_shown_to", () => {
 				});
 				const [pair] = await adminDb.$queryRaw<{ shown: boolean }[]>`
 					SELECT category_shown_on_split(${category.id}, ${split.id}) AS shown`;
-				const set = await adminDb.$queryRaw<{ id: string }[]>`
-					SELECT categories_shown_to(${reader.user.id}) AS id`;
+				const set = await adminDb.$transaction(async (tx) => {
+					await tx.$executeRaw`SELECT set_config('app.current_user_id', ${reader.user.id}, true)`;
+					return tx.$queryRaw<{ id: string }[]>`SELECT categories_shown_to() AS id`;
+				});
 				const inSet = set.some((r) => r.id === category.id);
 				expect(inSet, `${c.name} / ${o.name}`).toBe(pair?.shown);
 				if (inSet) shown++;
@@ -68,5 +70,11 @@ describe("category_shown_on_split and categories_shown_to", () => {
 		}
 		// Both answers are reached: shown when the owner (as a user) created it (4) or is on it (2), else hidden.
 		expect({ shown, hidden }).toEqual({ shown: 6, hidden: 6 });
+	});
+
+	it("shows nothing when no person is signed in", async () => {
+		const none = await adminDb.$queryRaw<{ id: string }[]>`
+			SELECT categories_shown_to() AS id`;
+		expect(none).toEqual([]);
 	});
 });

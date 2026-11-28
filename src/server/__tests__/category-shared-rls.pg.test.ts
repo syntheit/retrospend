@@ -178,4 +178,18 @@ describe("a participant of another type with the owner's id is not the owner", (
 			cy.db.category.findUnique({ where: { id: ann.dining } }),
 		).resolves.toBeNull();
 	});
+
+	it("a guest or shadow on the split with the reader's user id does not make the reader a person on it", async () => {
+		const { ann, ben } = await world();
+		await adminDb.sharedTransaction.deleteMany({
+			where: { categoryId: ann.dining },
+		});
+		for (const participantType of ["guest", "shadow"] as const) {
+			const e = await sharedTx(ann.user.id, ann.dining);
+			await shareOf(e.id, ben.user.id, null, { participantType });
+		}
+		await expect(
+			ben.db.category.findUnique({ where: { id: ann.dining } }),
+		).resolves.toBeNull();
+	});
 });
