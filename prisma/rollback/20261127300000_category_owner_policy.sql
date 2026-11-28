@@ -7,7 +7,7 @@
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/rollback/20261127300000_category_owner_policy.sql
 --
 -- It puts back the policy and the function of 20260326000002 and drops
--- category_shown_on_split: category_isolation
+-- category_shown_on_split and the split_people view: category_isolation
 -- FOR ALL with the shared-expense clause in USING (a person on a split can
 -- delete or take over the owner's category again), the broader function, and
 -- no category_shared_read. It deletes only this migration's row from
@@ -43,5 +43,6 @@ CREATE POLICY category_isolation ON "category"
   WITH CHECK ("userId" = current_setting('app.current_user_id', TRUE));
 
 DROP FUNCTION IF EXISTS category_shown_on_split(TEXT, TEXT);
+DROP VIEW IF EXISTS split_people;
 
 DELETE FROM "_prisma_migrations" WHERE "migration_name" = '20261127300000_category_owner_policy';

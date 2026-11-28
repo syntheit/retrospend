@@ -13,9 +13,9 @@
 --
 -- is_category_in_user_shared_transaction matched any split the person is on
 -- that carries the category, so a category attached to a split by someone who
--- is not its owner showed its name to everyone on that split. It now asks
--- category_shown_on_split: the category's owner created that split or is a
--- person on it.
+-- is not its owner showed its name to everyone on that split. It now needs the
+-- category's owner to be a person the split is shown with (split_people): they
+-- created it or are on it.
 -- Nothing is rewritten: old rows that hold such a category stay, and are
 -- simply not readable by the people the owner never shared with.
 --
@@ -24,10 +24,23 @@
 -- function's grants; the signature and the search_path pin are as before.
 
 -- The one rule for where a category may be shown: on a split its owner created
--- or is a person on. Every reader asks this function (the policy below through
--- the K7 function, the public page, and the server readers that bypass row
--- level security through category-shown.ts). Owner only: nothing reaches it as
--- retrospend_app except through the definer function that follows.
+-- or is a person on. It is written once, as this view of the users a split is
+-- shown with; the function after it, the policy's K7 function and the public
+-- page's totals all read it (the server readers that bypass row level security
+-- ask the function, through category-shown.ts). A view, not a per-split
+-- function call, so the policy's check stays one set-based query however many
+-- splits a category is filed on. Owner only: nothing reaches it as
+-- retrospend_app except through the definer functions that follow.
+CREATE OR REPLACE VIEW split_people AS
+  SELECT "id" AS split_id, "createdById" AS user_id
+  FROM "shared_transaction"
+  WHERE "createdByType" = 'user'
+  UNION
+  SELECT "transactionId", "participantId"
+  FROM "split_participant"
+  WHERE "participantType" = 'user';
+REVOKE ALL ON "split_people" FROM PUBLIC, retrospend_app;
+
 CREATE OR REPLACE FUNCTION category_shown_on_split(p_category_id TEXT, p_split_id TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -37,18 +50,10 @@ SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM "shared_transaction" st
-    INNER JOIN "category" c ON c."id" = p_category_id
-    WHERE st."id" = p_split_id
-      AND (
-        (st."createdByType" = 'user' AND st."createdById" = c."userId")
-        OR EXISTS (
-          SELECT 1 FROM "split_participant" owner_share
-          WHERE owner_share."transactionId" = st."id"
-            AND owner_share."participantType" = 'user'
-            AND owner_share."participantId" = c."userId"
-        )
-      )
+    FROM "category" c
+    INNER JOIN "split_people" sp ON sp.user_id = c."userId"
+    WHERE c."id" = p_category_id
+      AND sp.split_id = p_split_id
   )
 $$;
 REVOKE ALL ON FUNCTION category_shown_on_split(TEXT, TEXT) FROM PUBLIC, retrospend_app;
@@ -62,13 +67,13 @@ SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM "shared_transaction" st
-    INNER JOIN "split_participant" me
-      ON me."transactionId" = st."id"
-     AND me."participantType" = 'user'
-     AND me."participantId" = p_user_id
-    WHERE st."categoryId" = p_category_id
-      AND category_shown_on_split(p_category_id, st."id")
+    FROM "split_participant" me
+    INNER JOIN "shared_transaction" st ON st."id" = me."transactionId"
+    INNER JOIN "category" c ON c."id" = p_category_id
+    INNER JOIN "split_people" sp ON sp.split_id = st."id" AND sp.user_id = c."userId"
+    WHERE me."participantType" = 'user'
+      AND me."participantId" = p_user_id
+      AND st."categoryId" = p_category_id
   )
 $$;
 
