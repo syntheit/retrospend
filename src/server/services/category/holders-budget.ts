@@ -14,6 +14,7 @@ import {
 } from "@retrospend/domain/category-merge/plan";
 import type { BudgetType } from "~prisma";
 import {
+	countForeignKeyRows,
 	groupByStamp,
 	type HolderAdapter,
 	heldCount,
@@ -37,6 +38,7 @@ export interface BudgetHeld extends Stamped {
 }
 
 export const budgetHolder: HolderAdapter<BudgetHeld> = {
+	count: (c) => countForeignKeyRows(c, "budget"),
 	async move(c) {
 		const mine = await c.tx.budget.findMany({
 			where: { userId: c.userId, categoryId: c.sourceId },
@@ -129,6 +131,7 @@ export interface LinkHeld {
 }
 
 export const envelopeLinkHolder: HolderAdapter<LinkHeld> = {
+	count: (c) => countForeignKeyRows(c, "envelopeLink"),
 	async move(c) {
 		const mine = await c.tx.envelopeCategory.findMany({
 			where: { categoryId: c.sourceId },
@@ -214,6 +217,7 @@ export interface PreferenceHeld {
 }
 
 export const preferenceHolder: HolderAdapter<PreferenceHeld> = {
+	count: (c) => countForeignKeyRows(c, "preference"),
 	async move(c) {
 		const mine = await c.tx.analyticsCategoryPreference.findFirst({
 			where: { userId: c.userId, categoryId: c.sourceId },

@@ -306,6 +306,7 @@ DECLARE
     'budget_book_keep_creator',
     'budget_dirty_month',
     'can_write_transaction_splits',
+    'category_holder_count',
     'claim_header_back_ok',
     'co_participant_counts',
     'currency_step',
