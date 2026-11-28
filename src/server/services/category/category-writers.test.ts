@@ -136,10 +136,14 @@ describe("category writers", () => {
 
 	it("only the writers VERSION_SETTERS names set the version: updateCategoryIn, a restore's insert, the default-category script", () => {
 		// A category write that names the version in what it stores, whatever the
-		// value (a number, a stash field, an increment): any `version` key in the
-		// `data` of a client write, an assignment on a `data` object built apart,
-		// or raw SQL setting the column. A `version` in a `where` or `select` only
-		// reads, and a stash field is no write.
+		// value (a number, a stash field, an increment): any `version` key in a
+		// `data` object written inline in a client write, an assignment on a
+		// `data` object built apart (`data.version =`), or raw SQL setting the
+		// column. It does not follow a `data` object built elsewhere and passed
+		// by name (`const d = { version: 5 }; update({ data: d })`): no writer
+		// does that today, and a new one would show up as an unlisted writer or
+		// caller above. A `version` in a `where` or `select` only reads, and a
+		// stash field is no write.
 		const DATA_ASSIGN = /\bdata\.version\s*=/g;
 		const RAW_SET = /\bSET\b[^;`]*"version"/g;
 		// The files that write the table or call what does, and any file about categories.

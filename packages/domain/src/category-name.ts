@@ -12,16 +12,16 @@
  */
 
 /** The text two names are compared by. */
-export function categoryNameKey(name: string): string {
+export function trimmedCategoryName(name: string): string {
 	return name.trim();
 }
 
 /** Whether two category names are the same name. */
 export function sameCategoryName(a: string, b: string): boolean {
-	return categoryNameKey(a) === categoryNameKey(b);
+	return trimmedCategoryName(a) === trimmedCategoryName(b);
 }
 
 /** A name with nothing but spaces in it: refused before it is stored. */
 export function isBlankCategoryName(name: string): boolean {
-	return categoryNameKey(name).length === 0;
+	return trimmedCategoryName(name).length === 0;
 }

@@ -8,9 +8,10 @@
  * trimmed text, compared exactly. "Food" and "Food " are one name; "Food"
  * and "food" are two; there is no Unicode folding. (The database's own unique
  * index on name is stricter still, it does not trim.) This is not the rule
- * of `categoryNameKey` in src/lib/category-name-key.ts: that one also
- * lower-cases, because a file's "food" must find the category "Food", and it
- * never decides what may be created.
+ * of `categoryNameKey` in src/lib/category-name-key.ts (the import's match
+ * key): that one also lower-cases, because a file's "food" must find the
+ * category "Food", and it never decides what may be created. The trim is the
+ * domain's (`trimmedCategoryName`, category-name.ts), the one owner.
  *
  * Stored form: "<16 hex tag>:<64 hex>" (see blind-index.ts). The tag names the data
  * key the hash was made with. An index counts only while its tag is the
@@ -18,6 +19,7 @@
  * until `backfillCategoryNameIndexForUser` runs with `recompute` the name
  * compare protects those rows.
  */
+import { trimmedCategoryName } from "@retrospend/domain/category-name";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { Prisma } from "~prisma";
@@ -33,14 +35,11 @@ import {
 
 export const CATEGORY_NAME_INDEX_LABEL = "retrospend category name index v1";
 
-/** The text two names are compared by. */
-export const categoryNameIndexText = (name: string): string => name.trim();
-
 export function computeCategoryNameIndex(
 	keyring: Keyring,
 	name: string,
 ): string {
-	const text = categoryNameIndexText(name);
+	const text = trimmedCategoryName(name);
 	return `${blindIndexTag(keyring, CATEGORY_NAME_INDEX_LABEL)}:${blindIndex(keyring, CATEGORY_NAME_INDEX_LABEL, text)}`;
 }
 

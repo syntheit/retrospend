@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-	categoryNameKey,
+	trimmedCategoryName,
 	isBlankCategoryName,
 	sameCategoryName,
 } from "./category-name";
@@ -14,7 +14,7 @@ describe("the category name rule", () => {
 	it("ignores spaces at either end: Food and 'Food ' are one name", () => {
 		expect(sameCategoryName("Food", "Food ")).toBe(true);
 		expect(sameCategoryName("  Food", "Food  ")).toBe(true);
-		expect(categoryNameKey("  Food ")).toBe("Food");
+		expect(trimmedCategoryName("  Food ")).toBe("Food");
 	});
 
 	it("keeps spaces inside a name", () => {

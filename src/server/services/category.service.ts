@@ -14,6 +14,7 @@ import {
 	comparableIndexes,
 	isUniqueViolation,
 } from "./category-name-index.service";
+import { categoryNotFound } from "./category/lock";
 import { ensureUserKeyringWhenSealing } from "./keys/data-key.service";
 import { byUsageThenName, compareText, sortByText } from "./text-order";
 import {
@@ -98,7 +99,7 @@ export async function getCategory(
 		select: CATEGORY_SELECT,
 	});
 	if (!row)
-		throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+		throw categoryNotFound();
 	return row;
 }
 
@@ -214,7 +215,7 @@ const isRecordNotFound = (error: unknown) =>
  * so two renames at once get two versions); the database trigger moves it for
  * color, icon and excludeByDefault, and does not double a rename's bump. This
  * is the only writer that sets the version on an update. Runs in the caller's
- * user transaction (the category write mutation's, or `updateCategory`'s).
+ * user transaction (the category write mutation's).
  *
  * The write comes before the name check: a stale version then answers
  * "changed", not "name taken" for a name the device could not know about, and
@@ -270,7 +271,7 @@ async function missingOrChanged(
 ) {
 	return (await isOwnCategory(tx, userId, id))
 		? new CategoryChangedError()
-		: new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+		: categoryNotFound();
 }
 
 /**
