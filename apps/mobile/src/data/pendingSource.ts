@@ -6,17 +6,24 @@ import type { AckedEntry, Outbox, OutboxEntry } from "./outbox";
 // so the adapter keeps the last snapshot; the phone calls `refresh()` after
 // each enqueue, flush, retire and pull it wants the engine to see.
 
-/** An entry as the engine reads it; null for one the device did not book. */
-function pendingOf(entry: OutboxEntry | AckedEntry): PendingEntry | null {
+/**
+ * An entry as the engine reads it. An entry the device did not book has no
+ * rows but is kept: its payload still names the category it files into, and
+ * the create-undo guard must see it (a write never booked, or refused, is
+ * still on its way to the server).
+ */
+function pendingOf(entry: OutboxEntry | AckedEntry): PendingEntry {
 	const { device } = entry;
-	if (!device) return null;
 	return {
 		clientId: entry.clientId,
-		bookedAt: device.bookedAt,
-		changes: device.changes,
-		changed: device.changed,
+		entity: entry.entity,
+		targetId: entry.targetId,
+		payload: entry.payload,
+		bookedAt: device?.bookedAt ?? Date.parse(entry.createdAt),
+		changes: device?.changes ?? [],
+		changed: device?.changed ?? [],
 		parked: entry.state === "conflict",
-		...(device.unbooked ? { unbooked: device.unbooked } : {}),
+		...(device?.unbooked ? { unbooked: device.unbooked } : {}),
 		...("ack" in entry ? { ack: entry.ack } : {}),
 	};
 }
@@ -37,7 +44,7 @@ export function createPendingSource(outbox: Outbox): OutboxPending {
 			const { open, acked } = await outbox.snapshot();
 			list = [...open, ...acked]
 				.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))
-				.flatMap((e) => pendingOf(e) ?? []);
+				.map(pendingOf);
 		},
 		retire(clientIds) {
 			const gone = new Set(clientIds);
@@ -47,10 +54,9 @@ export function createPendingSource(outbox: Outbox): OutboxPending {
 			writes = writes.then(() => outbox.retire(clientIds)).catch(() => {});
 		},
 		takeLeft: () =>
-			outbox.takeLeft().flatMap(({ entry, code }) => {
-				const pending = pendingOf(entry);
-				return pending ? [{ entry: pending, code }] : [];
-			}),
+			outbox
+				.takeLeft()
+				.map(({ entry, code }) => ({ entry: pendingOf(entry), code })),
 		idle: async () => {
 			await writes;
 		},

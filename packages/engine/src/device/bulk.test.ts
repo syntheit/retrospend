@@ -190,6 +190,9 @@ describe("DeviceEngine.comparePreviewBulk", () => {
 		pending.list = [
 			{
 				clientId: "c1",
+				entity: "expenses",
+				targetId: "x",
+				payload: {},
 				bookedAt: NOW,
 				changes: [{ table: "expenses", id: "c", before: null, after: null }],
 				changed: [],
@@ -408,6 +411,9 @@ describe("a write after the bulk action", () => {
 		pending.list = [
 			{
 				clientId: "c1",
+				entity: "expenses",
+				targetId: "x",
+				payload: {},
 				bookedAt: NOW + 1_000,
 				changes: [{ table: "expenses", id: "a", before: null, after: null }],
 				changed: ["categoryId"],

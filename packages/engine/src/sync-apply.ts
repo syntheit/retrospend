@@ -139,6 +139,7 @@ const ROWS: { [E in SyncEntity]: RowOf<E> } = {
 		color: w.color,
 		icon: w.icon,
 		excludeByDefault: w.excludeByDefault,
+		version: w.version,
 	}),
 	recurringTemplates: (w, categories) => ({
 		id: w.id,

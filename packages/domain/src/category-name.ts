@@ -11,6 +11,12 @@
  * stored as typed; only the compare trims.
  */
 
+/**
+ * What a create or a rename says when the name is already one of the
+ * person's: the server's answer (409) and the device's refusal, one sentence.
+ */
+export const CATEGORY_NAME_TAKEN_MESSAGE = "Category name already exists";
+
 /** The text two names are compared by. */
 export function trimmedCategoryName(name: string): string {
 	return name.trim();

@@ -285,7 +285,12 @@ export function compareTemplate(
 		: { id, outcome: "differs", fields };
 }
 
-/** `compareWrite`, `compareTemplate` or `compareWealth` for any row an entry changed; null for a row that is not compared. */
+/**
+ * `compareWrite`, `compareTemplate` or `compareWealth` for any row an entry
+ * changed; null for a row that is not compared. A category row is not compared
+ * yet: no category entry reaches the outbox until M3 PR3 (which adds its
+ * compare beside this one).
+ */
 export function compareChange(
 	live: Reader,
 	change: PendingChange,
@@ -294,6 +299,7 @@ export function compareChange(
 	if (change.table === "expenses") return compareWrite(live, change, acked);
 	if (change.table === "recurringTemplates")
 		return compareTemplate(live, change, acked);
+	if (change.table === "categories") return null;
 	return compareWealth(live, change, acked);
 }
 

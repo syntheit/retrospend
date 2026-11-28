@@ -141,6 +141,7 @@ describe("what the device writes on an edit", () => {
 				color: "teal",
 				icon: null,
 				excludeByDefault: true,
+				version: 0,
 			});
 		});
 		const { value } = await update(db, { categoryId: "c1" });
@@ -173,6 +174,7 @@ describe("what the device writes on an edit", () => {
 				color: "teal",
 				icon: null,
 				excludeByDefault: false,
+				version: 0,
 			});
 			const row = tx.get("expenses", "e1") as ExpenseRow;
 			tx.put("expenses", { ...row, categoryId: "inc", categoryKind: "INCOME" });
@@ -413,6 +415,7 @@ describe("refusals, each reached on its own", () => {
 				color: "teal",
 				icon: null,
 				excludeByDefault: false,
+				version: 0,
 			}),
 		);
 		for (const categoryId of ["inc", "missing"])
@@ -530,6 +533,7 @@ describe("undo", () => {
 					color: "teal",
 					icon: null,
 					excludeByDefault: false,
+					version: 0,
 				});
 		});
 		await update(db, { categoryId: "c1" });
@@ -551,6 +555,7 @@ describe("undo", () => {
 			color: "teal",
 			icon: null,
 			excludeByDefault: false,
+			version: 0,
 		});
 		const withCategory = async () => {
 			const o = await open();

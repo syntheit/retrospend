@@ -4,12 +4,13 @@
  * this transaction ends. The one lock every category mutation takes (merge,
  * the edit, the undo of a create) before it reads or counts anything.
  */
+import { CATEGORY_NOT_FOUND } from "@retrospend/domain/expense-write/refusals";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import { ownCategoryWhere } from "./own";
 
 export const categoryNotFound = () =>
-	new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+	new TRPCError({ code: "NOT_FOUND", message: CATEGORY_NOT_FOUND });
 
 /** The owner's row, `FOR UPDATE`; not the caller's or not there is "not found". */
 export async function lockedCategory(

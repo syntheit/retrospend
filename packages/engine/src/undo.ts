@@ -82,6 +82,10 @@ export function tokenFor(
 			};
 }
 
+/** What an undo says when a row was added under the thing it would take back. */
+export const ROWS_ADDED_MESSAGE =
+	"Rows were added to this since. Undo is no longer safe.";
+
 const stale = (what: string, rows: RowChange[]) =>
 	new ConflictError(
 		`${what} changed since. Undo is no longer safe.`,
@@ -245,11 +249,7 @@ export function applyUndo(w: Writer, token: UndoToken): UndoToken {
 	const restored = applyChanges(w, token.changes, "after", {
 		refuse() {
 			const stray = strayChildren(w, token.changes);
-			if (stray.length > 0)
-				throw new ConflictError(
-					"Rows were added to this since. Undo is no longer safe.",
-					stray,
-				);
+			if (stray.length > 0) throw new ConflictError(ROWS_ADDED_MESSAGE, stray);
 		},
 		rowFor: (c) => restoredRow(w, c),
 	});

@@ -10,7 +10,8 @@ import type { Reader, Writer } from "../port";
 import { EXPENSE_FIGURES } from "../preview";
 import { compareWrite, type WriteVerdict } from "../write-parity";
 import { pendingChangesOf, type WriteCursors } from "./book";
-import type { ExpenseChange } from "./pending";
+import { chainOnCategory } from "./category-book";
+import type { ExpenseChange, PendingEntry } from "./pending";
 import {
 	type PreviewCompareDeps,
 	previewVerdict,
@@ -64,6 +65,12 @@ export interface BulkBooked {
 	bookedAt: number;
 	/** Each expense it changed. */
 	changes: ExpenseChange[];
+	/**
+	 * The client ids of the unsent category entries a categorize names the
+	 * category of (a create or an edit), oldest first: the move cannot go to
+	 * the server before them. Absent for a delete, or a category the server has.
+	 */
+	chainOn?: readonly string[];
 	/** The rows it left alone, with the reason. */
 	skipped: BulkSkip[];
 	/** Rows it took: a categorize counts one already in the category. */
@@ -76,10 +83,19 @@ export async function bookBulkIn(
 	op: BulkOp,
 	cursors: WriteCursors,
 	bookedAt: number,
+	/** The phone's unsent and unpulled entries, for a move into a category one of them made or edited. */
+	pending: readonly PendingEntry[] = [],
 ): Promise<BulkBooked> {
 	const { id, write } = bulkPlanOf(op, cursors);
 	const { value, undo } = await recordWrite(tx, id, write);
-	return { bookedAt, changes: pendingChangesOf(undo), ...value };
+	const chainOn =
+		op.kind === "categorize" ? chainOnCategory(pending, op.categoryId) : [];
+	return {
+		bookedAt,
+		changes: pendingChangesOf(undo),
+		...(chainOn.length > 0 ? { chainOn } : {}),
+		...value,
+	};
 }
 
 /** What the server answered: how many rows it took, and which ids a delete left alone (a categorize names none). */

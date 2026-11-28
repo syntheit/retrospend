@@ -68,6 +68,7 @@ describe("the posted row and the template", () => {
 				color: "blue",
 				icon: null,
 				excludeByDefault: true,
+				version: 0,
 			}),
 		);
 		const figures = deviceFigures({ clock: () => DEC_1 });

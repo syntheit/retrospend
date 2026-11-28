@@ -63,6 +63,9 @@ async function entryOf(
 	const { changes } = await new LocalDb(store).preview(write);
 	return {
 		clientId,
+		entity: "expenses",
+		targetId: "x",
+		payload: {},
 		bookedAt: 0,
 		changed: [],
 		parked: false,

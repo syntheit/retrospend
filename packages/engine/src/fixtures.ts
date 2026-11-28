@@ -119,6 +119,7 @@ const FIXTURES: { [T in TableName]: (id: string) => TableRows[T] } = {
 		color: "orange",
 		icon: null,
 		excludeByDefault: false,
+		version: 0,
 	}),
 	owed: (id) => ({ id, currency: "ARS", owedToYou: 250_000, youOwe: 100_000 }),
 	settings: (id) => ({

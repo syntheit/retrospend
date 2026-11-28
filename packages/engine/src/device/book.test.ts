@@ -132,6 +132,9 @@ describe("DeviceEngine.book", () => {
 		pending.list = [
 			{
 				clientId: "c1",
+				entity: "expenses",
+				targetId: "x",
+				payload: {},
 				bookedAt: 0,
 				changes: create?.changes ?? [],
 				changed: [],

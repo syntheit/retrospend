@@ -29,6 +29,22 @@ export const rateReads = (r: Reader) => tableReads(r, "rates");
 
 export const categoryReads = (r: Reader) => tableReads(r, "categories");
 
+/**
+ * The categories a device write makes or changes (category-write-local.ts);
+ * every other write only reads them. A delete or merge stays online, so there
+ * is no remove: a pull brings the row's absence.
+ */
+export const categoryRepo = (w: Writer) => {
+	const rows = tableWrites(w, "categories");
+	return {
+		...categoryReads(w),
+		/** Adds the category; an id already in use throws InvalidInputError. */
+		insert: (row: TableRows["categories"]) => rows.insert(row),
+		/** Replaces a category that exists; a missing one throws NotFoundError. */
+		update: (row: TableRows["categories"]) => rows.replace(row),
+	};
+};
+
 export const transferReads = (r: Reader) => tableReads(r, "transfers");
 
 /** A transfer the device books or takes back; a pull writes the same rows through sync-apply. */

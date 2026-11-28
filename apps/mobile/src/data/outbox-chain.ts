@@ -17,7 +17,7 @@ import type {
  * The columns of each table that hold a person's text. The outbox is a plain
  * key-value store, so a `device` row never keeps them (design item 2). Each
  * list is a copy of the engine's (EXPENSE_TEXT_COLUMNS, TEMPLATE_STRIPPED_COLUMNS,
- * ACCOUNT_TEXT_COLUMNS, TRANSFER_TEXT_COLUMNS):
+ * ACCOUNT_TEXT_COLUMNS, TRANSFER_TEXT_COLUMNS, CATEGORY_TEXT_COLUMNS):
  * the engine stays out of a release bundle, so it cannot be imported here.
  * outbox.test holds each equal to its engine list, so a new text column fails
  * there; the table key makes a new table in `PendingChange` fail to compile.
@@ -30,6 +30,7 @@ export const DEVICE_TEXT_COLUMNS = {
 	snapshots: [],
 	rateSwitches: [],
 	transfers: ["note"],
+	categories: ["name"],
 } as const satisfies Record<PendingChange["table"], readonly string[]>;
 
 export const PARKED_CHAIN_LOST = "chain_lost";
@@ -145,8 +146,11 @@ export function stampedBy(
 		...dependent.device,
 		changes: dependent.device.changes.map((c): PendingChange => {
 			if (!wrote || !c.before || rowKey(c) !== named) return c;
-			// An account's version is a number on the row, text on the entry.
-			const stamp = c.table === "accounts" ? Number(version) : version;
+			// An account's and a category's version is a number on the row, text on the entry.
+			const stamp =
+				c.table === "accounts" || c.table === "categories"
+					? Number(version)
+					: version;
 			return { ...c, before: { ...c.before, version: stamp } } as PendingChange;
 		}),
 	};

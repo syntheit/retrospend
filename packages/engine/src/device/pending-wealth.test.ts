@@ -66,6 +66,9 @@ async function entryOver(
 		booked,
 		entry: {
 			clientId,
+			entity: "expenses",
+			targetId: "x",
+			payload: {},
 			bookedAt: NOW,
 			changes: booked.changes,
 			changed: booked.changed,

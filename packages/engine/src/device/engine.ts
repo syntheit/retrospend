@@ -673,11 +673,9 @@ export function createDeviceEngine(
 			await ready;
 			if (disposed || status !== "ready") return null;
 			const begun = pullsBegun;
-			const booked = await readOverlaid(
-				store,
-				options.pending?.entries() ?? [],
-				settledPull,
-				(tx) => bookIn(tx, op, cursors, now()),
+			const entries = options.pending?.entries() ?? [];
+			const booked = await readOverlaid(store, entries, settledPull, (tx) =>
+				bookIn(tx, op, cursors, now(), entries),
 			).catch((error) => {
 				// A refusal is the domain's answer, not a fault: the server decides.
 				if (isDeviceRefusal(error)) return null;
@@ -695,11 +693,9 @@ export function createDeviceEngine(
 			await ready;
 			if (disposed || status !== "ready") return null;
 			const begun = pullsBegun;
-			const booked = await readOverlaid(
-				store,
-				options.pending?.entries() ?? [],
-				settledPull,
-				(tx) => bookBulkIn(tx, op, cursors, now()),
+			const entries = options.pending?.entries() ?? [];
+			const booked = await readOverlaid(store, entries, settledPull, (tx) =>
+				bookBulkIn(tx, op, cursors, now(), entries),
 			).catch((error) => {
 				if (
 					error instanceof InvalidInputError ||

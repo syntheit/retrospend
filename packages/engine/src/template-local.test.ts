@@ -74,6 +74,7 @@ async function open(timeZone = BA) {
 			color: "blue",
 			icon: null,
 			excludeByDefault: false,
+			version: 0,
 		});
 		tx.put("categories", {
 			id: "cat-in",
@@ -82,6 +83,7 @@ async function open(timeZone = BA) {
 			color: "green",
 			icon: null,
 			excludeByDefault: false,
+			version: 0,
 		});
 	});
 	return { store, db: new LocalDb(store) };

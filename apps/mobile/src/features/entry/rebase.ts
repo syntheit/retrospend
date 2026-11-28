@@ -1,5 +1,6 @@
 import type {
 	AccountOp,
+	CategoryOp,
 	TransferOp,
 	WriteBody,
 	WriteOp,
@@ -49,12 +50,16 @@ export function rebasedBody(
 export interface RebasePlan {
 	/**
 	 * A re-based write is an expense edit or delete, or a confirm or skip: a
-	 * template edit is discarded, not re-based, and an account or transfer
-	 * write is not queued yet (the sender, PR6 of slice-device-wealth, brings it).
+	 * template edit is discarded, not re-based, an account or transfer write is
+	 * not queued yet (the sender, PR6 of slice-device-wealth, brings it), and a
+	 * category write is not queued yet either (M3 PR3).
 	 */
 	op: Exclude<
 		WriteOp,
-		AccountOp | TransferOp | { kind: "templateCreate" | "templateUpdate" }
+		| AccountOp
+		| CategoryOp
+		| TransferOp
+		| { kind: "templateCreate" | "templateUpdate" }
 	>;
 	/** The pulled version the new write is checked against. */
 	version: string;
