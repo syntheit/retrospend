@@ -134,6 +134,9 @@ const entry = (
 	over: Partial<PendingEntry> = {},
 ): PendingEntry => ({
 	clientId,
+	entity: "expenses",
+	targetId: "x",
+	payload: {},
 	bookedAt: BOOKED_AT,
 	changes,
 	changed: [],

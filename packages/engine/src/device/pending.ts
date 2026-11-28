@@ -67,6 +67,17 @@ export type PendingChange =
 /** One write in the outbox or the acked list; the engine reads it and never changes it. */
 export interface PendingEntry {
 	readonly clientId: string;
+	/**
+	 * The server's entity name ("expenses", "recurring", "categories", ...), the
+	 * row the write is about (`targetId`) and the request it sends (`payload`),
+	 * as the phone's outbox keeps them. The guards that must see an entry the
+	 * device could not book (no rate) or that a booking refused read them,
+	 * since such an entry has no `changes`. Every entry the phone has is in the
+	 * list, booked or not.
+	 */
+	readonly entity: string;
+	readonly targetId: string;
+	readonly payload: unknown;
 	/** Epoch ms the device booked it: the compare's `rates_moved` clock. */
 	readonly bookedAt: number;
 	/** Each row it changed, in the order the device changed them. Empty for an `unbooked` entry. */

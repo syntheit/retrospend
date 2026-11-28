@@ -204,6 +204,9 @@ describe("DeviceEngine.comparePreview of a recurring confirm or skip", () => {
 		pending.list = [
 			{
 				clientId: "c1",
+				entity: "expenses",
+				targetId: "x",
+				payload: {},
 				bookedAt: NOW,
 				changes: first?.changes ?? [],
 				changed: [],

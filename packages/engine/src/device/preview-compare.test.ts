@@ -115,6 +115,9 @@ describe("DeviceEngine.comparePreview", () => {
 		pending.list = [
 			{
 				clientId: "c1",
+				entity: "expenses",
+				targetId: "x",
+				payload: {},
 				bookedAt: NOW,
 				changes: [{ table: "expenses", id: "e1", before: null, after: null }],
 				changed: [],

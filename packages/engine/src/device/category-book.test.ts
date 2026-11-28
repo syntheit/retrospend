@@ -103,6 +103,9 @@ const entryOf = (
 	over: Partial<PendingEntry> = {},
 ): PendingEntry => ({
 	clientId,
+	entity: "expenses",
+	targetId: "x",
+	payload: {},
 	bookedAt: NOW,
 	changes: booked.changes,
 	changed: booked.changed,
@@ -487,6 +490,7 @@ describe("the create of a category cannot be taken back while a write names it",
 		const create = {
 			...entryOf("c1", made),
 			entity: "categories",
+			targetId: GIFTS,
 			payload: { id: GIFTS },
 		};
 		const filed = await book(store, { kind: "create", body: lunch() }, [
@@ -496,6 +500,7 @@ describe("the create of a category cannot be taken back while a write names it",
 		const dependent = {
 			...entryOf("e1", filed),
 			entity: "expenses",
+			targetId: uuid(10),
 			payload: { id: uuid(10), categoryId: GIFTS, currency: "USD" },
 			unbooked: "no_rate" as const,
 		};
@@ -521,7 +526,9 @@ describe("the create of a category cannot be taken back while a write names it",
 					{
 						...dependent,
 						entity: "recurring",
-						payload: { id: uuid(20), categoryId: GIFTS },
+						// A template edit's payload names no id: the entry's target is the row.
+						targetId: uuid(20),
+						payload: { categoryId: GIFTS },
 					},
 				],
 				GIFTS,
@@ -533,6 +540,7 @@ describe("the create of a category cannot be taken back while a write names it",
 		const refused = {
 			clientId: "c1",
 			entity: "categories",
+			targetId: GIFTS,
 			payload: { id: GIFTS, name: "Gifts" },
 			bookedAt: NOW,
 			changes: [],

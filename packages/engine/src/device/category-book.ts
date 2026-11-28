@@ -78,16 +78,21 @@ export function categoryChangeOf(c: RowChange): CategoryChange | null {
 }
 
 /**
- * What an entry or a queued write may name, as the checks below read it. The
- * phone's outbox entries have this shape. `payload` is the request the entry
- * sends: an entry the device could not book (no rate) or that a booking
- * refused has no `changes`, but its payload still names its category.
+ * What an entry holds that the checks below read: the engine's `PendingEntry`
+ * (so `refuseCategoryUncreate(engine.pending.entries(), id)` is what a caller
+ * writes). `entity`, `targetId` and `payload` are required: an entry the
+ * device could not book (no rate) or that a booking refused has no `changes`,
+ * and only its payload names its category. A caller that has none to give
+ * cannot compile.
  */
 export interface CategoryHolderEntry {
 	readonly clientId: string;
-	/** The server's entity name ("categories", "expenses", "recurring"), when known. */
-	readonly entity?: string;
-	readonly payload?: unknown;
+	/** The server's entity name ("categories", "expenses", "recurring"). */
+	readonly entity: string;
+	/** The row the write is about: the expense, the template or the category. */
+	readonly targetId: string;
+	/** The request the entry sends. */
+	readonly payload: unknown;
 	readonly ack?: unknown;
 	readonly unbooked?: unknown;
 	readonly changes: readonly {
@@ -116,7 +121,7 @@ export function chainOnCategory(
 				(e.changes.some(
 					(c) => c.table === "categories" && c.id === categoryId,
 				) ||
-					(e.entity === "categories" && payloadField(e, "id") === categoryId)),
+					(e.entity === "categories" && e.targetId === categoryId)),
 		)
 		.map((e) => e.clientId);
 }
@@ -137,8 +142,7 @@ function payloadField(e: CategoryHolderEntry, field: string): unknown {
  * refused still counts. The category's create cannot be taken back while any
  * is left, before or after it was sent: sent, the server's undo would succeed
  * over the entry that is still on its way and leave the dependent without a
- * category. A payload row is named by the payload's `id`, or by the entry's
- * client id when it names none.
+ * category. A payload row is the entry's target.
  */
 export function entryRowsNamingCategory(
 	entries: readonly CategoryHolderEntry[],
@@ -154,14 +158,13 @@ export function entryRowsNamingCategory(
 		);
 		if (booked.length > 0 || payloadField(e, "categoryId") !== categoryId)
 			return booked;
-		const id = payloadField(e, "id");
 		return [
 			{
 				table:
 					e.entity === "recurring"
 						? ("recurringTemplates" as const)
 						: ("expenses" as const),
-				id: typeof id === "string" ? id : e.clientId,
+				id: e.targetId,
 			},
 		];
 	});
