@@ -9,10 +9,10 @@ import {
 	previewRemove,
 } from "~/server/services/category/remove";
 import {
-	createCategory,
-	listCategoriesByUsage,
-	updateCategory,
-} from "~/server/services/category.service";
+	createCategoryAs,
+	editCategoryAs,
+} from "~/server/services/category/write";
+import { listCategoriesByUsage } from "~/server/services/category.service";
 
 const createFields = {
 	name: categoryNameSchema,
@@ -54,7 +54,7 @@ export const categoriesRouter = createTRPCRouter({
 	create: protectedProcedure
 		.input(z.object(createFields))
 		.mutation(async ({ ctx, input }) =>
-			withoutCount(await createCategory(ctx.db, ctx.session.user.id, input)),
+			withoutCount(await createCategoryAs(ctx.session.user.id, input)),
 		),
 
 	update: protectedProcedure
@@ -62,7 +62,7 @@ export const categoriesRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { id, ...changes } = input;
 			return withoutCount(
-				await updateCategory(ctx.db, ctx.session.user.id, id, changes),
+				await editCategoryAs(ctx.db, ctx.session.user.id, { id, changes }),
 			);
 		}),
 

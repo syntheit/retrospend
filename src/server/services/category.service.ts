@@ -1,8 +1,12 @@
+import { sameCategoryName } from "@retrospend/domain/category-name";
+import { CategoryChangedError } from "@retrospend/domain/category-version";
+import { IdTakenError } from "@retrospend/domain/id-taken";
 import { TRPCError } from "@trpc/server";
 import { DEFAULT_CATEGORIES } from "~/lib/constants";
+import { uniqueViolation } from "~/server/api/unique-violation";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import type { CategoryColor, CategoryKind, Prisma } from "~prisma";
+import { type CategoryColor, type CategoryKind, Prisma } from "~prisma";
 import type { Keyring } from "../crypto/field-crypto";
 import {
 	categoryNameIndexesFor,
@@ -12,7 +16,10 @@ import {
 } from "./category-name-index.service";
 import { ensureUserKeyringWhenSealing } from "./keys/data-key.service";
 import { byUsageThenName, compareText, sortByText } from "./text-order";
-import { ownCategoryWhere } from "~/server/services/category/own";
+import {
+	isOwnCategory,
+	ownCategoryWhere,
+} from "~/server/services/category/own";
 
 type AppDb = typeof globalDb;
 
@@ -100,7 +107,7 @@ const nameTaken = () =>
 
 /**
  * Names are stored as typed, but "Food " and "Food" are the same name to the
- * person (the v1 API always trimmed). Compared here, not in SQL, so it keeps
+ * person (the domain's name rule, category-name.ts). Compared here, not in SQL, so it keeps
  * working when names are encrypted; a person has few categories. A row with
  * a name index is compared by index, which holds once names are ciphertext,
  * but only while both indexes were made with the same key; a row not
@@ -114,7 +121,6 @@ async function assertNameFree(
 	nameIndex: string | null,
 	exceptId?: string,
 ) {
-	const wanted = name.trim();
 	const mine = await tx.category.findMany({
 		where: { userId, ...(exceptId ? { id: { not: exceptId } } : {}) },
 		select: { name: true, nameIndex: true },
@@ -122,7 +128,7 @@ async function assertNameFree(
 	const taken = mine.some((row) =>
 		comparableIndexes(nameIndex, row.nameIndex)
 			? row.nameIndex === nameIndex
-			: row.name.trim() === wanted,
+			: sameCategoryName(row.name, name),
 	);
 	if (taken) throw nameTaken();
 }
@@ -130,10 +136,12 @@ async function assertNameFree(
 /**
  * A write that loses a race on either unique index (the old one on the name,
  * the new one on the name index) is the same answer as one that sees the
- * name taken.
+ * name taken. A taken id (the primary key) is not a name: it leaves as it is
+ * and the transports answer id_taken.
  */
 export function asNameTaken(error: unknown): unknown {
-	return isUniqueViolation(error) ? nameTaken() : error;
+	if (!isUniqueViolation(error)) return error;
+	return uniqueViolation(error)?.problem === "id_taken" ? error : nameTaken();
 }
 
 /** `masterKeyring` is for tests: null means no master key. */
@@ -143,7 +151,7 @@ export interface CategoryWriteOptions {
 
 /** Every column of a category row, as an insert takes it. */
 export interface CategoryInsert extends CategoryInput {
-	/** Set by an undo, which brings the category back under its own id. */
+	/** A client-made id, or the one an undo brings the category back under. */
 	id?: string;
 	isFixed?: boolean;
 	kind?: CategoryKind;
@@ -153,9 +161,12 @@ export interface CategoryInsert extends CategoryInput {
 
 /**
  * The one way a category row is inserted (create, and the undo of a delete or
- * merge): the name index made with the current key, the name checked free by
- * index and by trimmed name, then the row. Runs in the caller's user
- * transaction; a taken name is the CONFLICT every caller answers.
+ * merge): the id checked free, the name index made with the current key, the
+ * name checked free by index and by trimmed name, then the row. Runs in the
+ * caller's user transaction; a taken name is the CONFLICT every caller
+ * answers, a taken id IdTakenError (own row, checked first so a retry of a
+ * create reads as taken, not as the name being used) or the unique violation
+ * of another account's row.
  */
 export async function insertCategory(
 	tx: Prisma.TransactionClient,
@@ -163,6 +174,8 @@ export async function insertCategory(
 	input: CategoryInsert,
 	masterKeyring?: Keyring | null,
 ): Promise<CategoryRow> {
+	if (input.id && (await isOwnCategory(tx, userId, input.id)))
+		throw new IdTakenError();
 	const nameIndex = await categoryNameIndexFor(tx, input.name, masterKeyring);
 	await assertNameFree(tx, userId, input.name, nameIndex);
 	return tx.category.create({
@@ -182,65 +195,82 @@ export async function insertCategory(
 	});
 }
 
-export async function createCategory(
-	db: AppDb,
-	userId: string,
-	input: CategoryInput,
-	options: CategoryWriteOptions = {},
-): Promise<CategoryRow> {
-	await ensureUserKeyringWhenSealing(userId, options.masterKeyring);
-	try {
-		return await userTransaction(db, userId, (tx) =>
-			insertCategory(tx, userId, input, options.masterKeyring),
-		);
-	} catch (error) {
-		throw asNameTaken(error);
-	}
+export interface CategoryUpdateOptions extends CategoryWriteOptions {
+	/**
+	 * The version the caller read. The update's filter carries it, so the
+	 * write lands only on that version; another version (or a category gone
+	 * since) is CategoryChangedError and nothing is written.
+	 */
+	expectedVersion?: number;
 }
+
+const isRecordNotFound = (error: unknown) =>
+	error instanceof Prisma.PrismaClientKnownRequestError &&
+	error.code === "P2025";
 
 /**
  * Changes the fields given; `icon: null` removes the icon. A change that
  * names `name` moves the version by SQL (`version = version + 1`, no read first,
  * so two renames at once get two versions); the database trigger moves it for
  * color, icon and excludeByDefault, and does not double a rename's bump. This
- * is the only writer that sets the version on an update.
+ * is the only writer that sets the version on an update. Runs in the caller's
+ * user transaction (the category write mutation's, or `updateCategory`'s).
+ *
+ * The write comes before the name check: a stale version then answers
+ * "changed", not "name taken" for a name the device could not know about, and
+ * the whole transaction rolls back when either refuses.
  */
-export async function updateCategory(
-	db: AppDb,
+export async function updateCategoryIn(
+	tx: Prisma.TransactionClient,
 	userId: string,
 	id: string,
 	changes: Partial<CategoryInput>,
-	options: CategoryWriteOptions = {},
+	options: CategoryUpdateOptions = {},
 ): Promise<CategoryRow> {
-	await getCategory(db, userId, id);
+	const { expectedVersion } = options;
 	const data = Object.fromEntries(
 		Object.entries(changes).filter(([, v]) => v !== undefined),
 	) as Prisma.CategoryUpdateInput;
-	if (changes.name !== undefined)
-		await ensureUserKeyringWhenSealing(userId, options.masterKeyring);
 	try {
-		return await userTransaction(db, userId, async (tx) => {
-			if (changes.name !== undefined) {
-				// A rename always rewrites the index, to null when there is no key,
-				// so a stale one never survives a new name.
-				const nameIndex = await categoryNameIndexFor(
-					tx,
-					changes.name,
-					options.masterKeyring,
-				);
-				await assertNameFree(tx, userId, changes.name, nameIndex, id);
-				data.nameIndex = nameIndex;
-				data.version = { increment: 1 };
-			}
-			return tx.category.update({
-				where: { id, userId },
-				data,
-				select: CATEGORY_SELECT,
-			});
+		let nameIndex: string | null | undefined;
+		if (changes.name !== undefined) {
+			// A rename always rewrites the index, to null when there is no key,
+			// so a stale one never survives a new name.
+			nameIndex = await categoryNameIndexFor(
+				tx,
+				changes.name,
+				options.masterKeyring,
+			);
+			data.nameIndex = nameIndex;
+			data.version = { increment: 1 };
+		}
+		const row = await tx.category.update({
+			where: {
+				id,
+				userId,
+				...(expectedVersion === undefined ? {} : { version: expectedVersion }),
+			},
+			data,
+			select: CATEGORY_SELECT,
 		});
+		if (changes.name !== undefined && nameIndex !== undefined)
+			await assertNameFree(tx, userId, changes.name, nameIndex, id);
+		return row;
 	} catch (error) {
+		if (isRecordNotFound(error)) throw await missingOrChanged(tx, userId, id);
 		throw asNameTaken(error);
 	}
+}
+
+/** The answer for an update that matched no row: the category is not the caller's, or it has another version. */
+async function missingOrChanged(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	id: string,
+) {
+	return (await isOwnCategory(tx, userId, id))
+		? new CategoryChangedError()
+		: new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
 }
 
 /**

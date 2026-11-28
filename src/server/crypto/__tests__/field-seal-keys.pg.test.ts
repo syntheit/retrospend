@@ -29,7 +29,7 @@ import {
 	seedArsRates,
 	TODAY,
 } from "~/server/services/accounts/test-fixtures";
-import { createCategory } from "~/server/services/category.service";
+import { createCategory } from "~/test/category-writes";
 import { categoryNameIndexFor } from "~/server/services/category-name-index.service";
 import { commitImport } from "~/server/services/import/commit.mutation";
 import { importRunner } from "~/server/services/import/runner";

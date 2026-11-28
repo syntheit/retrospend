@@ -32,11 +32,8 @@ import {
 	fixtureDb,
 	withSuperuser,
 } from "~/test/pg-harness";
-import {
-	type CategoryWriteOptions,
-	createCategory,
-	updateCategory,
-} from "../category.service";
+import { createCategory, updateCategory } from "~/test/category-writes";
+import type { CategoryWriteOptions } from "../category.service";
 import {
 	backfillCategoryNameIndexes,
 	backfillCategoryNameIndexForUser,

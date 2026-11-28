@@ -21,6 +21,13 @@ vi.mock("~/server/db", () => ({
 	createUserScopedDb: vi.fn(() => mockDb),
 }));
 
+// The write is one money mutation, which appends its event in its own
+// transaction; this file mocks Prisma, so the event store is out of scope.
+vi.mock("~/server/services/events/scope", async (importOriginal) => ({
+	...(await importOriginal<typeof import("~/server/services/events/scope")>()),
+	recordMutationEvent: vi.fn(async () => false),
+}));
+
 vi.mock("~/server/better-auth", () => ({
 	auth: { api: { getSession: vi.fn().mockResolvedValue(null) } },
 }));

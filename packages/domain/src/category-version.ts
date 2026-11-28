@@ -45,3 +45,18 @@ export type CategoryVersionSkipped = keyof typeof CATEGORY_VERSION_SKIPPED;
  * on a category it never saw.
  */
 export const LEGACY_STASH_CATEGORY_VERSION = 1_000_000;
+
+export const CATEGORY_CHANGED_MESSAGE = "This category changed since you read it";
+
+/**
+ * A category write that named the version it read, and the category has
+ * another now (a device or the web changed it, or it is gone). Nothing was
+ * written; the caller reads the category again and decides. The server
+ * answers 409 `category_changed`; the device parks the write.
+ */
+export class CategoryChangedError extends Error {
+	override readonly name = "CategoryChangedError";
+	constructor() {
+		super(CATEGORY_CHANGED_MESSAGE);
+	}
+}
