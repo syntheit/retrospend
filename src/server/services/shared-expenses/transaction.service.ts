@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { noticeChanges } from "~/server/services/notification-text";
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRate } from "~/server/exchange-rates";
+import { assertSharedRowCategory, writerOnSplit } from "~/server/services/category/own";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
 	notifyExpenseDeleted,
@@ -27,49 +28,14 @@ import {
 import { amountColumn, changesMoney, columnsOf, engineInput, rateColumn, type SplitRow, shareColumns } from "./transaction-columns";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
 import { rescaleExactSplits } from "./exact-rescale";
+import type {
+	CreateSharedTransactionInput,
+	SplitModeType,
+	SplitParticipantInput,
+	UpdateSharedTransactionInput,
+} from "./transaction-input";
 
 type AppDb = PrismaClient;
-
-interface SplitParticipantInput {
-	participantType: "user" | "guest" | "shadow";
-	participantId: string;
-	shareAmount?: number;
-	sharePercentage?: number;
-	shareUnits?: number;
-}
-
-type SplitModeType = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
-
-interface CreateSharedTransactionInput {
-	/** A client id: a repeated create (a double click) writes nothing twice. */ id?: string;
-	amount: number;
-	currency: string;
-	description: string;
-	categoryId?: string;
-	date: Date;
-	paidBy: ParticipantRef;
-	splitWith: SplitParticipantInput[];
-	splitMode: SplitModeType;
-	projectId?: string;
-	notes?: string;
-	receiptUrl?: string;
-}
-
-interface UpdateSharedTransactionInput {
-	id: string;
-	amount?: number;
-	currency?: string;
-	description?: string;
-	categoryId?: string | null;
-	date?: Date;
-	paidBy?: ParticipantRef;
-	splitWith?: SplitParticipantInput[];
-	splitMode?: SplitModeType;
-	projectId?: string | null;
-	notes?: string | null;
-	receiptUrl?: string | null;
-	reopenFixRequests?: readonly { id: string; previousStatus: "PENDING" | "ACCEPTED" }[]; // undo of an edit that answered fix requests (2C.2)
-}
 
 export class SharedTransactionService {
 	/**
@@ -132,6 +98,8 @@ export class SharedTransactionService {
 		const result = await this.runInTransaction(async (tx) => {
 			let billingPeriodId: string | null = null;
 			let backdatedWarning: { periodLabel: string } | null = null;
+
+			await assertSharedRowCategory(tx, this.actor, input.categoryId, { writerOnSplit: true }); // the writer creates the split
 
 			if (input.projectId) {
 				// Validate caller is at least CONTRIBUTOR on this project
@@ -260,6 +228,10 @@ export class SharedTransactionService {
 				this.actor.participantId,
 			);
 			before = { amount: existing.amount, currency: existing.currency };
+			await assertSharedRowCategory(tx, this.actor, input.categoryId, {
+				unchangedFrom: existing.categoryId, restoredFromServerRecord: input.restoredFromServerRecord,
+				writerOnSplit: writerOnSplit(this.actor, existing, input.splitWith ?? existing.splitParticipants),
+			});
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};
 

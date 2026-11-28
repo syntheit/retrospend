@@ -15,6 +15,7 @@ import { z } from "zod";
 import type { Prisma } from "~prisma";
 import { packRow, type Row, unpackRow } from "../entry/row-pack";
 import { forgetMonthViews } from "../envelope/month-read";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -125,7 +126,7 @@ export async function restoreTransferStash(
 	if (stash.fee && moved.feeExpenseId) {
 		const category = stash.fee.categoryId
 			? await tx.category.count({
-					where: { id: stash.fee.categoryId, userId },
+					where: ownCategoryWhere(userId, stash.fee.categoryId),
 				})
 			: 0;
 		await tx.expense.update({

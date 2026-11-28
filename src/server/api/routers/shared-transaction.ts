@@ -14,6 +14,7 @@ import { receiptUrlSchema, splitModeEnum, splitParticipantSchema } from "~/serve
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import { toFloat } from "@retrospend/domain/precise-decimal";
 import { categoryIdSchema, projectIdSchema } from "~/lib/schemas/row-ids";
+import { shownCategoryOf } from "~/server/services/category/category-shown";
 
 export const sharedTransactionRouter = createTRPCRouter({
 	create: guestOrProtectedProcedure
@@ -262,7 +263,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 				projectId: tx.projectId,
 				projectName: tx.project?.name ?? null,
 				isLocked: tx.isLocked,
-				category: tx.category,
+				category: await shownCategoryOf(tx, ctx.participant),
 				paidBy: {
 					participantType: tx.paidByType,
 					participantId: tx.paidById,

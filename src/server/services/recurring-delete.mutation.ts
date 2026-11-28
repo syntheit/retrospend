@@ -22,6 +22,7 @@ import { RECURRING_COST_FIGURES } from "./figures/recurring";
 import type { MoneyMutation } from "./preview/types";
 import { deleteTemplate } from "./recurring.service";
 import { pgLower } from "./search-fold";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 /** A template as the undo token carries it: dates as ISO text, the amount as decimal text. */
 export interface TemplateSnapshot {
@@ -217,7 +218,7 @@ function restoreWith(
 			// A category deleted in between leaves the template without one.
 			const category = t.categoryId
 				? await tx.category.findFirst({
-						where: { id: t.categoryId, userId: actor.userId },
+						where: ownCategoryWhere(actor.userId, t.categoryId),
 						select: { id: true },
 					})
 				: null;

@@ -34,6 +34,7 @@ import { createTransferIn } from "../transfers/create.mutation";
 import { liabilitiesOf, projectIn } from "./debt.service";
 import { findPersonalBook } from "./inputs";
 import { recordWealthMove } from "./wealth.service";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -48,10 +49,8 @@ async function interestCategory(
 	given: string | null | undefined,
 ) {
 	if (given) {
-		// The caller's own: row level security also shows a category another
-		// member used in a shared expense.
 		const ok = await tx.category.count({
-			where: { id: given, userId, kind: "EXPENSE" },
+			where: ownCategoryWhere(userId, given, "EXPENSE"),
 		});
 		if (!ok) invalid("pick one of your spending categories");
 		return given;

@@ -7,6 +7,7 @@ import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Page, Prisma } from "~prisma";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type AppDb = typeof globalDb;
 
@@ -322,7 +323,7 @@ export async function setAnalyticsCategoryPreference(
 	isFlexible: boolean,
 ) {
 	const category = await db.category.findFirst({
-		where: { id: categoryId, userId },
+		where: ownCategoryWhere(userId, categoryId),
 		select: { id: true },
 	});
 	if (!category) {

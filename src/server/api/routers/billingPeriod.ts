@@ -8,14 +8,12 @@ import {
 	protectedProcedure,
 } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
-import {
-	createNotification,
-	participantLabel,
-} from "~/server/services/notifications";
+import { createNotification, participantLabel } from "~/server/services/notifications";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { computePeriodSettleStatus } from "~/server/services/shared-expenses/billing-period-settle";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { Prisma, PrismaClient } from "~prisma";
+import { withShownCategoryList } from "~/server/services/category/category-shown";
 
 function computeBillingPeriodEnd(
 	start: Date,
@@ -331,7 +329,7 @@ export const billingPeriodRouter = createTRPCRouter({
 
 			// No total here: expenses are in different currencies, so a sum of their
 			// amounts means nothing. The period's figures come from the registry.
-			return period;
+			return withShownCategoryList(period, "sharedTransactions", ctx.participant);
 		}),
 
 	closeCurrent: protectedProcedure

@@ -331,8 +331,16 @@ type StoredRestore = Omit<SharedRestore, "date"> & { date: string };
 
 type Stamped = { expectedUpdatedAt?: string };
 
+/**
+ * The token is signed by the server (undo.ts), so its category is the row's own
+ * old value, not a client's claim: the one place `restoredFromServerRecord` is set.
+ */
 function restoreOf(stored: StoredRestore): UpdateSharedInput {
-	return { ...stored, date: new Date(stored.date) };
+	return {
+		...stored,
+		date: new Date(stored.date),
+		restoredFromServerRecord: true,
+	};
 }
 
 type Inverse = {

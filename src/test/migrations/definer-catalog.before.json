@@ -200,12 +200,6 @@
             "definer": true
         },
         {
-            "acl": "PUBLIC:EXECUTE,<owner>:EXECUTE",
-            "sig": "is_category_in_user_shared_transaction(text,text)",
-            "config": "search_path=public",
-            "definer": true
-        },
-        {
             "acl": "<owner>:EXECUTE,retrospend_app:EXECUTE",
             "sig": "is_project_creator(text,text)",
             "config": "search_path=public, pg_temp",

@@ -18,6 +18,7 @@ import {
 	buildCallerRoleMap,
 	requireProjectRole,
 } from "~/server/services/shared-expenses/project-permissions";
+import { nameCacheFor } from "~/server/services/shared-expenses/audit-category-name";
 import {
 	buildCreationSnapshot,
 	formatAuditEntry,
@@ -245,26 +246,13 @@ async function formatActivityEntry(
 	try {
 		if (entry.targetType === "SHARED_TRANSACTION") {
 			if (entry.action === "CREATED") {
-				const snapshot = await buildCreationSnapshot(
-					entry.changes,
-					globalDb,
-					nameCache,
-				);
+				const snapshot = await buildCreationSnapshot(entry.changes, entry.targetId, globalDb, nameCache);
 				if (snapshot) detail = { type: "creation_snapshot", snapshot };
 			} else if (entry.action === "DELETED") {
-				const snapshot = await buildCreationSnapshot(
-					entry.changes,
-					globalDb,
-					nameCache,
-				);
+				const snapshot = await buildCreationSnapshot(entry.changes, entry.targetId, globalDb, nameCache);
 				if (snapshot) detail = { type: "deletion_snapshot", snapshot };
 			} else if (entry.action === "EDITED") {
-				const fieldChanges = await formatFieldChanges(
-					entry.changes,
-					txnCurrency ?? "USD",
-					globalDb,
-					nameCache,
-				);
+				const fieldChanges = await formatFieldChanges(entry.changes, entry.targetId, txnCurrency ?? "USD", globalDb, nameCache);
 				if (fieldChanges?.length)
 					detail = { type: "field_changes", changes: fieldChanges };
 			} else if (entry.action === "REJECTED") {
@@ -368,6 +356,7 @@ async function formatActivityEntry(
  */
 async function batchFormatActivityEntries(
 	rawEntries: RawAuditEntry[],
+	viewerUserId?: string,
 ): Promise<ActivityEntry[]> {
 	if (rawEntries.length === 0) return [];
 
@@ -434,7 +423,7 @@ async function batchFormatActivityEntries(
 	}
 
 	// Pre-resolve all actor names and avatars to populate the caches
-	const nameCache = new Map<string, string>();
+	const nameCache = nameCacheFor(viewerUserId);
 	const avatarCache = new Map<string, string | null>();
 
 	const uniqueActors = new Map<string, { type: string; id: string }>();
@@ -589,7 +578,7 @@ export const auditLogRouter = createTRPCRouter({
 
 			// ── Format timeline entries ────────────────────────────────────────
 			// Shared cache so repeated actors are resolved only once
-			const nameCache = new Map<string, string>();
+			const nameCache = nameCacheFor(participant.participantType === "user" ? participant.participantId : undefined);
 			const formattedEntries = await Promise.all(
 				entries.map((e) =>
 					formatAuditEntry(e as RawAuditEntry, currency, globalDb, nameCache),
@@ -736,9 +725,7 @@ export const auditLogRouter = createTRPCRouter({
 			const nextCursor =
 				hasNextPage ? (entriesToFormat.at(-1)?.id ?? null) : null;
 
-			const entries = await batchFormatActivityEntries(
-				entriesToFormat as RawAuditEntry[],
-			);
+			const entries = await batchFormatActivityEntries(entriesToFormat as RawAuditEntry[], participantType === "user" ? participantId : undefined);
 
 			return { entries, nextCursor, totalCount };
 		}),
@@ -774,9 +761,7 @@ export const auditLogRouter = createTRPCRouter({
 			const entries = await globalDb.auditLogEntry.findMany({
 				where: { id: { in: latest.map((r) => r.id) } },
 			});
-			const formatted = await batchFormatActivityEntries(
-				entries as RawAuditEntry[],
-			);
+			const formatted = await batchFormatActivityEntries(entries as RawAuditEntry[], userId);
 
 			const result: Record<string, ActivityEntry> = {};
 			entries.forEach((entry, i) => {

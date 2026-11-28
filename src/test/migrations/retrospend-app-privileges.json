@@ -161,7 +161,7 @@
 			"privileges": ["DELETE", "INSERT", "SELECT", "UPDATE"],
 			"rls": true,
 			"forceRls": false,
-			"policies": ["category_isolation:ALL"]
+			"policies": ["category_isolation:ALL", "category_shared_read:SELECT"]
 		},
 		"device_code": {
 			"privileges": ["SELECT"],

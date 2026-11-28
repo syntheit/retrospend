@@ -7,6 +7,7 @@ import type { Prisma, PrismaClient } from "~prisma";
 import { batchResolveIdentities, type Identity } from "./identities";
 import type { ProjectRoleName, ProjectViewer } from "./types";
 import { toFloat } from "@retrospend/domain/precise-decimal";
+import { withShownCategory } from "~/server/services/category/category-shown";
 
 interface Page {
 	page: number;
@@ -117,7 +118,7 @@ export async function listProjectExpenses(
 			? { billingPeriodId: input.billingPeriodId }
 			: {}),
 	};
-	const [transactions, total] = await Promise.all([
+	const [found, total] = await Promise.all([
 		db.sharedTransaction.findMany({
 			...pageArgs(where, input),
 			include: {
@@ -136,6 +137,9 @@ export async function listProjectExpenses(
 		}),
 		db.sharedTransaction.count({ where }),
 	]);
+	// A guest's client has no row level security: its categories are checked here.
+	const transactions =
+		viewer.participantType === "user" ? found : await withShownCategory(found);
 	const identities = await pageIdentities(db, transactions);
 	const { participantType, participantId } = viewer;
 	const isViewer = (type: string, id: string) =>

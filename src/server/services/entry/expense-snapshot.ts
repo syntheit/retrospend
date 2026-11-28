@@ -8,6 +8,7 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import { packRow, type Row, unpackRow } from "./row-pack";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -55,7 +56,7 @@ export async function restoreExpense(
 	];
 	const [cats, templates] = await Promise.all([
 		tx.category.findMany({
-			where: { userId, id: { in: ids("categoryId") } },
+			where: ownCategoryWhere(userId, ids("categoryId")),
 			select: { id: true },
 		}),
 		tx.recurringTemplate.findMany({

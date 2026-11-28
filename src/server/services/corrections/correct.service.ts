@@ -21,6 +21,7 @@ import { TRPCError } from "@trpc/server";
 import type { CorrectInput, CorrectResult } from "~/lib/schemas/corrections";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma } from "~prisma";
+import { assertSharedRowCategory } from "../category/own";
 import { forgetMonthViews } from "../envelope/month-read";
 import { logAudit } from "../shared-expenses/audit-log";
 import { noticeSender } from "./notices";
@@ -321,6 +322,13 @@ export async function correctSplit(
 	const again = await existingCorrection(tx, split, input);
 	if (again) return again;
 	await assertStillInProject(tx, split.original, userId);
+	// Only what the correction names is checked: the reversal rows keep the ids they hold.
+	await assertSharedRowCategory(
+		tx,
+		{ participantType: "user", participantId: userId },
+		input.categoryId,
+		{ unchangedFrom: split.original.categoryId, writerOnSplit: true },
+	);
 
 	const desired = desiredOf(split, input);
 	const allowed = await allowedPeople(tx, split);

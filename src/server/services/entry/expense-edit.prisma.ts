@@ -13,6 +13,7 @@ import type { BookContext } from "@retrospend/domain/rate-booking";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma } from "~prisma";
 import { loadRateContext } from "../rate-types";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -84,7 +85,7 @@ export function expenseEditPort(tx: Tx, userId: string): PrismaEditPort {
 		},
 		category: (id) =>
 			tx.category.findFirst({
-				where: { id, userId },
+				where: ownCategoryWhere(userId, id),
 				select: { id: true, kind: true, excludeByDefault: true },
 			}),
 		rateBook: () => bookContextOf(tx, userId),

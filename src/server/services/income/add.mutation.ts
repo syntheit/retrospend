@@ -55,6 +55,7 @@ import {
 	type RateChoice,
 } from "../rate-types";
 import { applyPlanFor, PLAN_NOT_REQUESTED, type PlanResult } from "./plan-seam";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -142,7 +143,7 @@ async function incomeCategory(
 	await ensureIncomeCategories(tx, userId);
 	if (!categoryId) return null;
 	const category = await tx.category.findFirst({
-		where: { id: categoryId, userId, kind: "INCOME" },
+		where: ownCategoryWhere(userId, categoryId, "INCOME"),
 		select: { id: true },
 	});
 	if (!category) {

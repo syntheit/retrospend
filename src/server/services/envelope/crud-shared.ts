@@ -20,6 +20,7 @@ import {
 	type Snapshot,
 	snapshot,
 } from "./movement-state";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -49,13 +50,18 @@ export function leftChanges(
 	}));
 }
 
-/** Every category must be one of the person's own expense categories (RLS shows only theirs). */
-export async function checkCategories(tx: Tx, categoryIds: readonly string[]) {
+/** Every category must be one of the person's own expense categories (a split's other people can read yours, so the id is checked, not RLS). */
+export async function checkCategories(
+	tx: Tx,
+	userId: string,
+	categoryIds: readonly string[],
+) {
 	const unique = new Set(categoryIds);
 	if (unique.size !== categoryIds.length)
 		throw new EnvelopeError("INVALID", "a category appears once");
+	if (unique.size === 0) return;
 	const own = await tx.category.count({
-		where: { id: { in: [...unique] }, kind: "EXPENSE" },
+		where: ownCategoryWhere(userId, [...unique], "EXPENSE"),
 	});
 	if (own !== unique.size)
 		throw new EnvelopeError("INVALID", "unknown or income category");

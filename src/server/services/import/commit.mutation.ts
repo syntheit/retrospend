@@ -41,6 +41,7 @@ import {
 	storedRows,
 	unreadableCount,
 } from "./rows";
+import { ownCategoryWhere } from "~/server/services/category/own";
 
 type Tx = Prisma.TransactionClient;
 
@@ -137,7 +138,7 @@ async function checkedCategories(
 	const list = [...choices].filter((c) => c.keep && c.categoryId);
 	const ids = [...new Set(list.map((c) => c.categoryId as string))];
 	const found = await tx.category.findMany({
-		where: { userId, id: { in: ids } },
+		where: ownCategoryWhere(userId, ids),
 		select: { id: true, kind: true, excludeByDefault: true },
 	});
 	const byId = new Map(found.map((c) => [c.id, c]));
